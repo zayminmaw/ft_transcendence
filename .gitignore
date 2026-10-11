@@ -10,3 +10,5 @@ coverage/
 Thumbs.db
 .npm-cache/
 .docker-local/
+.agents/
+.codex/
