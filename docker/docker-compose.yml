@@ -1,0 +1,92 @@
+name: transcend
+
+x-backend-environment: &backend-environment
+  NODE_ENV: production
+  PORT: 3000
+  CORS_ORIGIN: http://localhost:${FRONTEND_PORT:-8080}
+  DB_HOST: mariadb
+  DB_PORT: 3306
+  DB_USER: ${DB_USER:-transcend_user}
+  DB_PASS: ${DB_PASS:?Set DB_PASS in the root .env}
+  DB_NAME: ${DB_NAME:-transcend_db}
+  JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in the root .env}
+  JWT_ISSUER: transcend
+  JWT_AUDIENCE: transcend-web
+
+services:
+  mariadb:
+    image: mariadb:10.11
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?Set DB_ROOT_PASSWORD in the root .env}
+      MARIADB_DATABASE: ${DB_NAME:-transcend_db}
+      MARIADB_USER: ${DB_USER:-transcend_user}
+      MARIADB_PASSWORD: ${DB_PASS:?Set DB_PASS in the root .env}
+    ports:
+      - "127.0.0.1:${DB_PUBLIC_PORT:-3306}:3306"
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    networks: [transcend_net]
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+
+  migrate:
+    build:
+      context: ../backend
+      target: runner
+    environment: *backend-environment
+    command: ["./node_modules/.bin/typeorm", "migration:run", "-d", "dist/database/data-source.js"]
+    restart: "no"
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    networks: [transcend_net]
+
+  backend:
+    build:
+      context: ../backend
+      target: runner
+    restart: unless-stopped
+    environment: *backend-environment
+    ports:
+      - "127.0.0.1:${BACKEND_PORT:-3000}:3000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    networks: [transcend_net]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+
+  frontend:
+    build:
+      context: ../frontend
+      target: runner
+      args:
+        VITE_API_BASE_URL: /api
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${FRONTEND_PORT:-8080}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks: [transcend_net]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  mariadb_data:
+
+networks:
+  transcend_net:
+    driver: bridge

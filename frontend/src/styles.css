@@ -1,0 +1,62 @@
+@import "tailwindcss";
+@plugin "daisyui" {
+	themes: false;
+}
+@plugin "daisyui/theme" {
+	name: "transcend";
+	default: true;
+	color-scheme: light;
+	--color-base-100: #ffffff;
+	--color-base-200: #f4f4f5;
+	--color-base-300: #d4d4d8;
+	--color-base-content: #18181b;
+	--color-primary: #94faf0;
+	--color-primary-content: #18181b;
+	--color-secondary: #27272a;
+	--color-secondary-content: #ffffff;
+	--color-accent: #d4f796;
+	--color-accent-content: #18181b;
+	--color-neutral: #27272a;
+	--color-neutral-content: #ffffff;
+	--color-info: #126a8a;
+	--color-info-content: #ffffff;
+	--color-success: #28713c;
+	--color-success-content: #ffffff;
+	--color-warning: #f3cd65;
+	--color-warning-content: #18181b;
+	--color-error: #b32626;
+	--color-error-content: #ffffff;
+	--radius-selector: 0.5rem;
+	--radius-field: 0.75rem;
+	--radius-box: 1rem;
+	--size-selector: 0.25rem;
+	--size-field: 0.25rem;
+	--border: 1px;
+	--depth: 0;
+	--noise: 0;
+}
+
+:root { font-family: Inter, ui-sans-serif, system-ui, sans-serif; }
+body { margin: 0; }
+a { text-decoration: none; }
+button, input, a { outline-offset: 4px; }
+
+.marketing-title {
+	font-family: 'Neo Grotesk Medium', 'Arial Narrow', 'Helvetica Neue', Arial, sans-serif;
+	font-weight: 500;
+	letter-spacing: -0.04em;
+	line-height: 0.95;
+}
+
+.marketing-grid {
+	background-image: linear-gradient(#18181b0a 1px, transparent 1px), linear-gradient(90deg, #18181b0a 1px, transparent 1px);
+	background-size: 32px 32px;
+}
+
+.workflow-sheet {
+	box-shadow: 0 0 0 1px #18181b0a, 0 12px 38px -12px #18181b1a;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+	html { scroll-behavior: smooth; }
+}

@@ -1,0 +1,1 @@
+export { rbacRoutes } from './routes';
