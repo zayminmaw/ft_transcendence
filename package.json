@@ -1,23 +1,23 @@
 {
-  "name": "transcend",
-  "private": true,
-  "version": "0.1.0",
-  "engines": {
-    "node": "^22.13.0 || >=24.0.0"
-  },
-  "scripts": {
-    "prepare": "husky",
-    "setup": "npm ci && npm ci --prefix backend && npm ci --prefix frontend",
-    "dev:backend": "npm run start:dev --prefix backend",
-    "dev:frontend": "npm run dev --prefix frontend",
-    "build": "npm run build --prefix backend && npm run build --prefix frontend",
-    "lint": "npm run lint --prefix backend && npm run lint --prefix frontend",
-    "test": "npm test --prefix backend",
-    "verify": "npm run build && npm run lint && npm test",
-    "docker:up": "docker compose up --build -d",
-    "docker:down": "docker compose down"
-  },
-  "devDependencies": {
-    "husky": "^9.1.7"
-  }
+	"name": "transcend",
+	"private": true,
+	"version": "0.1.0",
+	"engines": {
+		"node": "^22.13.0 || >=24.0.0"
+	},
+	"scripts": {
+		"prepare": "husky",
+		"setup": "npm ci && npm ci --prefix backend && npm ci --prefix frontend",
+		"dev:backend": "npm run start:dev --prefix backend",
+		"dev:frontend": "npm run dev --prefix frontend",
+		"build": "npm run build --prefix backend && npm run build --prefix frontend",
+		"lint": "npm run lint --prefix backend && npm run lint --prefix frontend",
+		"test": "npm test --prefix backend",
+		"verify": "npm run lint && npm run build && npm test",
+		"docker:up": "docker compose up --build -d",
+		"docker:down": "docker compose down"
+	},
+	"devDependencies": {
+		"husky": "^9.1.7"
+	}
 }
