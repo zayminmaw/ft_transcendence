@@ -4,11 +4,30 @@ import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, process.cwd(), '');
-  const aliases = Object.fromEntries(['app', 'hooks', 'services', 'utils', 'modules'].map((folder) => [`@${folder}`, fileURLToPath(new URL(`./src/${folder}`, import.meta.url))]));
-  return {
-    plugins: [react(), tailwindcss()],
-    resolve: { alias: { ...aliases, '@components': fileURLToPath(new URL('./src/components', import.meta.url)) } },
-    server: { port: 5173, strictPort: true, proxy: { '/api': { target: env.API_PROXY_TARGET || 'http://localhost:3000', changeOrigin: true } } },
-  };
+	const env = loadEnv(mode, process.cwd(), '');
+	const aliases = Object.fromEntries(
+		['app', 'hooks', 'services', 'utils', 'modules'].map((folder) => [
+			`@${folder}`,
+			fileURLToPath(new URL(`./src/${folder}`, import.meta.url)),
+		]),
+	);
+	return {
+		plugins: [react(), tailwindcss()],
+		resolve: {
+			alias: {
+				...aliases,
+				'@components': fileURLToPath(new URL('./src/components', import.meta.url)),
+			},
+		},
+		server: {
+			port: 5173,
+			strictPort: true,
+			proxy: {
+				'/api': {
+					target: env.API_PROXY_TARGET || 'http://localhost:3000',
+					changeOrigin: true,
+				},
+			},
+		},
+	};
 });

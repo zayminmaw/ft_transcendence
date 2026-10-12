@@ -6,13 +6,15 @@ import { SolutionsPage } from './pages/SolutionsPage';
 import { ContactPage } from './pages/ContactPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 
-export const marketingRoutes: RouteObject[] = [{
-	element: <MarketingLayout />,
-	children: [
-		{ index: true, element: <LandingPage /> },
-		{ path: 'product', element: <ProductPage /> },
-		{ path: 'solutions', element: <SolutionsPage /> },
-		{ path: 'contact', element: <ContactPage /> },
-		{ path: '*', element: <NotFoundPage /> },
-	],
-}];
+export const marketingRoutes: RouteObject[] = [
+	{
+		element: <MarketingLayout />,
+		children: [
+			{ index: true, element: <LandingPage /> },
+			{ path: 'product', element: <ProductPage /> },
+			{ path: 'solutions', element: <SolutionsPage /> },
+			{ path: 'contact', element: <ContactPage /> },
+			{ path: '*', element: <NotFoundPage /> },
+		],
+	},
+];
