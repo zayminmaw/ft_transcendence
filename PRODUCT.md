@@ -16,6 +16,7 @@ The core audience is courier operations and finance teams at parcel delivery and
 | Finance and merchant account teams | Reconcile driver cash handovers, delivery fees, merchant balances, invoices, and settlements. |
 | Couriers and fleet leads | Manage delivery responsibilities, driver availability, vehicles, equipment, and compliance. |
 | HR and administrators | Maintain personnel records, organization membership, accounts, and role permissions. |
+| Platform administrators | Create, manage, activate/suspend, and monitor the organizations using the platform. |
 
 Merchants are client accounts whose shipments, charges, and balances the ERP manages. A merchant self-service portal is not an established capability. The public website also serves people evaluating whether the planned product fits their courier operation.
 
@@ -45,6 +46,8 @@ The target workflows are:
 
 Supporting workflows cover staff and driver records, fleet custody and maintenance, organization membership, and access administration. These workflows describe planned ERP behavior; the current workspace provides module previews.
 
+Platform administrators manage tenants across the service through a separate platform dashboard. Tenant administrators manage their own organization's users, employees, memberships, roles, and permissions inside the tenant portal. A tenant is a courier organization; merchants remain client accounts within that organization.
+
 ## Capabilities and Constraints
 
 ### Available in the initial scaffold
@@ -59,9 +62,12 @@ Supporting workflows cover staff and driver records, fleet custody and maintenan
 
 Business CRUD, login and refresh flows, organization discovery, role seeds, dispatch actions, proof of delivery, resource ownership policies, COD reconciliation, ledger services, invoicing, and settlement remain to be implemented. Real-time updates, dispatch runs, commission calculations, and full double-entry accounting are blueprint concepts rather than completed services.
 
+The required platform administration dashboard will support tenant creation, tenant status changes, tenant administrator assignment, and monitoring of tenant status/activity. It requires explicit platform permissions distinct from tenant permissions. The tenant portal will use authenticated routes and organization-scoped administration. The public website will include privacy and terms-of-service pages alongside marketing/contact pages; legal pages, portal authentication, and the platform dashboard are not yet implemented.
+
 ### Durable constraints
 
 - Organization membership and permissions govern access. Each future business read and mutation must enforce organization scope; ordinary foreign keys do not provide tenant isolation by themselves.
+- Platform authorization is separate from tenant authorization. Tenant administrators cannot manage other tenants or grant themselves platform access. Platform tenant-management permission does not automatically grant access to tenants' financial, payroll, or delivery records.
 - Driver access is intended to be limited to assigned work. Assigned-only permissions currently fail closed until ownership policies exist. The scaffold installs no default accounts or wildcard administrator bypass.
 - Financial changes require matching ledger entries and transactionally consistent balances. Currency must retain decimal precision rather than use floating-point arithmetic.
 - Staff and drivers share personnel concepts but have distinct operational responsibilities and records.

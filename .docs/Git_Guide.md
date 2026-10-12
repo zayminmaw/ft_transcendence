@@ -49,6 +49,7 @@ Keep branches focused, ideally within 24-48 hours, and under 400 lines when prac
 ```sh
 git fetch origin
 git rebase origin/main
+npm run format:check --prefix frontend
 npm run verify
 ```
 
@@ -60,11 +61,14 @@ Run npm run verify from the root before proposing a merge. It builds/lints both 
 
 Lint does not edit source. Formatting follows .editorconfig: tabs displayed as 4 columns, with two-space YAML indentation. .gitkeep only preserves empty scaffold folders and can be removed after adding their first real file.
 
+Prettier is installed with frontend dependencies by npm run setup. From the root, run npm run format --prefix frontend to fix formatting and npm run format:check --prefix frontend to check it. The check lists nonconforming files and exits with status 1. It is not included in npm run verify or the pre-push hook, so formatting violations alone do not automatically block commits/pushes. Check formatting before review; do not run it across another person's unrelated work.
+
 npm run setup installs a Husky pre-push hook (.husky/pre-push) that runs npm run verify and blocks the push if it fails. No remote CI is installed, so the hook is a local check; git push --no-verify skips it and should be reserved for agreed exceptions.
 
 ## 6. Review and merge checklist
 
 - Builds, lint, security tests, and relevant domain checks pass.
+- Frontend format:check passes.
 - A teammate reviews the module contract and behavior.
 - Queries and mutations enforce organization scope and permissions.
 - Financial mutations include ledger entries inside a transaction.

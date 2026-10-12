@@ -53,6 +53,8 @@ DaisyUI 5 is initialized through Tailwind CSS 4's CSS-first plugin in `frontend/
 
 The original module URLs, such as `/parcels`, still open their workspace pages. Marketing is isolated in `frontend/src/modules/marketing` and has its own layout. Its content describes the product blueprint; the brief form does not send email or submit a lead to an API.
 
+The required product has three areas: a public website, an authenticated tenant portal, and a separate authenticated platform administration dashboard. Platform administrators will create, manage, activate/suspend, and monitor tenants; tenant administrators will manage their own organization's users, employees, roles, and permissions. A tenant is a courier organization, not a merchant/client record. The platform dashboard and portal authentication remain to be implemented, and privacy/terms pages are planned. See [the ERP specification](.docs/ERP-Logistics-System-Outline-v1.md#platform-administration-dashboard) for the dashboard requirements and access boundaries.
+
 `.gitkeep` is only a placeholder for an empty folder: Git tracks files, so it would otherwise omit that directory from a clone. Remove it after adding the first real file in that folder. Formatting defaults to tabs displayed as 4 columns; YAML keeps two-space indentation because its syntax requires spaces. Existing files need not be reformatted as part of unrelated feature work.
 
 ## Working independently as a team
@@ -116,10 +118,15 @@ On Windows use `npm.cmd` if PowerShell blocks `npm.ps1`. Host development requir
 ## Local quality gates
 
 ```sh
+npm run format:check --prefix frontend
 npm run verify
 ```
 
-The Husky pre-push hook in `.husky/pre-push` runs the same command before every `git push` and blocks the push if it fails. `npm run setup` installs the hook; it needs the backend and frontend dependencies that setup also installs. There is no remote CI, so the hook is a local check and `git push --no-verify` skips it.
+Prettier 3.9.10 is a pinned frontend development dependency installed by `npm run setup`. Run `npm run format --prefix frontend` to fix formatting, or `npm run format:check --prefix frontend` to check without editing. It reads `frontend/.prettierrc.json` and `.editorconfig`: tabs at width 4, single quotes in JavaScript/TypeScript, and a preferred frontend line width of 100. Dependencies, build outputs, local environment files, and the generated lockfile are excluded by `frontend/.prettierignore`.
+
+A formatting check reports nonconforming files and exits with status 1. Formatting alone does not break runtime behavior or block commits/pushes automatically: `npm run verify` and the pre-push hook currently do not run Prettier. Run both checks above before sharing changes.
+
+The Husky pre-push hook in `.husky/pre-push` runs `npm run verify` before every `git push` and blocks the push if it fails. `npm run setup` installs the hook; it needs the backend and frontend dependencies that setup also installs. There is no remote CI, so the hook is a local check and `git push --no-verify` skips it.
 
 Verification builds and lints both apps and tests the HTTP security boundary and error sanitization. Lint never edits source files. Before adding business endpoints, add meaningful domain tests.
 

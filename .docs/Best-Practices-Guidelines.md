@@ -6,6 +6,17 @@ These standards apply to the current scaffold and future domain implementation. 
 
 Use tabs with a display width of 4, as defined by `.editorconfig`. YAML uses two spaces because YAML does not permit tab indentation. Avoid reformatting unrelated files in a feature change. `.gitkeep` preserves an otherwise empty directory; remove it when adding the first real file there.
 
+Prettier 3.9.10 is a pinned frontend development dependency installed by `npm run setup`. `frontend/.prettierrc.json` sets single quotes; `.editorconfig` supplies tabs, width 4, LF endings, and a preferred frontend line width of 100. Keep JSX sections, nested expressions, and CSS blocks readable across multiple lines. `frontend/.prettierignore` excludes dependencies, generated files, and local environments.
+
+From the repository root:
+
+```sh
+npm run format --prefix frontend       # Fix formatting
+npm run format:check --prefix frontend # Check without editing
+```
+
+The check exits with status 1 and lists files that need formatting. It is separate from ESLint, `npm run verify`, and the Husky pre-push hook; formatting violations alone currently do not block commits or pushes. Run it before sharing changes.
+
 ## 1. NestJS Backend Guidelines
 
 ### Controller-Service-Repository Segregation
@@ -23,7 +34,8 @@ async assignDriver(@Param('id') id: string, @Body() dto: AssignDriverDto) {
 ```
 
 * **Tenant context:** Nest guards run before interceptors. `RolesGuard` validates `X-Organization-Id`, active user/organization membership, and the required role permission before attaching the tenant context. `TenantContextInterceptor` enforces that this verified context exists. Domain repositories must scope all reads and writes to it and validate the tenant of referenced records. An index or ordinary foreign key alone does not enforce tenant isolation.
-* **Assigned-only access:** The scaffold denies `assigned_only` permissions until resource ownership policies exist. The specified super-admin wildcard is a future policy, not a current bypass. No accounts or role seeds are installed.
+* **Assigned-only access:** The scaffold denies `assigned_only` permissions until resource ownership policies exist. No accounts, role seeds, or wildcard administrator bypass are installed.
+* **Platform versus tenant access:** The required platform administration dashboard needs a dedicated platform authorization policy. Tenant administrators may manage membership, employees, roles, and permissions only within their own organization; they cannot grant platform roles or access other tenants. Platform tenant-management actions must use explicit permissions and audit records, rather than bypassing tenant guards. These platform services are planned, not implemented.
 
 
 
@@ -43,6 +55,7 @@ async assignDriver(@Param('id') id: string, @Body() dto: AssignDriverDto) {
 * Theme changes and shared component changes affect the whole frontend; coordinate their ownership with the team.
 * `DESIGN.md` at the repository root supplies the visual reference. The daisyUI theme uses white/cloud surfaces, graphite/ink text, aqua conversion controls, and a lime announcement strip. Use the documented local font fallbacks until licensed font assets are supplied; do not add a remote font dependency silently.
 * Public marketing pages live in `modules/marketing` with their own layout. The workspace is under `/app`; the original module URLs remain compatibility routes. Marketing copy must distinguish the product blueprint and previews from completed operational features.
+* The target frontend separates public marketing/legal pages, authenticated tenant portal routes, and authenticated platform administration routes. Frontend visibility is not authorization: backend policies must enforce each area's access. Privacy/terms pages, portal authentication, and the platform dashboard remain planned.
 
 ### Encapsulation & The "Index Barrier" Rule
 

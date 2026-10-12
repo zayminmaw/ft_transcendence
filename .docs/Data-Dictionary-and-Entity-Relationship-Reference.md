@@ -7,6 +7,8 @@ This document matches the 22-table baseline in `backend/src/database/migrations/
 
 Currency uses `DECIMAL(12, 2)`, dimensions/capacities use `DECIMAL(8, 2)`, and GPS coordinates retain their original precision. BIGINT IDs and monetary results remain strings in application code. All foreign keys have explicitly named indexes. Composite tenant foreign keys and scoped domain repositories still need implementation; ordinary foreign keys alone do not establish tenant isolation.
 
+The required platform administration dashboard is planned. `organizations` represents tenants, `organization_members` models tenant membership, and `user_roles` reserves global role assignments. These tables do not implement platform authorization by themselves: current guards resolve organization membership, and dedicated platform permissions/policies, tenant-administrator assignment rules, and management auditing still need implementation. Tenant administrators must not be able to grant global platform roles. Review any supporting schema changes through new migrations; do not modify the applied baseline. See [the platform dashboard requirements](ERP-Logistics-System-Outline-v1.md#platform-administration-dashboard).
+
 ---
 
 ## 1. Authentication & RBAC
