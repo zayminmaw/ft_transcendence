@@ -2,7 +2,7 @@
 
 ## 1. Repository structure
 
-One Git repository contains backend/, frontend/, docker/, scripts/, .docs/, root quality commands, and the README. Architecture and planning documents in .docs are versioned alongside code. Each application has its own package.json and package-lock.json; the root package.json orchestrates their commands.
+One Git repository contains backend/, frontend/, docker/, .husky/, .docs/, root quality commands, and the README. Architecture and planning documents in .docs are versioned alongside code. Each application has its own package.json and package-lock.json; the root package.json orchestrates their commands and installs the Husky Git hook.
 
 ## 2. Branch and commit conventions
 
@@ -56,11 +56,11 @@ Do not blindly select one entire lockfile during a conflict. Resolve the applica
 
 ## 5. Local quality gates
 
-Run npm run verify from the root before proposing a merge. It builds/lints both applications and runs the backend HTTP security tests. Equivalent wrappers are bash scripts/verify.sh and powershell -ExecutionPolicy Bypass -File scripts/verify.ps1. Add meaningful domain tests as business behavior is introduced.
+Run npm run verify from the root before proposing a merge. It builds/lints both applications and runs the backend HTTP security tests. Add meaningful domain tests as business behavior is introduced.
 
 Lint does not edit source. Formatting follows .editorconfig: tabs displayed as 4 columns, with two-space YAML indentation. .gitkeep only preserves empty scaffold folders and can be removed after adding their first real file.
 
-No remote CI or automatic Git hooks are installed. Teams may opt into a pre-commit hook that runs verification after agreeing its behavior.
+npm run setup installs a Husky pre-push hook (.husky/pre-push) that runs npm run verify and blocks the push if it fails. No remote CI is installed, so the hook is a local check; git push --no-verify skips it and should be reserved for agreed exceptions.
 
 ## 6. Review and merge checklist
 

@@ -51,7 +51,7 @@ transcend/
 |   +-- main.ts                  HTTP startup and global validation
 +-- docker/                      Compose manifests and development override
 +-- docker-compose.yml           Root Compose entry point
-+-- scripts/                     Bash and PowerShell verification wrappers
++-- .husky/                      Git hooks; pre-push runs npm run verify
 ```
 
 Frontend domain folders contain components, pages, hooks, types, routes.tsx, and a public index.ts. Parcels also has a module-local utils folder. Backend domain folders reserve dto and entities, with controllers/services/repositories added as implemented. Empty folders use .gitkeep until their first real file is added.

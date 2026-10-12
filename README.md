@@ -20,11 +20,11 @@ frontend/                 React / Vite / Tailwind / daisyUI / TanStack Query
                           with public index.ts exports
 .docs/                    Tracked architecture, schema, standards, and Git workflow
 docker/                   Compose manifests and development override
-scripts/                  Bash and PowerShell verification entry points
+.husky/                   Git hooks; pre-push runs the verification gate
 docker-compose.yml        Root entry point for the Docker manifests
 ```
 
-Architecture and engineering documents live in [`.docs/`](.docs/). Environment files, dependencies, and build outputs are ignored. No Git hooks are installed automatically.
+Architecture and engineering documents live in [`.docs/`](.docs/). Environment files, dependencies, and build outputs are ignored. `npm run setup` installs a Husky pre-push hook that runs `npm run verify`.
 
 See the [0.1.0 release notes](.docs/releases/0.1.0.md) for the initial scaffold's scope and validation.
 
@@ -32,7 +32,7 @@ This workspace already has ignored `.env` files with randomly generated local da
 
 ## Prerequisites
 
-Use Node 24 LTS (see `.nvmrc`), npm, Docker, and Docker Compose 2.24.4 or newer. Separate lockfiles in each application allow independent `npm ci` and Docker build contexts.
+Use Node 24 LTS (see `.nvmrc`), npm, Docker, and Docker Compose 2.24.4 or newer. Separate lockfiles in each application allow independent `npm ci` and Docker build contexts; the root lockfile only pins Husky.
 
 ## How the scaffold fits together
 
@@ -117,11 +117,9 @@ On Windows use `npm.cmd` if PowerShell blocks `npm.ps1`. Host development requir
 
 ```sh
 npm run verify
-# Equivalent wrappers:
-bash scripts/verify.sh
 ```
 
-Windows: `powershell -ExecutionPolicy Bypass -File scripts/verify.ps1`.
+The Husky pre-push hook in `.husky/pre-push` runs the same command before every `git push` and blocks the push if it fails. `npm run setup` installs the hook; it needs the backend and frontend dependencies that setup also installs. There is no remote CI, so the hook is a local check and `git push --no-verify` skips it.
 
 Verification builds and lints both apps and tests the HTTP security boundary and error sanitization. Lint never edits source files. Before adding business endpoints, add meaningful domain tests.
 
