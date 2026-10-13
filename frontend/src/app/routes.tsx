@@ -1,4 +1,4 @@
-import { createBrowserRouter } from 'react-router-dom';
+import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { organizationsRoutes } from '@modules/organizations';
 import { clientsRoutes } from '@modules/clients';
 import { staffRoutes } from '@modules/staff';
@@ -8,7 +8,8 @@ import { parcelsRoutes } from '@modules/parcels';
 import { billingRoutes } from '@modules/billing';
 import { rbacRoutes } from '@modules/rbac';
 import { marketingRoutes } from '@modules/marketing';
-import { ModulePage } from '@components';
+import { platformRoutes } from '@modules/platform';
+import { ModulePage } from '@global-components';
 import { App } from './App';
 
 const workspaceRoutes = [
@@ -24,6 +25,7 @@ const workspaceRoutes = [
 
 export const router = createBrowserRouter([
 	...marketingRoutes,
+	...platformRoutes,
 	{
 		path: 'app',
 		element: <App />,
@@ -32,8 +34,8 @@ export const router = createBrowserRouter([
 				index: true,
 				element: (
 					<ModulePage
-						title="Your operations workspace"
-						description="Choose a module to explore the workspace."
+						title="Operations overview"
+						description="Delivery, cash reconciliation, and team responsibilities."
 					/>
 				),
 			},
@@ -49,6 +51,9 @@ export const router = createBrowserRouter([
 			},
 		],
 	},
-	// Preserve the original module URLs while the workspace moves under /app.
-	{ element: <App />, children: workspaceRoutes },
+	// Keep compatibility URLs inside the canonical tenant layout and future auth boundary.
+	...workspaceRoutes.map(({ path }) => ({
+		path,
+		element: <Navigate to={`/app/${path}`} replace />,
+	})),
 ]);

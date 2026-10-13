@@ -17,7 +17,7 @@
 		"baseUrl": ".",
 		"paths": {
 			"@app/*": ["src/app/*"],
-			"@components": ["src/components/index.ts"],
+			"@global-components": ["src/global-components/index.ts"],
 			"@hooks/*": ["src/hooks/*"],
 			"@services/*": ["src/services/*"],
 			"@utils/*": ["src/utils/*"],

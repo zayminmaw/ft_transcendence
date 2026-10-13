@@ -16,12 +16,17 @@ export default defineConfig(({ mode }) => {
 		resolve: {
 			alias: {
 				...aliases,
-				'@components': fileURLToPath(new URL('./src/components', import.meta.url)),
+				'@global-components': fileURLToPath(
+					new URL('./src/global-components', import.meta.url),
+				),
 			},
 		},
 		server: {
 			port: 5173,
 			strictPort: true,
+			watch: {
+				usePolling: env.WATCH_USE_POLLING === 'true',
+			},
 			proxy: {
 				'/api': {
 					target: env.API_PROXY_TARGET || 'http://localhost:3000',

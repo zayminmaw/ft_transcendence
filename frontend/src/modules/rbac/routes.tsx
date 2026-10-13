@@ -1,5 +1,5 @@
 import type { RouteObject } from 'react-router-dom';
-import { ModulePage } from '@components';
+import { ModulePage } from '@global-components';
 
 export const rbacRoutes: RouteObject[] = [
 	{
@@ -7,7 +7,7 @@ export const rbacRoutes: RouteObject[] = [
 		element: (
 			<ModulePage
 				title="Access control"
-				description="Manage user roles and access permissions."
+				description="Manage user accounts, organization roles, and access permissions."
 			/>
 		),
 	},
