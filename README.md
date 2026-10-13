@@ -12,7 +12,7 @@ backend/                  NestJS / TypeORM / MariaDB
                           drivers, assets, parcels, billing
 frontend/                 React / Vite / Tailwind / daisyUI / TanStack Query
   src/app/                App, master routes, session and query stores
-  src/components/         Shared UI
+  src/global-components/  Shared UI used across application areas
   src/hooks/              Shared hooks
   src/services/           HTTP client with tenant and bearer headers
   src/utils/              Shared helpers
@@ -97,10 +97,12 @@ Stop with `docker compose down`; the database volume is retained.
 From the repository root:
 
 ```sh
-docker compose --env-file .env -f docker/docker-compose.yml -f docker/docker-compose.dev.yml up --build -d
+npm run docker:dev
 ```
 
-Open http://localhost:5173. Source directories are mounted; container dependencies remain isolated. Rebuild containers when dependencies or configuration change. Return to the standard stack with `docker compose up --build -d`.
+Open http://localhost:5173 (`/app` for the tenant workspace or `/platform` for platform administration). This switches the existing `transcend` stack to its development targets and retains the database volume. Source directories are mounted; frontend edits reload through Vite without restarting or rebuilding containers. The development override enables polling so edits from Windows reach the container's file watcher. Container dependencies remain isolated.
+
+Run `npm run docker:dev` again after dependency or configuration changes. Return to the NGINX build with `npm run docker:up`; changes in that mode require rebuilding the frontend image, not just restarting its container. `npm run docker:down` stops either mode without deleting the database volume.
 
 For host development, copy the backend and frontend `.env.example` files to `.env` in their respective directories if they do not already exist. Match database credentials and JWT secret with the root environment file, and set backend `DB_PORT` to the root `DB_PUBLIC_PORT`.
 
@@ -136,7 +138,7 @@ Verification builds and lints both apps and tests the HTTP security boundary and
 - Endpoints are protected globally by JWT and permission guards. Explicitly declare `@RequirePermission('module.action')`; use `@Public()` only for intentional public endpoints. JWTs require a string user ID, expiration, issuer, audience, and HS256 signature. Active organization membership and account status are checked against the database.
 - Requests use `X-Organization-Id`. Because Nest guards precede interceptors, the permission guard resolves membership; the tenant interceptor enforces the verified context. New repositories must scope every query and mutation by the verified organization ID and validate all referenced records against that tenant. Add composite tenant foreign keys when introducing domain entities. No business data endpoints are enabled by this scaffold.
 - `assigned_only` permissions are denied until a resource ownership policy is implemented. No wildcard super-admin bypass or default account is created.
-- Frontend modules expose their public interface through root `index.ts`; ESLint rejects cross-module deep imports. Shared UI belongs in `src/components`, and module-specific UI belongs in the module.
+- Frontend modules expose their public interface through root `index.ts`; ESLint rejects cross-module deep imports. Shared UI belongs in `src/global-components`, imported through `@global-components`, and module-specific UI belongs in the module.
 - Use React Hook Form with Zod for forms. Show field errors and disable mutating buttons while submitting. Include the organization ID in tenant query keys; cancel and clear queries on organization changes.
 - Keep access tokens in memory. The HTTP client supplies authorization/tenant headers and clears session/cache on unauthorized responses. Login, secure refresh, organization discovery, and permission-aware navigation are subsequent features; initial module pages contain no operational data.
 - Currency remains decimal strings at the database boundary. Never use floating-point arithmetic for money. Ledger entries and balance changes must execute together in an ACID transaction; do not mutate balances independently.

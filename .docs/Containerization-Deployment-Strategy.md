@@ -78,10 +78,14 @@ The named MariaDB volume persists after down. Do not add volume deletion to rout
 ## Development override
 
 ```sh
-docker compose --env-file .env -f docker/docker-compose.yml -f docker/docker-compose.dev.yml up --build -d
+npm run docker:dev
 ```
 
-The development override selects the development image targets, mounts source directories, runs Nest watch mode and Vite on port 5173, and proxies Vite API requests to backend:3000. Dependencies remain inside the containers. Rebuild after dependency or configuration changes. Return to the standard stack with docker compose up --build -d.
+The script runs `docker compose --env-file .env -f docker/docker-compose.yml -f docker/docker-compose.dev.yml up --build -d`. Both modes retain project name `transcend` and its existing database volume.
+
+The development override selects the development image targets, mounts source directories, runs Nest watch mode and Vite on port 5173, and proxies Vite API requests to backend:3000. `WATCH_USE_POLLING=true` enables Vite polling for reliable source-change detection from Windows. Editing mounted frontend source does not require restarting or rebuilding the container. Dependencies remain inside the containers; rerun the script after dependency or configuration changes.
+
+Return to the standard NGINX stack with `npm run docker:up`. That mode serves files built into the frontend image; restarting a container does not rebuild those files. Use `docker compose up -d --build --no-deps frontend` for a frontend-only refresh. Stop either mode with `npm run docker:down`; the database volume is retained.
 
 ## Schema and deployment boundaries
 

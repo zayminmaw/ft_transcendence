@@ -61,7 +61,7 @@ async assignDriver(@Param('id') id: string, @Body() dto: AssignDriverDto) {
 
 * Files inside `/modules/<module-a>` must never deep-import internal files from `/modules/<module-b>`.
 * Inter-module imports must only consume what is exported through the target module's root `index.ts`. If `/modules/parcels` needs client data, it imports through `@modules/clients`.
-* Generic, reusable components (like `Modal`, `Table`, `Input`) live in top-level `/components`. Module-specific compositions (like `ParcelStatusBadge`) must stay in `/modules/<module>/components`.
+* Generic, reusable components (like `Modal`, `Table`, `Input`) and layouts shared by application areas live in `frontend/src/global-components`, imported through its `@global-components` public index. Module-specific compositions (like `ParcelStatusBadge`) must stay in `/modules/<module>/components`.
 
 ### Form Handling & Validation
 

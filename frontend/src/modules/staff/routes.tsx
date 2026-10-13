@@ -1,5 +1,5 @@
 import type { RouteObject } from 'react-router-dom';
-import { ModulePage } from '@components';
+import { ModulePage } from '@global-components';
 
 export const staffRoutes: RouteObject[] = [
 	{

@@ -29,12 +29,13 @@ transcend/
 |   |   +-- App.tsx              Workspace layout
 |   |   +-- routes.tsx           Router composition and compatibility routes
 |   |   +-- store/               Session and query client
-|   +-- components/              Shared daisyUI wrappers; Button, Input, Modal, Table
+|   +-- global-components/       Shared daisyUI wrappers, dashboard layout, and sidebar
 |   +-- hooks/                   Auth and active-organization hooks
 |   +-- services/                Shared fetch client
 |   +-- utils/                   Shared helper scaffold
 |   +-- modules/
 |   |   +-- marketing/           Public layout, landing/product/solutions/rollout pages
+|   |   +-- platform/            Platform administration layout and empty management pages
 |   |   +-- organizations/
 |   |   +-- clients/
 |   |   +-- staff/
@@ -72,7 +73,7 @@ Frontend domain folders contain components, pages, hooks, types, routes.tsx, and
 | /api/health | Public API liveness |
 | /api/health/ready | Public database/schema readiness |
 
-Marketing components stay inside modules/marketing. Other modules consume only its index.ts public exports. Shared components use the CSS-first transcend daisyUI theme. Public forms do not imply a lead submission API. Workspace pages expose no business data in this scaffold; frontend route protection must accompany future authenticated features.
+Marketing components stay inside modules/marketing. Other modules consume only its index.ts public exports. Shared components live in `global-components`, are imported through `@global-components`, and use the CSS-first transcend daisyUI theme. Public forms do not imply a lead submission API. Workspace pages expose no business data in this scaffold; frontend route protection must accompany future authenticated features.
 
 ### Required application areas (planned)
 
@@ -82,7 +83,19 @@ Marketing components stay inside modules/marketing. Other modules consume only i
 | Tenant portal | Authenticated users with active organization membership | Courier/accounting workflows and tenant administrators managing their own users, employees, roles, and permissions |
 | Platform dashboard | Authenticated platform administrators with explicit platform permissions | Create/manage tenants, activate/suspend them, assign tenant administrators, and monitor tenant status/activity |
 
-The existing `/app` preview will become the tenant portal. The platform dashboard needs a separate route/layout and API authorization boundary; its exact URLs and module contract remain to be agreed. The `organizations` workspace placeholder is not a completed platform dashboard. Preserve tenant checks on compatibility URLs when authenticated workflows are introduced.
+The existing `/app` will become the tenant portal. The platform dashboard has a separate frontend route/layout scaffold, but still needs a dedicated API authorization boundary and reviewed service contracts. The `organizations` workspace placeholder is not a completed platform dashboard. Preserve tenant checks on compatibility URLs when authenticated workflows are introduced.
+
+### Dashboard layout scaffold
+
+The frontend provides separate, public layout previews for the tenant workspace (`/app`) and platform administration (`/platform`). Both use a shared responsive dashboard shell, with area-specific sidebars and empty pages. They perform no business reads or mutations and do not implement authentication or grant platform access yet.
+
+- Tenant pages: `/app`, `/app/parcels`, `/app/billing`, `/app/rbac`, `/app/clients`, `/app/staff`, `/app/drivers`, `/app/assets`, and `/app/organizations` (settings for the current tenant).
+- Platform pages: `/platform/tenants`, `/platform/activity`, `/platform/tenants/new`, `/platform/tenants/:tenantId`, and `/platform/tenants/:tenantId/administrators`. `/platform` redirects to the tenant directory.
+- Original module URLs redirect to their `/app` counterparts so future tenant route protection has one canonical entry point.
+
+Platform frontend compositions live in `modules/platform` and are exported through its root `index.ts`. These URL choices describe the layout scaffold only; platform API contracts and authorization remain planned.
+
+Tenant sidebar configuration lives in `app/navigation.ts`, alongside app route composition. Operations groups overview, parcels/dispatch, clients/merchants, drivers, and fleet/assets. Administration groups billing/COD, staff, access control (users/roles/permissions), and organization settings. All eight domain modules remain reachable; platform tenant management stays in its separate sidebar. These groups organize work and do not imply administrative roles or grant permissions. Future authentication must add verified-session navigation visibility and independent route/API authorization.
 
 ## 4. Tenant and authorization lifecycle
 
