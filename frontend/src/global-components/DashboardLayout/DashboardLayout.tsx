@@ -1,5 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
+import Breadcrumbs from '../Breadcrumbs/Breadcrumbs';
+import type { BreadcrumbLink } from '../Breadcrumbs/types';
 import { SidebarContent } from '../Sidebar/SidebarContent';
 import type { SidebarContentProps } from '../Sidebar/SidebarContent';
 
@@ -10,6 +12,14 @@ export function DashboardLayout(props: Omit<SidebarContentProps, 'onNavigate'>) 
 	const currentPage = props.groups
 		.flatMap((group) => group.items)
 		.find(({ to, end }) => pathname === to || (!end && pathname.startsWith(`${to}/`)));
+	const links: BreadcrumbLink[] = [
+		{ label: props.scope, href: props.homeTo, status: 'inactive' },
+		{
+			label: currentPage?.label ?? 'Page not found',
+			href: currentPage?.to ?? pathname,
+			status: 'active',
+		},
+	];
 
 	useEffect(() => {
 		navigation.current?.close();
@@ -49,15 +59,7 @@ export function DashboardLayout(props: Omit<SidebarContentProps, 'onNavigate'>) 
 					>
 						Menu
 					</button>
-					<p className="min-w-0 flex-1 text-sm text-[var(--color-slate)]">
-						{props.scope}
-						<span aria-hidden="true" className="mx-2 hidden sm:inline">
-							/
-						</span>
-						<span className="hidden sm:inline">
-							{currentPage?.label ?? 'Page not found'}
-						</span>
-					</p>
+					<Breadcrumbs links={links} />
 					<span className="badge shrink-0 border-0 bg-base-200 px-3 py-3 text-xs">
 						Layout preview
 					</span>

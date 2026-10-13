@@ -1,14 +1,9 @@
 import type { RouteObject } from 'react-router-dom';
-import { ModulePage } from '@global-components';
+import TenantsList from './pages/TenantsList';
 
 export const organizationsRoutes: RouteObject[] = [
 	{
 		path: 'organizations',
-		element: (
-			<ModulePage
-				title="Organization settings"
-				description="Organization details and team memberships within your tenant."
-			/>
-		),
+		element: <TenantsList />,
 	},
 ];
