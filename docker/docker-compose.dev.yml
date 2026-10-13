@@ -15,6 +15,7 @@ services:
     environment:
       API_PROXY_TARGET: http://backend:3000
       VITE_API_BASE_URL: /api
+      WATCH_USE_POLLING: "true"
     command: ["npm", "run", "dev"]
     ports: !override
       - "127.0.0.1:5173:5173"
