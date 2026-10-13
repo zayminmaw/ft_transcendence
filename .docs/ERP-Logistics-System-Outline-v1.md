@@ -6,6 +6,8 @@ This document defines the target product, not a list of completed features. The 
 
 The public website has landing (`/`), product (`/product`), solutions (`/solutions`), and rollout planning (`/contact`) pages in the frontend-only `marketing` module. The rollout planner validates input and downloads a browser-local brief; it does not submit leads or emails. The workspace lives under `/app`, with the original module URLs retained for compatibility.
 
+Required next surfaces include public privacy/terms-of-service pages, an authenticated tenant portal, and a separate authenticated platform administration dashboard. The current workspace is a public preview; portal route protection and platform dashboard services remain to be implemented.
+
 Use the current data dictionary and versioned backend migrations for exact implemented schema types. Currency is standardized on `DECIMAL(12,2)`, while package dimensions and capacities use `DECIMAL(8,2)`. The baseline does not yet include every concept in this product outline, such as a dispatch-run entity or commission calculation services.
 
 JWT and permission guards are global. Active membership is resolved by the permission guard before the tenant interceptor, and assigned-only access is denied until record ownership policies exist. The role table below describes intended defaults; no wildcard super-admin bypass or default role assignments are currently installed.
@@ -13,6 +15,20 @@ JWT and permission guards are global. Active membership is resolved by the permi
 ## 1. System Overview
 
 Transcend is a centralized ERP and operations platform tailored for courier, parcel delivery, and last-mile dispatch businesses. The system coordinates parcels, office personnel, delivery drivers, merchant (client) accounts, fleet assets, automated cash-on-delivery (COD) reconciliation, and merchant balance ledgers within a secure, role-based environment.
+
+Each tenant is a courier organization using the service. Platform administrators manage tenants across the platform; tenant administrators manage their own organization's users, employees, roles, and permissions. Merchants are client records inside a tenant, not tenants themselves.
+
+### Platform Administration Dashboard
+
+**Status:** Required, not implemented. This is a separate platform-owner area from tenant administration.
+
+- List and create tenants; view and update their organization/contact details.
+- Activate, suspend, and reactivate tenants without deleting their operational or accounting history.
+- Assign or revoke tenant administrators without granting platform permissions to tenant users.
+- Monitor tenant status, membership summaries, and tenant-management activity; review auditable management events.
+- Record the platform actor, target tenant, action, and outcome for management changes and monitoring access.
+
+**Access boundary:** Require authentication and explicit platform permissions. Tenant administrators can manage users/employees and allowed role/permission assignments only within their own tenant. Platform tenant-management access does not automatically expose tenant payroll, ledgers, or parcel records. Suspension must deny tenant access while leaving authorized platform management available. Exact monitoring metrics and platform routes remain to be agreed.
 
 ## 2. Core Entities & Relational Architecture
 
@@ -98,8 +114,8 @@ To properly handle different operational responsibilities, personnel records sha
 
 ### F. User Management & Access Control (RBAC) Page
 
-* **Purpose:** Administrative interface to manage system logins, assign roles, and audit operations.
-* **Key Features:** User accounts linked to Personnel IDs, granular permissions, session management, and audit logging.
+* **Purpose:** Tenant administrative interface to manage its own system logins, assign roles, and audit operations.
+* **Key Features:** Organization memberships, user accounts linked to Personnel IDs, granular permissions, session management, and audit logging. Tenant administrators cannot assign platform roles or manage other tenants.
 
 ## 4. Granular Permission Schema
 
@@ -140,7 +156,8 @@ To properly handle different operational responsibilities, personnel records sha
 
 | Role Name | Assigned Permissions | Scope / Notes |
 |---|---|---|
-| **Super Admin** | All permissions (`*.*`) | Full system access across all modules |
+| **Platform Admin** | Explicit platform tenant-management permissions; exact codes to be agreed | Cross-tenant organization administration and monitoring; no automatic access to tenant business records |
+| **Tenant Admin (`org_admin`)** | Explicit organization-scoped administration permissions | Manage its own organization's users, employees, memberships, and allowed role/permission assignments; no platform authority |
 | **Dispatcher** | `clients.view`, `clients.create`, `clients.edit`, `parcels.view`, `parcels.create`, `parcels.dispatch`, `parcels.update_status`, `parcels.mark_delivered`, `drivers.view`, `assets.view`, `assets.assign` | Route management and fleet assignment; no payroll, billing, or audit access |
 | **Hub Sorter** | `parcels.view`, `parcels.update_status` | Inbound intake, sorting, and hub transfer verification only |
 | **Finance** | `clients.view`, `clients.create`, `clients.view_financials`, `parcels.view`, `parcels.override_fee`, `staff.view_payroll`, `drivers.view`, `drivers.view_earnings`, `billing.view`, `billing.reconcile_cod`, `billing.create_invoice`, `billing.adjust_balance`, `billing.export`, `admin.audit_logs` | Financial ledger control, COD settlement, invoicing, and payroll audit |

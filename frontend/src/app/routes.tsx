@@ -12,8 +12,14 @@ import { ModulePage } from '@components';
 import { App } from './App';
 
 const workspaceRoutes = [
-	...organizationsRoutes, ...clientsRoutes, ...staffRoutes, ...driversRoutes,
-	...assetsRoutes, ...parcelsRoutes, ...billingRoutes, ...rbacRoutes,
+	...organizationsRoutes,
+	...clientsRoutes,
+	...staffRoutes,
+	...driversRoutes,
+	...assetsRoutes,
+	...parcelsRoutes,
+	...billingRoutes,
+	...rbacRoutes,
 ];
 
 export const router = createBrowserRouter([
@@ -22,9 +28,25 @@ export const router = createBrowserRouter([
 		path: 'app',
 		element: <App />,
 		children: [
-			{ index: true, element: <ModulePage title="Your operations workspace" description="Choose a module to explore the workspace." /> },
+			{
+				index: true,
+				element: (
+					<ModulePage
+						title="Your operations workspace"
+						description="Choose a module to explore the workspace."
+					/>
+				),
+			},
 			...workspaceRoutes,
-			{ path: '*', element: <ModulePage title="Page not found" description="Choose a module from the navigation to continue." /> },
+			{
+				path: '*',
+				element: (
+					<ModulePage
+						title="Page not found"
+						description="Choose a module from the navigation to continue."
+					/>
+				),
+			},
 		],
 	},
 	// Preserve the original module URLs while the workspace moves under /app.
