@@ -7,3 +7,5 @@ export { SidebarContent } from './Sidebar/SidebarContent';
 export * from './Breadcrumbs/types.tsx';
 export { DashboardLayout } from './DashboardLayout/DashboardLayout';
 export type { NavigationGroup } from './Sidebar/SidebarContent';
+export { Table } from './Table/Table';
+export * from './Table/types.tsx';
