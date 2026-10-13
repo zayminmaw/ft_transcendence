@@ -6,11 +6,17 @@ const navigation = [
 	{ to: '/solutions', label: 'Solutions' },
 	{ to: '/contact', label: 'Plan your rollout' },
 ];
+const legalLinks = [
+	{ to: '/privacy', label: 'Privacy Policy' },
+	{ to: '/terms', label: 'Terms of Service' },
+];
 const titles: Record<string, string> = {
 	'/': 'Transcend — From first pickup to final payout',
 	'/product': 'Product — Transcend',
 	'/solutions': 'Solutions — Transcend',
 	'/contact': 'Plan your rollout — Transcend',
+	'/privacy': 'Privacy Policy — Transcend',
+	'/terms': 'Terms of Service — Transcend',
 };
 
 export function MarketingLayout() {
@@ -80,16 +86,28 @@ export function MarketingLayout() {
 							A connected workspace for last-mile logistics.
 						</p>
 					</div>
-					<nav
-						aria-label="Footer navigation"
-						className="flex flex-wrap items-start gap-6"
-					>
-						{navigation.map(({ to, label }) => (
-							<Link key={to} to={to} className="link link-hover">
-								{label}
-							</Link>
-						))}
-					</nav>
+					<div className="flex flex-col gap-4 sm:flex-row sm:gap-8">
+						<nav
+							aria-label="Footer navigation"
+							className="flex flex-wrap items-start gap-6"
+						>
+							{navigation.map(({ to, label }) => (
+								<Link key={to} to={to} className="link link-hover">
+									{label}
+								</Link>
+							))}
+						</nav>
+						<nav
+							aria-label="Legal navigation"
+							className="flex flex-wrap items-start gap-6 opacity-75"
+						>
+							{legalLinks.map(({ to, label }) => (
+								<Link key={to} to={to} className="link link-hover">
+									{label}
+								</Link>
+							))}
+						</nav>
+					</div>
 				</div>
 			</footer>
 		</div>
