@@ -36,9 +36,12 @@
 	--noise: 0;
 }
 
+@theme {
+	--color-slate: #71717a;
+}
+
 :root {
 	font-family: Inter, ui-sans-serif, system-ui, sans-serif;
-	--color-slate: #71717a;
 }
 body {
 	margin: 0;

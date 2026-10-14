@@ -15,7 +15,7 @@ const Breadcrumbs = ({ links }: BreadcrumbsProps) => {
 						className={index > 0 ? 'hidden sm:flex' : 'flex'}
 					>
 						{index > 0 && (
-							<span aria-hidden="true" className="mx-2">
+							<span aria-hidden="true" className="mx-2 ">
 								/
 							</span>
 						)}
