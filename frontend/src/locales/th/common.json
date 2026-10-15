@@ -1,0 +1,58 @@
+{
+	"language": {
+		"label": "ภาษา"
+	},
+	"layout": {
+		"skipToContent": "ข้ามไปยังเนื้อหา",
+		"openNavigation": "เปิดเมนูนำทาง",
+		"menu": "เมนู",
+		"preview": "ตัวอย่างเลย์เอาต์",
+		"closeNavigation": "ปิดเมนูนำทาง",
+		"close": "ปิด",
+		"navigation": "เมนูนำทาง {{scope}}",
+		"pageNotFound": "ไม่พบหน้านี้"
+	},
+	"sidebar": {
+		"home": "หน้าหลัก {{scope}}",
+		"backToWebsite": "กลับไปที่เว็บไซต์"
+	},
+	"breadcrumbs": {
+		"label": "เส้นทางการนำทาง"
+	},
+	"table": {
+		"empty": "ไม่พบรายการ",
+		"search": "ค้นหา"
+	},
+	"pagination": {
+		"label": "การแบ่งหน้า",
+		"rowsPerPage": "แถวต่อหน้า",
+		"range": "{{first}}–{{last}} จาก {{total}}",
+		"previous": "หน้าก่อนหน้า",
+		"next": "หน้าถัดไป",
+		"page": "หน้า {{page}}"
+	},
+	"workspace": {
+		"scope": "พื้นที่ทำงานของบริษัท",
+		"nav": {
+			"operations": "การดำเนินงาน",
+			"overview": "ภาพรวม",
+			"parcels": "การจัดส่งและพัสดุ",
+			"clients": "ลูกค้า / ร้านค้า",
+			"drivers": "พนักงานขับรถ",
+			"assets": "ยานพาหนะและทรัพย์สิน",
+			"administration": "การจัดการ",
+			"billing": "การวางบิลและเก็บเงินปลายทาง",
+			"staff": "พนักงาน",
+			"rbac": "การควบคุมการเข้าถึง",
+			"organizations": "การตั้งค่าองค์กร"
+		},
+		"overview": {
+			"title": "ภาพรวมการดำเนินงาน",
+			"description": "การจัดส่ง การกระทบยอดเงินสด และความรับผิดชอบของทีม"
+		},
+		"notFound": {
+			"title": "ไม่พบหน้านี้",
+			"description": "เลือกโมดูลจากเมนูนำทางเพื่อดำเนินการต่อ"
+		}
+	}
+}
