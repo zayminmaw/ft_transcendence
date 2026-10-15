@@ -17,7 +17,14 @@ function flatten(value, prefix = '', keys = new Map()) {
 }
 
 function readKeys(file) {
-	return flatten(JSON.parse(readFileSync(file, 'utf8')));
+	const text = readFileSync(file, 'utf8');
+	let value;
+	try {
+		value = JSON.parse(text);
+	} catch (error) {
+		throw new Error(`${file} is not valid JSON: ${error.message}`, { cause: error });
+	}
+	return flatten(value);
 }
 
 function placeholders(text) {
