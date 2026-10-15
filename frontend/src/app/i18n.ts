@@ -30,6 +30,8 @@ void i18n
 		ns: Object.keys(resources.en),
 		defaultNS: 'common',
 		interpolation: { escapeValue: false },
+		// An empty Arabic or Thai text shows the English one, the same as a missing key.
+		returnEmptyString: false,
 		initAsync: false,
 		detection: {
 			order: ['localStorage', 'navigator'],
