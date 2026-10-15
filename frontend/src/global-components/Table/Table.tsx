@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { TablePagination } from './TablePagination';
 import { TableToolbar } from './TableToolbar';
 import type {
@@ -58,9 +59,11 @@ export function Table<Row>({
 	search,
 	filter,
 	pagination,
-	emptyMessage = 'No records found.',
+	emptyMessage,
 	className = '',
 }: TableProps<Row>) {
+	const { t } = useTranslation();
+
 	return (
 		<div className={`flex flex-col gap-4 ${className}`}>
 			{(search || filter) && <TableToolbar search={search} filter={filter} />}
@@ -121,7 +124,7 @@ export function Table<Row>({
 									colSpan={columns.length}
 									className="border-b border-base-300 py-12 text-center text-[var(--color-slate)]"
 								>
-									{emptyMessage}
+									{emptyMessage ?? t('table.empty')}
 								</td>
 							</tr>
 						)}
