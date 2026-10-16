@@ -64,9 +64,6 @@ export function DashboardLayout(props: Omit<SidebarContentProps, 'onNavigate'>) 
 					</button>
 					<Breadcrumbs links={links} />
 					<LanguageSwitcher />
-					<span className="badge hidden shrink-0 border-0 bg-base-200 px-3 py-3 text-xs sm:inline-flex">
-						{t('layout.preview')}
-					</span>
 				</header>
 				<main
 					id="workspace-content"
