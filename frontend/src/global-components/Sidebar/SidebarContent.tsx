@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { Link, NavLink } from 'react-router-dom';
 
 export type NavigationGroup = {
@@ -13,21 +14,23 @@ export type SidebarContentProps = {
 };
 
 export function SidebarContent({ scope, homeTo, groups, onNavigate }: SidebarContentProps) {
+	const { t } = useTranslation();
+
 	return (
 		<div className="flex min-h-full flex-col gap-6">
 			<Link
 				to={homeTo}
 				onClick={onNavigate}
 				className="workspace-title w-fit text-[2rem]"
-				aria-label={`${scope} home`}
+				aria-label={t('sidebar.home', { scope })}
 			>
 				transcend
 			</Link>
 			<div className="rounded-xl bg-base-200 p-3">
 				<p className="text-sm font-medium">{scope}</p>
-				<p className="mt-1 text-xs text-[var(--color-slate)]">Layout preview</p>
+				<p className="mt-1 text-xs text-[var(--color-slate)]">{t('layout.preview')}</p>
 			</div>
-			<nav aria-label={`${scope} navigation`} className="flex flex-col gap-6">
+			<nav aria-label={t('layout.navigation', { scope })} className="flex flex-col gap-6">
 				{groups.map(({ label, items }, index) => (
 					<div key={label ?? index} role="group" aria-label={label}>
 						{label && (
@@ -57,7 +60,7 @@ export function SidebarContent({ scope, homeTo, groups, onNavigate }: SidebarCon
 				))}
 			</nav>
 			<Link to="/" onClick={onNavigate} className="btn btn-ghost mt-auto bg-base-200">
-				Back to website
+				{t('sidebar.backToWebsite')}
 			</Link>
 		</div>
 	);

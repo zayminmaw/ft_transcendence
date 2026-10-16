@@ -75,6 +75,15 @@ async assignDriver(@Param('id') id: string, @Body() dto: AssignDriverDto) {
 * **Company cache/state isolation:** Include the identity/session boundary and verified organization ID in all tenant query keys. The shared session store holds the active organization and an in-memory bearer token; the HTTP client supplies headers, which the backend must independently verify. On switches, hide the old tenant views, cancel and clear cached queries, reset company stores/forms/drafts/permissions, and ignore late responses/events from the previous context. Scope pending writes and optimistic rollbacks to the company where they started. Partition any persisted/shared state by identity/company, leave old subscriptions, and clear private state on logout/account changes. Current query cancellation is only a foundation; verify isolation with the [workspace-switch acceptance cases](Tenant-Onboarding-and-Login-Flow.md#implementation-acceptance).
 * The marketing rollout form creates a downloadable brief in the browser. It does not send leads, emails, or personal details to an API.
 
+### Translations (i18n)
+
+* The frontend uses react-i18next with English, Arabic, and Thai. Text lives in `frontend/src/locales/<language>/<namespace>.json`, one namespace per module; `common` holds the shared components and the workspace shell. Keys are nested camelCase, for example `t('pagination.rowsPerPage')`.
+* Write the English text first. TypeScript checks every key against the English files, so a wrong key fails `npm run build`. Files are loaded automatically; a new namespace file needs one line in `frontend/src/locales/i18next.d.ts`.
+* In a module, call `useTranslation('<namespace>')`. Shared components receive plain strings from their callers and translate only their own fixed text.
+* Arabic and Thai may lag behind: a missing key shows the English text, and `npm run lint` lists it as a warning. `node scripts/check-translations.js --strict` (from `frontend/`) turns the warnings into a failure. Keep `{{placeholders}}` identical to English.
+* Format numbers and dates with `formatNumber` and `formatDate` from `@utils/format`, passing `i18n.resolvedLanguage ?? 'en'`. Every language shows Latin digits (1,234) and the Gregorian year (2026). Money amounts stay strings and are not passed to `formatNumber`.
+* Use start/end utilities (`ms-*`, `ps-*`, `inset-s-*`, `border-s`, `text-start`) instead of left/right ones so layouts mirror for Arabic. ESLint warns about left/right classes.
+
 ---
 
 ## 3. MariaDB Persistence & Query Rules

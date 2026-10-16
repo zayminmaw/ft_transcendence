@@ -1,0 +1,58 @@
+{
+	"language": {
+		"label": "Language"
+	},
+	"layout": {
+		"skipToContent": "Skip to content",
+		"openNavigation": "Open navigation",
+		"menu": "Menu",
+		"preview": "Layout preview",
+		"closeNavigation": "Close navigation",
+		"close": "Close",
+		"navigation": "{{scope}} navigation",
+		"pageNotFound": "Page not found"
+	},
+	"sidebar": {
+		"home": "{{scope}} home",
+		"backToWebsite": "Back to website"
+	},
+	"breadcrumbs": {
+		"label": "Breadcrumb"
+	},
+	"table": {
+		"empty": "No records found.",
+		"search": "Search"
+	},
+	"pagination": {
+		"label": "Pagination",
+		"rowsPerPage": "Rows per page",
+		"range": "{{first}}–{{last}} of {{total}}",
+		"previous": "Previous page",
+		"next": "Next page",
+		"page": "Page {{page}}"
+	},
+	"workspace": {
+		"scope": "Tenant workspace",
+		"nav": {
+			"operations": "Operations",
+			"overview": "Overview",
+			"parcels": "Dispatch & parcels",
+			"clients": "Clients / merchants",
+			"drivers": "Drivers",
+			"assets": "Fleet & assets",
+			"administration": "Administration",
+			"billing": "Billing & COD",
+			"staff": "Staff",
+			"rbac": "Access control",
+			"organizations": "Organization settings"
+		},
+		"overview": {
+			"title": "Operations overview",
+			"description": "Delivery, cash reconciliation, and team responsibilities."
+		},
+		"notFound": {
+			"title": "Page not found",
+			"description": "Choose a module from the navigation to continue."
+		}
+	}
+}
