@@ -105,13 +105,41 @@ Tenant sidebar configuration lives in `app/navigation.ts`, alongside app route c
 4. Future domain repositories must add organization_id predicates to every query/mutation, and scope linked records to the same tenant. The current baseline has ordinary foreign keys; composite tenant constraints and scoped repository implementations are future work, not automatic protections already provided by TypeORM.
 5. Assigned-only permissions are denied until resource ownership policies are implemented. There is no automatic wildcard bypass.
 
-The frontend session store holds activeOrganizationId and an in-memory access token. The shared fetch client attaches X-Organization-Id and Authorization. Organization changes cancel/clear queries; new tenant query keys must include the organization ID. A 401 clears the session and cache.
+The frontend session store holds activeOrganizationId and an in-memory access token. The shared fetch client attaches X-Organization-Id and Authorization. Organization changes currently cancel/clear queries; tenant query keys must include the verified organization ID and an identity/session boundary. A 401 clears the session and cache. These hooks do not yet provide the complete workspace-picker and application-state isolation contract described below.
 
 ### Platform authorization boundary (planned)
 
 Platform endpoints must verify a platform role and exact permission independently of tenant membership. Tenant permissions and `X-Organization-Id` must never confer platform authority. Tenant administrators cannot create other tenants, assign platform roles, or access another tenant's records. Platform tenant-management permission alone must not grant operational/financial data access.
 
 Platform mutations and monitoring access require audit records identifying the actor, target tenant, action, and outcome. Suspended tenants must be denied tenant-portal/API access while authorized platform administrators retain access to their tenant management records. Implement this through a dedicated platform policy and reviewed APIs; the existing membership guards are not an implemented platform authorization mechanism.
+
+### Tenant onboarding and login contract (planned)
+
+Tenant creation must transactionally provision the organization, its first administrator account, and an active `org_admin` membership. An authorized platform administrator supplies both organization and administrator details; onboarding fails as a whole if any required record cannot be created. Initial tenant-administrator permissions must allow company account creation without granting global platform authority.
+
+There is no public signup. After the first administrator signs in and selects their company, `admin.manage_users` permits creating additional accounts and allowed memberships only within the verified tenant. Those users sign in through the shared proposed `/login` page. After authentication, company users choose a workspace from their server-verified active memberships before entering `/app`; a single-company account sees its one available company. An authenticated membership-discovery service must work before active-company selection. Platform-only accounts authenticate without a tenant and require a separate platform permission check before entering `/platform`; platform access is not a company membership.
+
+Account-only requests require an explicit authentication-only policy that retains JWT and active-user checks. Introducing `@Authenticated()` requires coordinated changes to the permission guard and `TenantContextInterceptor`; it must not disable membership/permission checks for tenant routes or turn missing authorization metadata into allowed access. Login, account provisioning, this policy, and authenticated frontend routing remain unimplemented.
+
+See [Tenant onboarding and login flow](Tenant-Onboarding-and-Login-Flow.md) for the full journey, secure credential handover, transactional failure behavior, and acceptance requirements.
+
+### Workspace switching and company isolation (required, not implemented)
+
+The company workspace picker is an agreed product requirement, with an in-session switcher for authorized companies. Keep the existing Figma chooser as its design starting point. Resolve and revalidate the selected membership on the server; remembered company IDs and client headers are not authorization.
+
+On each switch, stop tenant rendering/requests, cancel and clear outgoing queries, verify the destination membership, reset company-specific stores, roles/permissions, forms, drafts, selections, and navigation, then fetch the destination data. Tenant cache keys and any persisted private state must be scoped to identity/session and organization, with platform data separately scoped. Never display previous-company data as a loading fallback. Capture the organization and session generation on requests and writes; late results, optimistic rollbacks, and notifications from the old company must not update the new workspace. Clearing a cache does not cancel a server write that has already started.
+
+Future subscriptions must leave old company channels and reject stale events. Browser persistence, service-worker/shared caches, cross-tab coordination, logout/account changes, and membership revocation must preserve the same isolation. Server queries and mutations independently enforce tenant scope. See the [detailed cache/state requirements and acceptance checks](Tenant-Onboarding-and-Login-Flow.md#prevent-cache-and-state-leakage-between-companies); existing query cancellation alone is not proof that company data cannot leak.
+
+### Company contacts and online status (required, not implemented)
+
+Tenant roles determine which company members a user may add as contacts. Enforce an explicit acting-role → target-role matrix when listing eligible candidates and creating relationships, and group contacts by tenant role. HR/employee roles, Dispatcher → Driver/Dispatcher, and Driver → Dispatcher are intended examples. Departments are optional labels/filters and do not determine add eligibility. Exact role pairings, add permissions, and seeds still need implementation contracts.
+
+Adding a contact requires both users to be active in the same active company. A valid saved contact includes status access without an additional role-based presence permission; authenticate the viewer and verify active company access, relationship ownership, and target company membership on status reads/subscriptions. Role changes affect future additions and grouping, not independent access to existing saved-contact status. Contact removal or loss of company access ends status access. Do not broadcast all company statuses and filter them only in the UI.
+
+The only contact statuses are Online, Offline, and Suspended. Account or company-membership suspension takes precedence over live connections/cached presence; keep existing suspended contacts visible as Suspended while blocking their company access and new additions. Otherwise derive Online/Offline from expiring authorized connections aggregated across tabs/devices in the selected company. Loading/error indicators are not additional status values. Driver duty status and `last_login_at` remain separate.
+
+Persist company-scoped contact relationships through new migrations; suspension semantics and transient live presence need explicit implementation contracts. Scope contact queries and presence maps to identity/session and company, leave old subscriptions on switching/logout, and ignore delayed responses/events. See [Company contacts and online status](Contacts-and-Online-Status.md) for the required behavior and isolation checks. APIs, schema additions, policies, and real-time/frontend features remain unimplemented.
 
 ## 5. Persistence and team integration
 

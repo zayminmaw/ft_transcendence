@@ -22,13 +22,21 @@ Each tenant is a courier organization using the service. Platform administrators
 
 **Status:** Required, not implemented. This is a separate platform-owner area from tenant administration.
 
-- List and create tenants; view and update their organization/contact details.
+- List and create tenants; view and update their organization/contact details. Tenant creation must also create its first administrator account and tenant-scoped `org_admin` membership in the same transaction; onboarding cannot succeed without them.
 - Activate, suspend, and reactivate tenants without deleting their operational or accounting history.
 - Assign or revoke tenant administrators without granting platform permissions to tenant users.
 - Monitor tenant status, membership summaries, and tenant-management activity; review auditable management events.
 - Record the platform actor, target tenant, action, and outcome for management changes and monitoring access.
 
 **Access boundary:** Require authentication and explicit platform permissions. Tenant administrators can manage users/employees and allowed role/permission assignments only within their own tenant. Platform tenant-management access does not automatically expose tenant payroll, ledgers, or parcel records. Suspension must deny tenant access while leaving authorized platform management available. Exact monitoring metrics and platform routes remain to be agreed.
+
+### Account provisioning and login (required, not implemented)
+
+There is no public signup. The required journey is **platform administrator onboards tenant and creates its first administrator → tenant administrator logs in and chooses company → administrator creates company user → user logs in and chooses company**. Additional accounts require `admin.manage_users` within the acting user's tenant; role-permission mapping changes separately require `admin.manage_roles`. All accounts use the shared proposed `/login` page, with access determined by verified membership and permissions. Creating a tenant administrator must never grant platform access.
+
+**Company workspace picker:** After login, company users choose which company workspace to enter from their verified active memberships, including a single available company. An in-session switcher lets authorized users move between companies. Keep the existing Figma chooser as the design starting point. Company changes must isolate cached data, pending request results, permissions, forms, drafts, subscriptions, and other application state so nothing leaks between companies. Platform access remains separately authorized. These are required behaviors, not implemented capabilities.
+
+See [Tenant onboarding and login flow](Tenant-Onboarding-and-Login-Flow.md) for required fields, transactional provisioning, credential handling, session routing, and failure cases.
 
 ## 2. Core Entities & Relational Architecture
 
@@ -116,6 +124,15 @@ To properly handle different operational responsibilities, personnel records sha
 
 * **Purpose:** Tenant administrative interface to manage its own system logins, assign roles, and audit operations.
 * **Key Features:** Organization memberships, user accounts linked to Personnel IDs, granular permissions, session management, and audit logging. Tenant administrators cannot assign platform roles or manage other tenants.
+* **Account creation:** Users with `admin.manage_users` create accounts and allowed tenant memberships within their own organization. Users then sign in through the shared login page; public self-registration is unavailable. The first administrator is created during platform tenant onboarding.
+
+### G. Company Contacts & Online Status
+
+* **Requirement:** Users can add other users as contacts within the active company workspace. Tenant roles determine which other roles they may add; once added, a contact's status is visible without a separate role-based status permission.
+* **Role groups and additions:** Group contacts by tenant role. HR can add contacts in the configured HR/employee-role set; dispatchers can add permitted Driver and Dispatcher roles; drivers can add permitted Dispatcher roles. Enforce the allowed acting-role → target-role matrix on the server. Departments are optional display/filter labels, not the add restriction.
+* **Access boundary:** New additions require active accounts and memberships in the same active company. Status reads/subscriptions require the viewer's active company access and an existing owned contact relationship. Adding a contact grants no personnel-record or additional company permissions. A role change alone does not hide existing saved-contact status.
+* **Contact statuses:** Exactly **Online**, **Offline**, and **Suspended**. Suspension of the target account/company membership overrides live presence; retain suspended targets in existing contact lists while denying their company access and new additions. Driver duty status and `last_login_at` are not contact presence. Contact caches and subscriptions must not leak across workspace switches.
+* **Status:** Required, not implemented. See [Company contacts and online status](Contacts-and-Online-Status.md) for role policies, the three statuses, persistence, and acceptance requirements.
 
 ## 4. Granular Permission Schema
 
@@ -148,7 +165,7 @@ To properly handle different operational responsibilities, personnel records sha
 | | `billing.create_invoice` | Generate itemized billing statements |
 | | `billing.adjust_balance` | Post manual ledger adjustments or payout records |
 | | `billing.export` | Export financial ledgers and settlement reports |
-| **Admin** | `admin.manage_users` | Create user accounts and link to employee profiles |
+| **Admin** | `admin.manage_users` | Create user accounts, assign allowed tenant memberships/roles, and link same-tenant employee profiles; no platform authority |
 | | `admin.manage_roles` | Create and edit role permission mappings |
 | | `admin.audit_logs` | View operational and financial audit logs |
 
@@ -157,7 +174,7 @@ To properly handle different operational responsibilities, personnel records sha
 | Role Name | Assigned Permissions | Scope / Notes |
 |---|---|---|
 | **Platform Admin** | Explicit platform tenant-management permissions; exact codes to be agreed | Cross-tenant organization administration and monitoring; no automatic access to tenant business records |
-| **Tenant Admin (`org_admin`)** | Explicit organization-scoped administration permissions | Manage its own organization's users, employees, memberships, and allowed role/permission assignments; no platform authority |
+| **Tenant Admin (`org_admin`)** | Explicit organization-scoped administration permissions, including `admin.manage_users` and `admin.manage_roles` | First administrator created during tenant onboarding; manages its own organization's users, employees, memberships, and allowed role/permission assignments; no platform authority |
 | **Dispatcher** | `clients.view`, `clients.create`, `clients.edit`, `parcels.view`, `parcels.create`, `parcels.dispatch`, `parcels.update_status`, `parcels.mark_delivered`, `drivers.view`, `assets.view`, `assets.assign` | Route management and fleet assignment; no payroll, billing, or audit access |
 | **Hub Sorter** | `parcels.view`, `parcels.update_status` | Inbound intake, sorting, and hub transfer verification only |
 | **Finance** | `clients.view`, `clients.create`, `clients.view_financials`, `parcels.view`, `parcels.override_fee`, `staff.view_payroll`, `drivers.view`, `drivers.view_earnings`, `billing.view`, `billing.reconcile_cod`, `billing.create_invoice`, `billing.adjust_balance`, `billing.export`, `admin.audit_logs` | Financial ledger control, COD settlement, invoicing, and payroll audit |

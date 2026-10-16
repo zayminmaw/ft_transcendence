@@ -4,6 +4,8 @@ import { LandingPage } from './pages/LandingPage';
 import { ProductPage } from './pages/ProductPage';
 import { SolutionsPage } from './pages/SolutionsPage';
 import { ContactPage } from './pages/ContactPage';
+import { PrivacyPage } from './pages/PrivacyPage';
+import { TermsPage } from './pages/TermsPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 
 export const marketingRoutes: RouteObject[] = [
@@ -14,6 +16,8 @@ export const marketingRoutes: RouteObject[] = [
 			{ path: 'product', element: <ProductPage /> },
 			{ path: 'solutions', element: <SolutionsPage /> },
 			{ path: 'contact', element: <ContactPage /> },
+			{ path: 'privacy', element: <PrivacyPage /> },
+			{ path: 'terms', element: <TermsPage /> },
 			{ path: '*', element: <NotFoundPage /> },
 		],
 	},

@@ -84,7 +84,7 @@ docker compose up --build -d
 docker compose ps
 ```
 
-Open http://localhost:8080. API liveness is http://localhost:3000/api/health and readiness is `/api/health/ready`. NGINX serves SPA deep links and proxies `/api/` to NestJS. All published ports bind to localhost. This Compose configuration is for local development; internet deployment needs HTTPS and managed secrets.
+Open https://localhost (or http://localhost:8080, which automatically redirects to HTTPS). API liveness is http://localhost:3000/api/health and readiness is `/api/health/ready` (also accessible via https://localhost/api/health). NGINX serves SPA deep links and proxies `/api/` to NestJS. All published ports bind to localhost. This Compose configuration provides self-signed TLS for local development; internet deployment needs managed certificates and secrets.
 
 MariaDB uses a named persistent volume. The one-shot `migrate` service applies the versioned baseline before the API starts. The baseline creates all 22 draft tables without dropping existing data, adds explicit foreign-key indexes, and uses `DECIMAL(12,2)` for currency and `DECIMAL(8,2)` for package dimensions/capacity. GPS coordinates retain their documented precision. Schema synchronization is disabled.
 
