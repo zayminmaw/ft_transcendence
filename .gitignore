@@ -12,3 +12,7 @@ Thumbs.db
 .docker-local/
 .agents/
 .codex/
+backend/node_modules
+backend/.env
+frontend/node_modules
+frontend/.env
