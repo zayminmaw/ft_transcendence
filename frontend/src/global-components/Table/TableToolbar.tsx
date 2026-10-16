@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import type { TableFilterProps, TableSearchProps } from './types';
 
 export function TableToolbar({
@@ -7,6 +8,8 @@ export function TableToolbar({
 	search?: TableSearchProps;
 	filter?: TableFilterProps;
 }) {
+	const { t } = useTranslation();
+
 	return (
 		<div className="flex flex-wrap items-center gap-2">
 			{search && (
@@ -26,8 +29,8 @@ export function TableToolbar({
 					</svg>
 					<input
 						type="search"
-						aria-label={search.placeholder ?? 'Search'}
-						placeholder={search.placeholder ?? 'Search'}
+						aria-label={search.placeholder ?? t('table.search')}
+						placeholder={search.placeholder ?? t('table.search')}
 						value={search.value}
 						onChange={(event) => search.onChange(event.target.value)}
 					/>

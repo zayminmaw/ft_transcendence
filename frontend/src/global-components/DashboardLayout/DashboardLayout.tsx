@@ -1,11 +1,14 @@
 import { useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Outlet, useLocation } from 'react-router-dom';
 import Breadcrumbs from '../Breadcrumbs/Breadcrumbs';
 import type { BreadcrumbLink } from '../Breadcrumbs/types';
+import { LanguageSwitcher } from '../LanguageSwitcher/LanguageSwitcher';
 import { SidebarContent } from '../Sidebar/SidebarContent';
 import type { SidebarContentProps } from '../Sidebar/SidebarContent';
 
 export function DashboardLayout(props: Omit<SidebarContentProps, 'onNavigate'>) {
+	const { t } = useTranslation();
 	const { pathname } = useLocation();
 	const navigation = useRef<HTMLDialogElement>(null);
 	const main = useRef<HTMLElement>(null);
@@ -15,7 +18,7 @@ export function DashboardLayout(props: Omit<SidebarContentProps, 'onNavigate'>) 
 	const links: BreadcrumbLink[] = [
 		{ label: props.scope, href: props.homeTo, status: 'inactive' },
 		{
-			label: currentPage?.label ?? 'Page not found',
+			label: currentPage?.label ?? t('layout.pageNotFound'),
 			href: currentPage?.to ?? pathname,
 			status: 'active',
 		},
@@ -42,7 +45,7 @@ export function DashboardLayout(props: Omit<SidebarContentProps, 'onNavigate'>) 
 				href="#workspace-content"
 				className="btn btn-neutral fixed left-4 top-4 z-50 -translate-y-24 focus:translate-y-0"
 			>
-				Skip to content
+				{t('layout.skipToContent')}
 			</a>
 			<aside className="sticky top-0 hidden h-dvh overflow-y-auto p-6 md:block">
 				<SidebarContent {...props} />
@@ -52,16 +55,17 @@ export function DashboardLayout(props: Omit<SidebarContentProps, 'onNavigate'>) 
 					<button
 						type="button"
 						className="btn btn-ghost btn-sm md:hidden"
-						aria-label="Open navigation"
+						aria-label={t('layout.openNavigation')}
 						aria-haspopup="dialog"
 						aria-controls="workspace-navigation"
 						onClick={() => navigation.current?.showModal()}
 					>
-						Menu
+						{t('layout.menu')}
 					</button>
 					<Breadcrumbs links={links} />
-					<span className="badge shrink-0 border-0 bg-base-200 px-3 py-3 text-xs">
-						Layout preview
+					<LanguageSwitcher />
+					<span className="badge hidden shrink-0 border-0 bg-base-200 px-3 py-3 text-xs sm:inline-flex">
+						{t('layout.preview')}
 					</span>
 				</header>
 				<main
@@ -77,16 +81,18 @@ export function DashboardLayout(props: Omit<SidebarContentProps, 'onNavigate'>) 
 				id="workspace-navigation"
 				ref={navigation}
 				className="modal justify-start md:hidden"
-				aria-label={`${props.scope} navigation`}
+				aria-label={t('layout.navigation', { scope: props.scope })}
 			>
 				<div className="modal-box flex h-dvh max-h-none w-72 max-w-[calc(100vw-2rem)] flex-col gap-4 rounded-none bg-base-100 p-6">
 					<form method="dialog" className="flex justify-end">
-						<button className="btn btn-ghost btn-sm">Close navigation</button>
+						<button className="btn btn-ghost btn-sm">
+							{t('layout.closeNavigation')}
+						</button>
 					</form>
 					<SidebarContent {...props} onNavigate={() => navigation.current?.close()} />
 				</div>
 				<form method="dialog" className="modal-backdrop">
-					<button aria-label="Close navigation">Close</button>
+					<button aria-label={t('layout.closeNavigation')}>{t('layout.close')}</button>
 				</form>
 			</dialog>
 		</div>

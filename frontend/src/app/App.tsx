@@ -1,6 +1,14 @@
+import { useTranslation } from 'react-i18next';
 import { DashboardLayout } from '@global-components';
-import { tenantNavigation } from './navigation';
+import { getTenantNavigation } from './navigation';
 
 export function App() {
-	return <DashboardLayout scope="Tenant workspace" homeTo="/app" groups={tenantNavigation} />;
+	const { t } = useTranslation();
+	return (
+		<DashboardLayout
+			scope={t('workspace.scope')}
+			homeTo="/app"
+			groups={getTenantNavigation(t)}
+		/>
+	);
 }

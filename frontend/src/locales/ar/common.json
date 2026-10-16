@@ -1,0 +1,58 @@
+{
+	"language": {
+		"label": "اللغة"
+	},
+	"layout": {
+		"skipToContent": "الانتقال إلى المحتوى",
+		"openNavigation": "فتح قائمة التنقل",
+		"menu": "القائمة",
+		"preview": "معاينة التصميم",
+		"closeNavigation": "إغلاق قائمة التنقل",
+		"close": "إغلاق",
+		"navigation": "التنقل في {{scope}}",
+		"pageNotFound": "الصفحة غير موجودة"
+	},
+	"sidebar": {
+		"home": "الصفحة الرئيسية لـ {{scope}}",
+		"backToWebsite": "العودة إلى الموقع"
+	},
+	"breadcrumbs": {
+		"label": "مسار التنقل"
+	},
+	"table": {
+		"empty": "لا توجد سجلات.",
+		"search": "بحث"
+	},
+	"pagination": {
+		"label": "التنقل بين الصفحات",
+		"rowsPerPage": "عدد الصفوف في الصفحة",
+		"range": "{{first}}–{{last}} من {{total}}",
+		"previous": "الصفحة السابقة",
+		"next": "الصفحة التالية",
+		"page": "الصفحة {{page}}"
+	},
+	"workspace": {
+		"scope": "مساحة عمل الشركة",
+		"nav": {
+			"operations": "العمليات",
+			"overview": "نظرة عامة",
+			"parcels": "الإرسال والطرود",
+			"clients": "العملاء / التجار",
+			"drivers": "السائقون",
+			"assets": "الأسطول والأصول",
+			"administration": "الإدارة",
+			"billing": "الفوترة والدفع عند الاستلام",
+			"staff": "الموظفون",
+			"rbac": "التحكم في الوصول",
+			"organizations": "إعدادات المؤسسة"
+		},
+		"overview": {
+			"title": "نظرة عامة على العمليات",
+			"description": "التوصيل، وتسوية النقد، ومسؤوليات الفريق."
+		},
+		"notFound": {
+			"title": "الصفحة غير موجودة",
+			"description": "اختر وحدة من قائمة التنقل للمتابعة."
+		}
+	}
+}

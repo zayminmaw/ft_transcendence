@@ -1,4 +1,6 @@
 import { useId } from 'react';
+import { useTranslation } from 'react-i18next';
+import { formatNumber } from '@utils/format';
 import type { TablePaginationProps } from './types';
 
 const DEFAULT_PAGE_SIZE_OPTIONS = [10, 25, 50];
@@ -43,6 +45,8 @@ export function TablePagination({
 	onPageSizeChange,
 	pageSizeOptions = DEFAULT_PAGE_SIZE_OPTIONS,
 }: TablePaginationProps) {
+	const { t, i18n } = useTranslation();
+	const language = i18n.resolvedLanguage ?? 'en';
 	const pageSizeId = useId();
 	const pageCount = Math.max(1, Math.ceil(total / pageSize));
 	const firstRow = total === 0 ? 0 : (page - 1) * pageSize + 1;
@@ -51,7 +55,7 @@ export function TablePagination({
 	return (
 		<div className="flex flex-col gap-4 text-sm sm:flex-row sm:items-center sm:justify-between">
 			<div className="flex items-center gap-2 text-[var(--color-slate)]">
-				<label htmlFor={pageSizeId}>Rows per page</label>
+				<label htmlFor={pageSizeId}>{t('pagination.rowsPerPage')}</label>
 				<select
 					id={pageSizeId}
 					className="select select-sm w-20 text-base-content"
@@ -60,19 +64,23 @@ export function TablePagination({
 				>
 					{pageSizeOptions.map((option) => (
 						<option key={option} value={option}>
-							{option}
+							{formatNumber(option, language)}
 						</option>
 					))}
 				</select>
 				<span className="ml-2">
-					{firstRow}–{lastRow} of {total}
+					{t('pagination.range', {
+						first: formatNumber(firstRow, language),
+						last: formatNumber(lastRow, language),
+						total: formatNumber(total, language),
+					})}
 				</span>
 			</div>
-			<nav aria-label="Pagination" className="flex items-center gap-1">
+			<nav aria-label={t('pagination.label')} className="flex items-center gap-1">
 				<button
 					type="button"
 					className="btn btn-ghost btn-sm btn-square"
-					aria-label="Previous page"
+					aria-label={t('pagination.previous')}
 					disabled={page <= 1}
 					onClick={() => onPageChange(page - 1)}
 				>
@@ -92,18 +100,20 @@ export function TablePagination({
 							key={item}
 							type="button"
 							className={`btn btn-sm btn-square ${item === page ? 'btn-neutral' : 'btn-ghost'}`}
-							aria-label={`Page ${item}`}
+							aria-label={t('pagination.page', {
+								page: formatNumber(item, language),
+							})}
 							aria-current={item === page ? 'page' : undefined}
 							onClick={() => onPageChange(item)}
 						>
-							{item}
+							{formatNumber(item, language)}
 						</button>
 					),
 				)}
 				<button
 					type="button"
 					className="btn btn-ghost btn-sm btn-square"
-					aria-label="Next page"
+					aria-label={t('pagination.next')}
 					disabled={page >= pageCount}
 					onClick={() => onPageChange(page + 1)}
 				>
