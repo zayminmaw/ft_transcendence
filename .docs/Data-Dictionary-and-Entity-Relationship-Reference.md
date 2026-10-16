@@ -13,6 +13,12 @@ The required platform administration dashboard is planned. `organizations` repre
 
 ## 1. Authentication & RBAC
 
+### Required provisioning behavior (planned)
+
+Tenant onboarding must create an `organizations` row, its first administrator's `users` row, and an active `organization_members` row referencing the tenant-scoped `org_admin` role in one transaction. These records are required together; the schema's separate tables do not enforce that onboarding invariant automatically. Tenant administrator membership does not add a platform assignment to `user_roles`.
+
+Usernames and emails are globally unique in the current baseline. A collision must not silently attach or overwrite an existing account. Additional company accounts require `admin.manage_users` and an allowed role/membership in the same tenant; there is no public signup. Store only password hashes and never include credentials in audit payloads. Secure credential handover, recovery/session persistence, role seeds, and provisioning services remain to be implemented; any additional schema support requires new migrations. See [Tenant onboarding and login flow](Tenant-Onboarding-and-Login-Flow.md).
+
 ### `users`
 
 | Column | Data Type | Constraints | Description |
@@ -83,6 +89,8 @@ The required platform administration dashboard is planned. `organizations` repre
 
 ### `organization_members`
 
+A user may have memberships in multiple companies, with an independent role and active status in each. The baseline's unique `(organization_id, user_id)` pair prevents duplicate membership in the same company. The required post-login workspace picker lists only verified active memberships in active organizations; selection does not create membership. Scope application caches and retained state by identity and selected organization so switching never mixes company data. See [workspace selection and isolation requirements](Tenant-Onboarding-and-Login-Flow.md#company-workspace-picker-required-not-implemented). This describes planned application behavior, not a new schema migration.
+
 | Column | Data Type | Constraints | Description |
 |---|---|---|---|
 | `id` | `BIGINT UNSIGNED` | `PK`, `AUTO_INCREMENT` | Membership record ID |
@@ -93,6 +101,12 @@ The required platform administration dashboard is planned. `organizations` repre
 | `joined_at` | `TIMESTAMP` | `NOT NULL`, `DEFAULT CURRENT_TIMESTAMP` | Timestamp of membership grant |
 
 ---
+
+### Planned contacts and presence data (not in the baseline)
+
+The required contacts feature links an owning company member to another member in the same company. Planned persistence needs company context, owner/target membership references, uniqueness, and prevention of self contacts. New additions require active accounts/memberships and an allowed acting-role → target-role pairing in that organization. Group contacts by tenant role; departments are optional display/filter metadata. Once added, the saved contact includes status access without a separate role-based presence permission, subject to contact ownership and continued company access. Role changes alone do not hide saved-contact status.
+
+No contacts table or presence storage is implemented in the 22-table baseline. Add new migrations for durable relationships; this description is not an applied schema. The only contact statuses are **Online**, **Offline**, and **Suspended**. Derive Suspended from target account/company-membership suspension before evaluating expiring company-session presence for Online/Offline. Retain an existing suspended target's relationship/status; permanent membership/contact removal ends access. Define suspension versus permanent removal explicitly in future service/schema contracts; the current `is_active` flags alone do not describe that lifecycle. Neither `users.last_login_at`, an account-global online flag, nor `drivers.dispatch_status` is the live-presence authority. Contact lists and presence caches must remain isolated between company workspaces. See [Company contacts and online status](Contacts-and-Online-Status.md).
 
 ## 3. Clients / Merchants CRM
 
