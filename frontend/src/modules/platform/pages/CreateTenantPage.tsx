@@ -1,9 +1,10 @@
-import { Input, ModulePage } from '@global-components';
+import { Input, ModulePage, useToast } from '@global-components';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 export function CreateTenantPage() {
 	const navigate = useNavigate();
+	const { toast } = useToast();
 	const [orgName, setOrgName] = useState('');
 	const [username, setUsername] = useState('');
 
@@ -21,7 +22,17 @@ export function CreateTenantPage() {
 				description="Set up the company and its first administrator in one step. Both are required."
 			/>
 			<div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
-				<form className="flex flex-col gap-6 rounded-box border border-base-300 p-4 md:p-8">
+				<form
+					onSubmit={(e) => {
+						e.preventDefault();
+						toast({
+							variant: 'success',
+							title: 'Tenant created',
+							description: `${orgName.trim()} is ready. ${username.trim()} can now sign in.`,
+						});
+					}}
+					className="flex flex-col gap-6 rounded-box border border-base-300 p-4 md:p-8"
+				>
 					<section className="flex flex-col gap-4">
 						<h2 className="text-lg font-semibold">Organization</h2>
 						<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
