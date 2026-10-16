@@ -1,6 +1,7 @@
 export { AnalyticsCard } from './AnalyticsCard/AnalyticsCard';
 export * from './AnalyticsCard/types.tsx';
 export { Button } from './Button/Button';
+export { Dialog } from './Dialog/Dialog';
 export { Input } from './Input/Input';
 export { ModulePage } from './ModulePage';
 export { SidebarContent } from './Sidebar/SidebarContent';
