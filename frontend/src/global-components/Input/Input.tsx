@@ -5,14 +5,20 @@ export function Input({
 	error,
 	id,
 	className = '',
+	containerClassName = '',
 	...props
-}: InputHTMLAttributes<HTMLInputElement> & { label: string; error?: string }) {
+}: InputHTMLAttributes<HTMLInputElement> & {
+	label: string;
+	error?: string;
+	containerClassName?: string;
+}) {
 	const generatedId = useId();
 	const inputId = id ?? generatedId;
 	return (
-		<div>
+		<div className={containerClassName}>
 			<label className="mb-2 block text-sm font-medium" htmlFor={inputId}>
 				{label}
+				{props.required && ' *'}
 			</label>
 			<input
 				{...props}
