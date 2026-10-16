@@ -1,52 +1,21 @@
 import { useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { Dialog, ModulePage, useToast } from '@global-components';
-import { getTenantDetails } from '../data/sampleTenants';
-import type { Tenant, TenantDetails as TenantDetailsData } from '../data/sampleTenants';
+import { sampleTenant as tenant } from '../data/sampleTenants';
 
 export function TenantDetailsPage() {
-	const { tenantId = '' } = useParams();
-	const tenant = getTenantDetails(tenantId);
-
-	if (!tenant) {
-		return (
-			<div className="flex flex-col gap-6">
-				<ModulePage
-					title="Tenant not found"
-					description="This tenant does not exist or you do not have access to it."
-				/>
-				<Link to="/platform/tenants" className="btn w-fit border-0 bg-base-200">
-					Back to tenants
-				</Link>
-			</div>
-		);
-	}
-
-	// Keyed so local status state resets when navigating between tenants.
-	return <TenantDetails key={tenant.id} tenant={tenant} />;
-}
-
-function TenantDetails({ tenant }: { tenant: TenantDetailsData }) {
 	const { toast } = useToast();
 	const [dialogOpen, setDialogOpen] = useState(false);
-	// Local until PATCH /platform/tenants/:id/status exists.
-	const [status, setStatus] = useState<Tenant['status']>(tenant.status);
-	const [reason, setReason] = useState('');
-	const suspended = status === 'suspended';
+	const suspended = tenant.status === 'suspended';
 
 	const profile = [
 		{ label: 'Organization name', value: tenant.organization },
 		{ label: 'Slug', value: tenant.slug },
 		{ label: 'Contact email', value: tenant.contactEmail },
-		{ label: 'Phone', value: tenant.phone ?? 'Not provided' },
-		{ label: 'Address', value: tenant.address ?? 'Not provided' },
+		{ label: 'Phone', value: tenant.phone },
+		{ label: 'Address', value: tenant.address },
 		{ label: 'Created', value: tenant.createdAt },
 	];
-
-	const openDialog = () => {
-		setReason('');
-		setDialogOpen(true);
-	};
 
 	return (
 		<div className="flex flex-col gap-6">
@@ -57,7 +26,7 @@ function TenantDetails({ tenant }: { tenant: TenantDetailsData }) {
 					<button
 						type="button"
 						className="btn btn-primary w-full md:w-auto md:px-8"
-						onClick={openDialog}
+						onClick={() => setDialogOpen(true)}
 					>
 						{suspended ? 'Reactivate tenant' : 'Suspend tenant'}
 					</button>
@@ -128,9 +97,7 @@ function TenantDetails({ tenant }: { tenant: TenantDetailsData }) {
 										</p>
 									</div>
 									<p className="text-sm text-[var(--color-slate)]">
-										{admin.origin === 'onboarding'
-											? 'Created during onboarding'
-											: 'Assigned after onboarding'}
+										{admin.origin}
 									</p>
 								</li>
 							))}
@@ -183,16 +150,10 @@ function TenantDetails({ tenant }: { tenant: TenantDetailsData }) {
 				}
 				onSubmit={(e) => {
 					e.preventDefault();
-					const next = suspended ? 'active' : 'suspended';
-					setStatus(next);
 					setDialogOpen(false);
 					toast({
 						variant: 'success',
-						title: next === 'suspended' ? 'Tenant suspended' : 'Tenant reactivated',
-						description:
-							next === 'suspended'
-								? `${tenant.organization} can no longer access the tenant portal.`
-								: `${tenant.organization} members can sign in again.`,
+						title: suspended ? 'Tenant reactivated' : 'Tenant suspended',
 					});
 				}}
 				actions={
@@ -240,8 +201,6 @@ function TenantDetails({ tenant }: { tenant: TenantDetailsData }) {
 						placeholder={
 							suspended ? 'Access review completed' : 'Access review requested'
 						}
-						value={reason}
-						onChange={(e) => setReason(e.target.value)}
 					/>
 					<p className="mt-1 text-xs text-[var(--color-slate)]">
 						Recorded in the tenant activity log with your account.
