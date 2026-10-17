@@ -13,7 +13,8 @@
     "lint": "eslint src test",
     "test": "npm run build && node --test test/*.test.cjs",
     "migration:run": "npm run build && typeorm migration:run -d dist/database/data-source.js",
-    "migration:show": "npm run build && typeorm migration:show -d dist/database/data-source.js"
+    "migration:show": "npm run build && typeorm migration:show -d dist/database/data-source.js",
+    "test:db": "npm run build && node --env-file-if-exists=../.env --env-file-if-exists=.env --test test/db/*.test.cjs"
   },
   "dependencies": {
     "@nestjs/common": "^11.2.7",
