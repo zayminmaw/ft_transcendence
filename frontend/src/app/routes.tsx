@@ -9,8 +9,8 @@ import { billingRoutes } from '@modules/billing';
 import { rbacRoutes } from '@modules/rbac';
 import { marketingRoutes } from '@modules/marketing';
 import { platformRoutes } from '@modules/platform';
-import { ModulePage } from '@global-components';
 import { App } from './App';
+import { NotFoundPage, OverviewPage } from './WorkspacePages';
 
 const workspaceRoutes = [
 	...organizationsRoutes,
@@ -30,25 +30,9 @@ export const router = createBrowserRouter([
 		path: 'app',
 		element: <App />,
 		children: [
-			{
-				index: true,
-				element: (
-					<ModulePage
-						title="Operations overview"
-						description="Delivery, cash reconciliation, and team responsibilities."
-					/>
-				),
-			},
+			{ index: true, element: <OverviewPage /> },
 			...workspaceRoutes,
-			{
-				path: '*',
-				element: (
-					<ModulePage
-						title="Page not found"
-						description="Choose a module from the navigation to continue."
-					/>
-				),
-			},
+			{ path: '*', element: <NotFoundPage /> },
 		],
 	},
 	// Keep compatibility URLs inside the canonical tenant layout and future auth boundary.
