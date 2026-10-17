@@ -39,3 +39,46 @@ test('users are found by email or username in any case, and inactive users are r
   assert.equal((await users.findById(id)).isActive, false);
   assert.equal(await users.isActive('999999'), false);
 });
+
+const { OrganizationMembersRepository } = require('../../dist/modules/organizations/organization-members.repository');
+const { PlatformRolesRepository } = require('../../dist/modules/rbac/platform-roles.repository');
+
+async function createCompany(slug, name) {
+  const result = await database.query('INSERT INTO organizations (name, slug, contact_email) VALUES (?, ?, ?)', [name, slug, `ops@${slug}.db.test`]);
+  return String(result.insertId);
+}
+
+async function addMember(companyId, userId, roleCode, active = true) {
+  await database.query(
+    'INSERT INTO organization_members (organization_id, user_id, role_id, is_active) SELECT ?, ?, id, ? FROM roles WHERE code = ?',
+    [companyId, userId, active, roleCode],
+  );
+}
+
+test('the picker lists active memberships in active companies, sorted by name', async () => {
+  const members = new OrganizationMembersRepository(database);
+  const alpha = await createCompany('alpha-db', 'Alpha Freight');
+  const beta = await createCompany('beta-db', 'Beta Couriers');
+  const both = await createUser('two.companies.db');
+  const switchedOff = await createUser('switched.off.db');
+  await addMember(beta, both, 'dispatcher');
+  await addMember(alpha, both, 'finance');
+  await addMember(alpha, switchedOff, 'hub_sorter', false);
+  assert.deepEqual(await members.findActiveWorkspaces(both), [
+    { id: alpha, slug: 'alpha-db', name: 'Alpha Freight' },
+    { id: beta, slug: 'beta-db', name: 'Beta Couriers' },
+  ]);
+  assert.deepEqual(await members.findActiveWorkspaces(switchedOff), []);
+  await database.query('UPDATE organizations SET is_active = FALSE WHERE id = ?', [beta]);
+  assert.deepEqual((await members.findActiveWorkspaces(both)).map((workspace) => workspace.slug), ['alpha-db']);
+});
+
+test('platform access comes from user_roles only, never from a membership', async () => {
+  const platformRoles = new PlatformRolesRepository(database);
+  const admin = await createUser('platform.db');
+  const member = await createUser('member.db');
+  await addMember(await createCompany('gamma-db', 'Gamma Logistics'), member, 'platform_admin');
+  await platformRoles.grantPlatformAdmin(admin);
+  assert.equal(await platformRoles.hasPlatformAccess(admin), true);
+  assert.equal(await platformRoles.hasPlatformAccess(member), false);
+});

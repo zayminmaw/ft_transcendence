@@ -10,4 +10,8 @@ export class OrganizationMembersService {
     if (!membership) throw new ForbiddenException('Active organization membership is required.');
     return membership;
   }
+
+  listActiveWorkspaces(userId: string) {
+    return this.members.findActiveWorkspaces(userId);
+  }
 }
