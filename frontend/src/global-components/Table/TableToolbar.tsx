@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { SelectFilter } from '../SelectFilter/SelectFilter';
 import type { TableFilterProps, TableSearchProps } from './types';
 
 export function TableToolbar({
@@ -36,21 +37,7 @@ export function TableToolbar({
 					/>
 				</label>
 			)}
-			{filter && (
-				<div role="group" aria-label={filter.label} className="flex flex-wrap gap-2">
-					{filter.options.map((option) => (
-						<button
-							key={option.value}
-							type="button"
-							aria-pressed={option.value === filter.value}
-							className={`btn px-6 font-medium ${option.value === filter.value ? 'btn-neutral' : ''}`}
-							onClick={() => filter.onChange(option.value)}
-						>
-							{option.label}
-						</button>
-					))}
-				</div>
-			)}
+			{filter && <SelectFilter {...filter} />}
 		</div>
 	);
 }

@@ -5,6 +5,8 @@ export { Dialog } from './Dialog/Dialog';
 export { Input } from './Input/Input';
 export { LanguageSwitcher } from './LanguageSwitcher/LanguageSwitcher';
 export { ModulePage } from './ModulePage';
+export { SelectFilter } from './SelectFilter/SelectFilter';
+export type { SelectFilterOption } from './SelectFilter/SelectFilter';
 export { SidebarContent } from './Sidebar/SidebarContent';
 export * from './Breadcrumbs/types.tsx';
 export { DashboardLayout } from './DashboardLayout/DashboardLayout';
