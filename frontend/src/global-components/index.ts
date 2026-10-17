@@ -1,6 +1,7 @@
 export { AnalyticsCard } from './AnalyticsCard/AnalyticsCard';
 export * from './AnalyticsCard/types.tsx';
 export { Button } from './Button/Button';
+export { Dialog } from './Dialog/Dialog';
 export { Input } from './Input/Input';
 export { LanguageSwitcher } from './LanguageSwitcher/LanguageSwitcher';
 export { ModulePage } from './ModulePage';
@@ -10,3 +11,6 @@ export { DashboardLayout } from './DashboardLayout/DashboardLayout';
 export type { NavigationGroup } from './Sidebar/SidebarContent';
 export { Table } from './Table/Table';
 export * from './Table/types.tsx';
+export { Toaster } from './Toast/Toaster';
+export { useToast } from './Toast/useToast';
+export * from './Toast/types.tsx';
