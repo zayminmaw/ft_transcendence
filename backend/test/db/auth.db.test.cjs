@@ -158,3 +158,33 @@ test('the first-admin command creates a platform admin and never reuses an accou
   for (const input of refused) await assert.rejects(createPlatformAdmin(database, input), PlatformAdminError);
   assert.equal(await database.getRepository(User).countBy(refused.map(({ username }) => ({ username }))), 1);
 });
+
+const { In, Like } = require('typeorm');
+const { DEMO_ACCOUNTS, DEMO_PASSWORD, seedDemo } = require('../../dist/database/seeders/demo.seed');
+const { verifyPassword } = require('../../dist/modules/auth/password');
+
+test('the demo seed adds everything once and skips it the second time', async () => {
+  assert.deepEqual(await seedDemo(database), { companiesCreated: 2, accountsCreated: 12, accountsSkipped: [] });
+  const again = await seedDemo(database);
+  assert.deepEqual([again.companiesCreated, again.accountsCreated], [0, 0]);
+  assert.deepEqual(again.accountsSkipped, DEMO_ACCOUNTS.map((account) => account.username));
+  const demoIds = (await database.getRepository(User).findBy({ email: Like('%.example.test') })).map((user) => user.id);
+  assert.equal(demoIds.length, 12);
+  assert.equal(await database.getRepository(OrganizationMember).countBy({ userId: In(demoIds) }), 12);
+  assert.equal(await database.getRepository(UserRole).countBy({ userId: In(demoIds) }), 2);
+});
+
+test('the demo accounts cover the picker cases and share the demo password', async () => {
+  const users = new UsersRepository(database.getRepository(User));
+  const members = createMembers();
+  const platformRoles = createPlatformRoles();
+  const id = async (username) => (await users.findByLogin(username)).id;
+  const slugs = async (username) => (await members.findActiveWorkspaces(await id(username))).map((workspace) => workspace.slug);
+  assert.deepEqual(await slugs('noor'), ['harbor-express', 'meridian-courier']);
+  assert.deepEqual(await slugs('ex.member'), []);
+  assert.deepEqual(await slugs('platform.ops'), []);
+  assert.equal(await platformRoles.hasPlatformAccess(await id('platform.ops')), true);
+  assert.equal(await platformRoles.hasPlatformAccess(await id('zara.platform')), true);
+  assert.equal(await platformRoles.hasPlatformAccess(await id('lina')), false);
+  assert.equal(await verifyPassword((await users.findByLogin('lina')).passwordHash, DEMO_PASSWORD), true);
+});
