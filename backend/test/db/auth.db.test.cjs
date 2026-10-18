@@ -87,3 +87,59 @@ test('platform access comes from user_roles only, never from a membership', asyn
   assert.equal(await platformRoles.hasPlatformAccess(admin), true);
   assert.equal(await platformRoles.hasPlatformAccess(member), false);
 });
+
+const { JwtService } = require('@nestjs/jwt');
+const { AuthAuditRepository } = require('../../dist/modules/auth/auth-audit.repository');
+const { AuditLog } = require('../../dist/modules/auth/entities/audit-log.entity');
+const { UserSession } = require('../../dist/modules/auth/entities/user-session.entity');
+const { SessionsRepository } = require('../../dist/modules/auth/sessions.repository');
+const { hashRefreshToken, SessionsService } = require('../../dist/modules/auth/sessions.service');
+
+const META = { ip: '127.0.0.1', userAgent: 'node-test' };
+const DAY = 86_400_000;
+const createSessions = () => new SessionsService(
+  new SessionsRepository(database.getRepository(UserSession)), new UsersRepository(database.getRepository(User)),
+  new JwtService({ secret: 'test-secret-with-at-least-32-characters', signOptions: { expiresIn: '15m' } }),
+  new AuthAuditRepository(database.getRepository(AuditLog)),
+);
+const sessionRow = (refreshToken) => database.getRepository(UserSession).findOneByOrFail({ tokenHash: hashRefreshToken(refreshToken) });
+const auditCount = (action, userId) => database.getRepository(AuditLog).countBy({ module: 'auth', action, userId });
+
+test('session times survive the round trip to the database', async () => {
+  const sessions = createSessions();
+  const now = new Date(Math.floor(Date.now() / 1000) * 1000);
+  const issued = await sessions.start(await createUser('session.times'), META, now);
+  const row = await sessionRow(issued.refreshToken);
+  assert.equal(row.idleExpiresAt.toISOString(), new Date(now.getTime() + 7 * DAY).toISOString());
+  assert.equal(row.absoluteExpiresAt.toISOString(), new Date(now.getTime() + 30 * DAY).toISOString());
+  assert.equal(await sessions.refresh(issued.refreshToken, META, new Date(now.getTime() + 8 * DAY)), undefined);
+});
+
+test('a refresh token works once; using it again ends the session and is audited', async () => {
+  const sessions = createSessions();
+  const userId = await createUser('session.reuse');
+  const issued = await sessions.start(userId, META);
+  const renewed = await sessions.refresh(issued.refreshToken, META);
+  assert.ok(renewed);
+  assert.equal(await sessions.refresh(issued.refreshToken, META), undefined);
+  assert.equal(await sessions.refresh(renewed.refreshToken, META), undefined);
+  assert.equal((await sessionRow(renewed.refreshToken)).revokedReason, 'reuse');
+  assert.equal(await auditCount('session_reuse', userId), 1);
+});
+
+test('two refreshes with the same token at once: one wins and the session ends', async () => {
+  const sessions = createSessions();
+  const issued = await sessions.start(await createUser('session.race'), META);
+  const results = await Promise.all([sessions.refresh(issued.refreshToken, META), sessions.refresh(issued.refreshToken, META)]);
+  assert.equal(results.filter(Boolean).length, 1);
+  assert.equal(await sessions.refresh(results.find(Boolean).refreshToken, META), undefined);
+});
+
+test('logout ends the session and is audited', async () => {
+  const sessions = createSessions();
+  const userId = await createUser('session.logout');
+  const issued = await sessions.start(userId, META);
+  await sessions.end(issued.refreshToken, META);
+  assert.equal(await sessions.refresh(issued.refreshToken, META), undefined);
+  assert.equal(await auditCount('logout', userId), 1);
+});
