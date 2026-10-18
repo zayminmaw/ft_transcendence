@@ -16,7 +16,8 @@ export function databaseOptions(env: DatabaseEnvironment): DataSourceOptions {
     timezone: 'Z',
     supportBigNumbers: true,
     bigNumberStrings: true,
-    entities: [],
+    // Each module keeps its entities in its own entities/ folder; migrations still own the schema.
+    entities: [join(__dirname, '..', 'modules', '*', 'entities', '*.entity.js')],
     migrations: [join(__dirname, 'migrations', '*.js')],
     migrationsTransactionMode: 'none',
     synchronize: false,

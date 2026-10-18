@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { DataSource } from 'typeorm';
+import { InjectRepository } from '@nestjs/typeorm';
+import { DataSource, Repository } from 'typeorm';
 import type { TenantContext } from '../../common/types/authenticated-request';
+import { OrganizationMember } from './entities/organization-member.entity';
 
 export interface Workspace {
   id: string;
@@ -10,8 +12,12 @@ export interface Workspace {
 
 @Injectable()
 export class OrganizationMembersRepository {
-  constructor(private readonly database: DataSource) {}
+  constructor(
+    private readonly database: DataSource,
+    @InjectRepository(OrganizationMember) private readonly members: Repository<OrganizationMember>,
+  ) {}
 
+  // Bootstrap raw query from the scaffold; it moves to the entities with the roles task.
   async findActiveMembership(userId: string, organizationId: string): Promise<TenantContext | undefined> {
     const rows: { roleId: string }[] = await this.database.query(
       `SELECT CAST(m.role_id AS CHAR) AS roleId FROM organization_members m
@@ -26,12 +32,11 @@ export class OrganizationMembersRepository {
 
   // The workspace picker: active memberships in active companies only.
   async findActiveWorkspaces(userId: string): Promise<Workspace[]> {
-    return this.database.query(
-      `SELECT CAST(o.id AS CHAR) AS id, o.slug, o.name FROM organization_members m
-       JOIN organizations o ON o.id = m.organization_id
-       WHERE m.user_id = ? AND m.is_active = TRUE AND o.is_active = TRUE
-       ORDER BY o.name`,
-      [userId],
-    );
+    const memberships = await this.members.find({
+      where: { userId, isActive: true, organization: { isActive: true } },
+      relations: { organization: true },
+      order: { organization: { name: 'ASC' } },
+    });
+    return memberships.map(({ organization }) => ({ id: organization.id, slug: organization.slug, name: organization.name }));
   }
 }
