@@ -26,7 +26,7 @@ function Toast({ toast, onDismiss }: { toast: ToastItem; onDismiss: (id: string)
 				aria-hidden="true"
 				className={`mt-1 size-3 shrink-0 rounded-sm ${markerClass[toast.variant]}`}
 			/>
-			<div className="min-w-0 flex-1 text-left">
+			<div className="min-w-0 flex-1 text-start">
 				<p className="text-sm font-medium tracking-[-0.14px]">{toast.title}</p>
 				{toast.description && (
 					<p className="mt-1 text-sm wrap-break-word text-neutral-content/60">
@@ -37,7 +37,7 @@ function Toast({ toast, onDismiss }: { toast: ToastItem; onDismiss: (id: string)
 			<button
 				type="button"
 				aria-label="Dismiss notification"
-				className="btn btn-ghost btn-xs -mr-1 size-6 min-h-0 rounded-sm p-0 text-neutral-content/60 hover:bg-white/10 hover:text-neutral-content"
+				className="btn btn-ghost btn-xs -me-1 size-6 min-h-0 rounded-sm p-0 text-neutral-content/60 hover:bg-white/10 hover:text-neutral-content"
 				onClick={() => onDismiss(toast.id)}
 			>
 				<svg
