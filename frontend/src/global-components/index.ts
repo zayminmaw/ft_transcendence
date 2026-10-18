@@ -13,6 +13,7 @@ export { DashboardLayout } from './DashboardLayout/DashboardLayout';
 export type { NavigationGroup } from './Sidebar/SidebarContent';
 export { Table } from './Table/Table';
 export * from './Table/types.tsx';
+export { TipCard } from './TipCard/TipCard';
 export { Toaster } from './Toast/Toaster';
 export { useToast } from './Toast/useToast';
 export * from './Toast/types.tsx';

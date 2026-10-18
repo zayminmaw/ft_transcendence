@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Dialog, ModulePage, useToast } from '@global-components';
+import { Dialog, ModulePage, TipCard, useToast } from '@global-components';
 import { sampleTenant as tenant } from '../data/sampleTenants';
 
 export function TenantDetailsPage() {
@@ -123,15 +123,10 @@ export function TenantDetailsPage() {
 							</div>
 						</dl>
 					</section>
-					<section className="rounded-box bg-neutral p-6 text-neutral-content md:p-8">
-						<h2 className="workspace-title text-[2rem]">
-							Suspend access. Retain history.
-						</h2>
-						<p className="mt-6 leading-relaxed">
-							Suspension denies tenant portal and API access while preserving
-							organization records, delivery history and accounting history.
-						</p>
-					</section>
+					<TipCard
+						title="Suspend access. Retain history."
+						description="Suspension denies tenant portal and API access while preserving organization records, delivery history and accounting history."
+					/>
 				</aside>
 			</div>
 

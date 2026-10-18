@@ -1,4 +1,4 @@
-import { Input, ModulePage, useToast } from '@global-components';
+import { Input, ModulePage, TipCard, useToast } from '@global-components';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -139,15 +139,10 @@ export function CreateTenantPage() {
 							))}
 						</dl>
 					</section>
-					<section className="rounded-box bg-neutral p-6 text-neutral-content md:p-8">
-						<h2 className="workspace-title text-[2rem]">
-							A company starts with its administrator.
-						</h2>
-						<p className="mt-6 leading-relaxed">
-							Create the company, account and membership together. The administrator
-							logs in, then creates company users.
-						</p>
-					</section>
+					<TipCard
+						title="A company starts with its administrator."
+						description="Create the company, account and membership together. The administrator logs in, then creates company users."
+					/>
 				</aside>
 			</div>
 		</div>

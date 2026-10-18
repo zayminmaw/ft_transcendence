@@ -1,4 +1,4 @@
-import { createBrowserRouter, Navigate } from 'react-router-dom';
+import { createBrowserRouter } from 'react-router-dom';
 import { organizationsRoutes } from '@modules/organizations';
 import { clientsRoutes } from '@modules/clients';
 import { staffRoutes } from '@modules/staff';
@@ -10,7 +10,7 @@ import { rbacRoutes } from '@modules/rbac';
 import { marketingRoutes } from '@modules/marketing';
 import { platformRoutes } from '@modules/platform';
 import { App } from './App';
-import { NotFoundPage, OverviewPage } from './WorkspacePages';
+import { CompatibilityRedirect, NotFoundPage, OverviewPage } from './WorkspacePages';
 
 const workspaceRoutes = [
 	...organizationsRoutes,
@@ -36,8 +36,5 @@ export const router = createBrowserRouter([
 		],
 	},
 	// Keep compatibility URLs inside the canonical tenant layout and future auth boundary.
-	...workspaceRoutes.map(({ path }) => ({
-		path,
-		element: <Navigate to={`/app/${path}`} replace />,
-	})),
+	...workspaceRoutes.map(({ path }) => ({ path, element: <CompatibilityRedirect /> })),
 ]);
