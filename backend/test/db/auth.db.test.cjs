@@ -143,3 +143,18 @@ test('logout ends the session and is audited', async () => {
   assert.equal(await sessions.refresh(issued.refreshToken, META), undefined);
   assert.equal(await auditCount('logout', userId), 1);
 });
+
+const { createPlatformAdmin, PlatformAdminError } = require('../../dist/cli/platform-admin');
+
+test('the first-admin command creates a platform admin and never reuses an account', async () => {
+  const id = await createPlatformAdmin(database, { username: 'first.admin', email: 'first.admin@db.test', password: 'First-admin-1' });
+  assert.equal(await createPlatformRoles().hasPlatformAccess(id), true);
+  const refused = [
+    { username: 'FIRST.ADMIN', email: 'other.admin@db.test', password: 'First-admin-1' },
+    { username: 'new.admin', email: 'dana.db@db.test', password: 'First-admin-1' },
+    { username: 'weak.admin', email: 'weak.admin@db.test', password: 'weakpassword' },
+    { username: 'bad name', email: 'bad.name@db.test', password: 'First-admin-1' },
+  ];
+  for (const input of refused) await assert.rejects(createPlatformAdmin(database, input), PlatformAdminError);
+  assert.equal(await database.getRepository(User).countBy(refused.map(({ username }) => ({ username }))), 1);
+});
