@@ -26,7 +26,7 @@
 	"pagination": {
 		"label": "التنقل بين الصفحات",
 		"rowsPerPage": "عدد الصفوف في الصفحة",
-		"range": "{{first}}–{{last}} من {{total}}",
+		"range": "‎{{first}}–{{last}}‎ من {{total}}",
 		"previous": "الصفحة السابقة",
 		"next": "الصفحة التالية",
 		"page": "الصفحة {{page}}"

@@ -30,7 +30,7 @@ export function MarketingLayout() {
 		<div className="min-h-screen bg-base-100 text-base-content">
 			<a
 				href="#main-content"
-				className="btn btn-neutral fixed left-4 top-4 z-50 -translate-y-24 focus:translate-y-0"
+				className="btn btn-neutral fixed inset-s-4 top-4 z-50 -translate-y-24 focus:translate-y-0"
 			>
 				Skip to content
 			</a>
@@ -42,7 +42,7 @@ export function MarketingLayout() {
 					<Link
 						to="/"
 						aria-label="Transcend home"
-						className="mr-auto flex items-center gap-3 text-xl font-bold tracking-tight"
+						className="me-auto flex items-center gap-3 text-xl font-bold tracking-tight"
 					>
 						<span
 							aria-hidden="true"

@@ -87,7 +87,7 @@ export function LandingPage() {
 						See how the teams connect <span aria-hidden="true">→</span>
 					</Link>
 				</div>
-				<div className="space-y-6 border-l border-base-300 pl-8">
+				<div className="space-y-6 border-s border-base-300 ps-8">
 					{[
 						{
 							title: 'Keep the merchant in view',
