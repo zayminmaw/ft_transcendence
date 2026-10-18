@@ -1,14 +1,10 @@
 import type { RouteObject } from 'react-router-dom';
-import { ModulePage } from '@global-components';
+import { AssignDriverPage } from './pages/AssignDriverPage';
+import { DispatchPage } from './pages/DispatchPage';
+import { ParcelDetailsPage } from './pages/ParcelDetailsPage';
 
 export const parcelsRoutes: RouteObject[] = [
-	{
-		path: 'parcels',
-		element: (
-			<ModulePage
-				title="Dispatch & parcels"
-				description="Follow shipments from pickup through delivery."
-			/>
-		),
-	},
+	{ path: 'parcels', element: <DispatchPage /> },
+	{ path: 'parcels/assign', element: <AssignDriverPage /> },
+	{ path: 'parcels/:parcelId', element: <ParcelDetailsPage /> },
 ];
