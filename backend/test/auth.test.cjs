@@ -18,7 +18,8 @@ async function storeWithUsers() {
   return store;
 }
 
-const login = (server, name, password = PASSWORD) => request(server).post('/api/auth/login').send({ login: name, password });
+// Browsers always send Origin on a POST; login requires it like refresh and logout.
+const login = (server, name, password = PASSWORD) => request(server).post('/api/auth/login').set('Origin', ORIGIN).send({ login: name, password });
 const refresh = (server, cookie) => {
   const call = request(server).post('/api/auth/refresh').set('Origin', ORIGIN);
   return cookie ? call.set('Cookie', `transcend_refresh=${encodeURIComponent(cookie)}`) : call;
@@ -148,4 +149,29 @@ test('me works without a company and returns the user, workspaces and platform a
   await request(server).get('/api/auth/me').expect(401);
   store.users[0].isActive = false;
   await request(server).get('/api/auth/me').set('Authorization', `Bearer ${accessToken}`).expect(403);
+});
+
+test('login refuses requests from another site, including a plain HTML form post', async (t) => {
+  const { server, store } = await createAuthApp(t, await storeWithUsers());
+  const crossSite = await request(server).post('/api/auth/login').set('Origin', 'https://evil.example')
+    .send({ login: 'dana.saleh', password: PASSWORD }).expect(403);
+  assert.equal(refreshCookie(crossSite), undefined);
+  // An auto-submitted <form> sends url-encoded fields, which Nest parses too.
+  await request(server).post('/api/auth/login').set('Origin', 'https://evil.example').type('form')
+    .send(`login=dana.saleh&password=${encodeURIComponent(PASSWORD)}`).expect(403);
+  await request(server).post('/api/auth/login').send({ login: 'dana.saleh', password: PASSWORD }).expect(403);
+  assert.equal(store.sessions.length, 0);
+  assert.deepEqual(store.audit, []);
+});
+
+test('login names are plain ASCII, so accented look-alikes cannot dodge the per-name limit', async (t) => {
+  const { server, store } = await createAuthApp(t, await storeWithUsers());
+  for (let attempt = 0; attempt < 5; attempt += 1) await login(server, 'dana.saleh', 'Wrong-password-1').expect(401);
+  // The database collation treats "dána.salèh" as "dana.saleh"; it must never reach the password check.
+  const accented = await login(server, 'dána.salèh', 'Wrong-password-1').expect(400);
+  assert.equal(accented.body.code, undefined);
+  assert.equal(store.audit.length, 5);
+  // Spaces around the name are trimmed before the check, so a copy-pasted login still works.
+  const fresh = await createAuthApp(t, await storeWithUsers());
+  await login(fresh.server, '  dana.saleh  ').expect(200);
 });

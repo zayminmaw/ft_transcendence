@@ -36,6 +36,8 @@ export class AuthController {
   @Public()
   @Post('login')
   @HttpCode(200)
+  // Another site must not be able to log a visitor into a different account (login CSRF via an auto-submitted form).
+  @UseGuards(SameOriginGuard)
   @SkipThrottle({ refresh: true })
   async login(@Body() body: LoginDto, @Req() request: Request, @Res({ passthrough: true }) response: Response) {
     const meta = requestMeta(request);
