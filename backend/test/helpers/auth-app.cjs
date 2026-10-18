@@ -51,7 +51,7 @@ function createFakeStore() {
     },
     sessions: {
       insert: async (session) => { store.sessions.push({ id: String(nextSessionId++), revokedAt: null, revokedReason: null, ...session }); },
-      findActiveByFamilyId: async (familyId) => sessionRecord(store.sessions.find((row) => row.familyId === familyId && !row.revokedAt)),
+      findActiveByFamilyId: async (familyId) => lockedSession(store.sessions.find((row) => row.familyId === familyId && !row.revokedAt)),
       revoke,
       transaction: (work) => work(sessionsTransaction),
     },

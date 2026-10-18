@@ -144,6 +144,17 @@ test('a token copied and refreshed twice is still caught when the old token come
   assert.equal(await auditCount('session_reuse', userId), 1);
 });
 
+test('logging out with an old token is recorded as a copied token', async () => {
+  const sessions = createSessions();
+  const userId = await createUser('session.stale.logout');
+  const stolen = await sessions.start(userId, META);
+  const current = await sessions.refresh(stolen.refreshToken, META);
+  await sessions.end(stolen.refreshToken, META);
+  assert.equal((await sessionRow(current.refreshToken)).revokedReason, 'reuse');
+  assert.equal(await auditCount('session_reuse', userId), 1);
+  assert.equal(await auditCount('logout', userId), 0);
+});
+
 test('two refreshes with the same token at once: one wins and the session ends', async () => {
   const sessions = createSessions();
   const issued = await sessions.start(await createUser('session.race'), META);

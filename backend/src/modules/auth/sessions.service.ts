@@ -96,9 +96,12 @@ export class SessionsService {
 
   async end(refreshToken: string, meta: RequestMeta, now = new Date()): Promise<void> {
     const presented = parseRefreshToken(refreshToken);
-    const session = presented ? await this.sessions.findActiveByFamilyId(presented.familyId) : undefined;
+    if (!presented) return;
+    const session = await this.sessions.findActiveByFamilyId(presented.familyId);
     if (!session) return;
-    await this.sessions.revoke(session.id, 'logout', now);
-    await this.audit.record('logout', session.userId, meta);
+    // Same rule as refresh: logging out with an older secret means the token was copied.
+    const copied = session.tokenHash !== hashSecret(presented.secret);
+    await this.sessions.revoke(session.id, copied ? 'reuse' : 'logout', now);
+    await this.audit.record(copied ? 'session_reuse' : 'logout', session.userId, meta);
   }
 }

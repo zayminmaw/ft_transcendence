@@ -197,3 +197,14 @@ test('other logins (42) set the refresh cookie through the same exported helper'
   auth.setRefreshCookie({ cookie: (...args) => calls.push(args) }, { refreshToken: 'token-value', absoluteExpiresAt: expires });
   assert.deepEqual(calls, [['transcend_refresh', 'token-value', { httpOnly: true, secure: true, sameSite: 'strict', path: '/api/auth', expires }]]);
 });
+
+test('logging out with an old token is treated as a copied token', async (t) => {
+  const { server, store } = await createAuthApp(t, await storeWithUsers());
+  const stolen = refreshCookie(await login(server, 'dana.saleh').expect(200)).value;
+  const current = refreshCookie(await refresh(server, stolen).expect(200)).value;
+  await request(server).post('/api/auth/logout').set('Origin', ORIGIN)
+    .set('Cookie', `transcend_refresh=${encodeURIComponent(stolen)}`).expect(204);
+  assert.equal(store.sessions[0].revokedReason, 'reuse');
+  assert.deepEqual(store.audit.map((entry) => entry.action), ['login', 'session_reuse']);
+  await refresh(server, current).expect(401);
+});
