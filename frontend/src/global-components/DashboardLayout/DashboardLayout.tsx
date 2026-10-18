@@ -43,7 +43,7 @@ export function DashboardLayout(props: Omit<SidebarContentProps, 'onNavigate'>) 
 		<div className="min-h-dvh bg-base-100 text-base-content md:grid md:grid-cols-[240px_minmax(0,1fr)]">
 			<a
 				href="#workspace-content"
-				className="btn btn-neutral fixed left-4 top-4 z-50 -translate-y-24 focus:translate-y-0"
+				className="btn btn-neutral fixed inset-s-4 top-4 z-50 -translate-y-24 focus:translate-y-0"
 			>
 				{t('layout.skipToContent')}
 			</a>

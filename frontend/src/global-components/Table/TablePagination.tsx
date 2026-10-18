@@ -68,7 +68,7 @@ export function TablePagination({
 						</option>
 					))}
 				</select>
-				<span className="ml-2">
+				<span className="ms-2">
 					{t('pagination.range', {
 						first: formatNumber(firstRow, language),
 						last: formatNumber(lastRow, language),

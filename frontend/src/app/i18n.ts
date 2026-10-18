@@ -15,9 +15,11 @@ for (const [path, content] of Object.entries(files)) {
 	(resources[language] ??= {})[namespace] = content;
 }
 
-// The page language follows the switcher. Direction (dir) is set by the RTL work from i18n.dir().
+// The page language and direction follow the switcher, so Arabic lays out right to left.
 i18n.on('languageChanged', () => {
-	document.documentElement.lang = i18n.resolvedLanguage ?? 'en';
+	const language = i18n.resolvedLanguage ?? 'en';
+	document.documentElement.lang = language;
+	document.documentElement.dir = i18n.dir(language);
 });
 
 void i18n

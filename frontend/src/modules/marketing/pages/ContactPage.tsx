@@ -103,7 +103,7 @@ export function ContactPage() {
 				</form>
 				<div>
 					<h2 className="marketing-title text-3xl">A useful starting conversation.</h2>
-					<ul className="mt-6 list-disc space-y-4 pl-5 leading-relaxed opacity-70">
+					<ul className="mt-6 list-disc space-y-4 ps-5 leading-relaxed opacity-70">
 						<li>How does a parcel move from merchant intake to its assigned driver?</li>
 						<li>Where are cash handovers and discrepancies recorded today?</li>
 						<li>Which teams need access to each part of the operation?</li>
