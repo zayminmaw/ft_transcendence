@@ -1,6 +1,6 @@
 # Transcend
 
-Modular courier and last-mile logistics ERP. The scaffold provides public marketing pages, a workspace preview, domain boundaries, database migrations, and container orchestration. Business CRUD, login/refresh flows, role seeds, and financial operations are still to be implemented.
+Modular courier and last-mile logistics ERP. The scaffold provides public marketing pages, a workspace preview, domain boundaries, database migrations, and container orchestration. Login, refresh, and the documented roles and permissions are in the backend; the login screens, business CRUD, and financial operations are still to be implemented.
 
 ## Repository layout
 
@@ -117,6 +117,39 @@ npm run dev:frontend
 
 On Windows use `npm.cmd` if PowerShell blocks `npm.ps1`. Host development requires dependencies installed by `npm run setup`.
 
+## Accounts and demo data
+
+There is no public sign-up. The migrations add the documented permissions and roles (`org_admin`, `dispatcher`, `hub_sorter`, `finance`, `hr_manager`, `fleet_lead`, `driver`, and `platform_admin` for platform access). To create the first platform administrator, run this once and answer the questions (the password is hidden):
+
+```sh
+docker compose exec -it backend npm run create-platform-admin
+# Host development: npm run build --prefix backend && npm run create-platform-admin --prefix backend
+```
+
+It refuses a username or email that already exists and never changes an existing account. The password needs 8-128 characters with an upper-case letter, a lower-case letter, a number, and a symbol.
+
+For development and evaluation, load the demo companies and accounts:
+
+```sh
+docker compose exec backend npm run seed:demo -- --force
+# Host development: npm run seed:demo --prefix backend
+```
+
+`--force` is required in the production image because every demo account shares the password `Transcend-demo-1`. Never load demo data on a real deployment. Running it again adds only what is missing.
+
+| Account | Access |
+|---|---|
+| `lina` | Tenant admin, Meridian Courier |
+| `dana.saleh` | Dispatcher, Meridian Courier |
+| `omar.hub`, `rania.finance`, `yusuf.hr`, `maya.fleet`, `samir.farah` | Hub Sorter, Finance, HR Manager, Fleet Lead, Driver at Meridian Courier |
+| `karim.harbor` | Tenant admin, Harbor Express |
+| `noor` | Dispatcher at Meridian Courier and Finance at Harbor Express |
+| `zara.platform` | Platform admin, and Dispatcher at Meridian Courier |
+| `platform.ops` | Platform admin only |
+| `ex.member` | Inactive membership only (no workspace) |
+
+Log in with the username or the email (`<name>@meridian.example.test`, `@harbor.example.test`, or `@demo.example.test`). API clients such as curl or Postman must send `Origin` equal to `CORS_ORIGIN` (for example `-H 'Origin: https://localhost'`) on login, refresh, and logout; browsers do this on their own.
+
 ## Local quality gates
 
 ```sh
@@ -130,17 +163,17 @@ A formatting check reports nonconforming files and exits with status 1. Formatti
 
 The Husky pre-push hook in `.husky/pre-push` runs `npm run verify` before every `git push` and blocks the push if it fails. `npm run setup` installs the hook; it needs the backend and frontend dependencies that setup also installs. There is no remote CI, so the hook is a local check and `git push --no-verify` skips it.
 
-Verification builds and lints both apps and tests the HTTP security boundary and error sanitization. Lint never edits source files. Before adding business endpoints, add meaningful domain tests.
+Verification builds and lints both apps and tests the HTTP security boundary and error sanitization. `npm run test:db --prefix backend` additionally runs the database tests: it recreates `<DB_NAME>_test` in the running MariaDB (it needs `DB_ROOT_PASSWORD` from the root `.env`), applies all migrations, and checks the SQL queries, sessions, demo data, and the first-admin command. It is not part of `verify`, so pushing never needs a database. Lint never edits source files. Before adding business endpoints, add meaningful domain tests.
 
 ## Engineering rules
 
-- Controllers route and validate DTOs; services contain domain logic; repositories contain parameterized database queries. Use class-validator DTOs with the global validation pipe.
+- Controllers route and validate DTOs; services contain domain logic; repositories use the TypeORM entities in each module's `entities/` folder, with parameterized raw SQL only where the ORM can't express a query; migrations, not entities, change the schema. Use class-validator DTOs with the global validation pipe.
 - Endpoints are protected globally by JWT and permission guards. Explicitly declare `@RequirePermission('module.action')`; use `@Public()` only for intentional public endpoints. JWTs require a string user ID, expiration, issuer, audience, and HS256 signature. Active organization membership and account status are checked against the database.
 - Requests use `X-Organization-Id`. Because Nest guards precede interceptors, the permission guard resolves membership; the tenant interceptor enforces the verified context. New repositories must scope every query and mutation by the verified organization ID and validate all referenced records against that tenant. Add composite tenant foreign keys when introducing domain entities. No business data endpoints are enabled by this scaffold.
 - `assigned_only` permissions are denied until a resource ownership policy is implemented. No wildcard super-admin bypass or default account is created.
 - Frontend modules expose their public interface through root `index.ts`; ESLint rejects cross-module deep imports. Shared UI belongs in `src/global-components`, imported through `@global-components`, and module-specific UI belongs in the module.
 - Use React Hook Form with Zod for forms. Show field errors and disable mutating buttons while submitting. Include the organization ID in tenant query keys; cancel and clear queries on organization changes.
-- Keep access tokens in memory. The HTTP client supplies authorization/tenant headers and clears session/cache on unauthorized responses. Login, secure refresh, organization discovery, and permission-aware navigation are subsequent features; initial module pages contain no operational data.
+- Keep access tokens in memory. The HTTP client supplies authorization/tenant headers and clears session/cache on unauthorized responses. The refresh token lives only in an httpOnly cookie scoped to `/api/auth`. The login screens, organization discovery in the frontend, and permission-aware navigation are subsequent features; initial module pages contain no operational data.
 - Currency remains decimal strings at the database boundary. Never use floating-point arithmetic for money. Ledger entries and balance changes must execute together in an ACID transaction; do not mutate balances independently.
 
 Use short-lived branches named `<type>/<scope>/<description>` and Conventional Commit messages. Run verification and obtain review before merging. Release 0.1.0 establishes the shared initial scaffold.

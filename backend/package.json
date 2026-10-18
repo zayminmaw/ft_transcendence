@@ -13,7 +13,10 @@
     "lint": "eslint src test",
     "test": "npm run build && node --test test/*.test.cjs",
     "migration:run": "npm run build && typeorm migration:run -d dist/database/data-source.js",
-    "migration:show": "npm run build && typeorm migration:show -d dist/database/data-source.js"
+    "migration:show": "npm run build && typeorm migration:show -d dist/database/data-source.js",
+    "test:db": "npm run build && node --env-file-if-exists=../.env --env-file-if-exists=.env --test test/db/*.test.cjs",
+    "create-platform-admin": "node dist/cli/create-platform-admin.js",
+    "seed:demo": "node dist/cli/seed-demo.js"
   },
   "dependencies": {
     "@nestjs/common": "^11.2.7",
@@ -22,10 +25,13 @@
     "@nestjs/jwt": "^11.0.0",
     "@nestjs/platform-express": "^11.2.7",
     "@nestjs/platform-socket.io": "^11.2.7",
+    "@nestjs/throttler": "^6.7.1",
     "@nestjs/typeorm": "^11.0.0",
     "@nestjs/websockets": "^11.2.7",
+    "argon2": "^0.45.1",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.2",
+    "cookie-parser": "^1.4.7",
     "dotenv": "^16.6.1",
     "helmet": "^8.1.0",
     "mysql2": "^3.14.0",
@@ -38,6 +44,7 @@
     "@eslint/js": "^10.0.1",
     "@nestjs/cli": "^11.0.0",
     "@nestjs/testing": "^11.2.7",
+    "@types/cookie-parser": "^1.4.10",
     "@types/express": "^5.0.0",
     "@types/node": "^24.0.0",
     "eslint": "^10.0.0",
