@@ -5,6 +5,7 @@ import { type RevokeReason, UserSession } from './entities/user-session.entity';
 
 export interface NewSession {
   userId: string;
+  familyId: string;
   tokenHash: string;
   idleExpiresAt: Date;
   absoluteExpiresAt: Date;
@@ -14,14 +15,13 @@ export interface NewSession {
 
 export interface SessionRotation {
   tokenHash: string;
-  previousTokenHash: string;
   lastUsedAt: Date;
   idleExpiresAt: Date;
 }
 
 // The operations a refresh needs while it holds the session row lock.
 export interface SessionsTransaction {
-  lockByTokenHash(tokenHash: string): Promise<UserSession | undefined>;
+  lockByFamilyId(familyId: string): Promise<UserSession | undefined>;
   rotate(id: string, change: SessionRotation): Promise<void>;
   revoke(id: string, reason: RevokeReason, at: Date): Promise<void>;
 }
@@ -34,8 +34,8 @@ export class SessionsRepository {
     await this.sessions.insert(session);
   }
 
-  async findActiveByTokenHash(tokenHash: string): Promise<UserSession | undefined> {
-    return (await this.sessions.findOneBy({ tokenHash, revokedAt: IsNull() })) ?? undefined;
+  async findActiveByFamilyId(familyId: string): Promise<UserSession | undefined> {
+    return (await this.sessions.findOneBy({ familyId, revokedAt: IsNull() })) ?? undefined;
   }
 
   async revoke(id: string, reason: RevokeReason, at: Date): Promise<void> {
@@ -50,13 +50,10 @@ export class SessionsRepository {
 class EntitySessionsTransaction implements SessionsTransaction {
   constructor(private readonly manager: EntityManager) {}
 
-  // Finds the session whose current or previous token matches, then locks it by primary key (SELECT ... FOR UPDATE).
-  // Locking through the token_hash unique index instead deadlocks when two refreshes of one token arrive together.
-  async lockByTokenHash(tokenHash: string): Promise<UserSession | undefined> {
-    const match = await this.manager.findOne(UserSession, {
-      select: { id: true },
-      where: [{ tokenHash }, { previousTokenHash: tokenHash }],
-    });
+  // Finds the session by family id, then locks it by primary key (SELECT ... FOR UPDATE). Locking by primary key keeps
+  // two refreshes of one token from deadlocking, which happened when the lock went through the token_hash unique index.
+  async lockByFamilyId(familyId: string): Promise<UserSession | undefined> {
+    const match = await this.manager.findOne(UserSession, { select: { id: true }, where: { familyId } });
     if (!match) return undefined;
     return (await this.manager.findOne(UserSession, { where: { id: match.id }, lock: { mode: 'pessimistic_write' } })) ?? undefined;
   }

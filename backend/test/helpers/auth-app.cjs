@@ -12,7 +12,6 @@ const { AuthAuditRepository } = require('../../dist/modules/auth/auth-audit.repo
 const { AuditLog } = require('../../dist/modules/auth/entities/audit-log.entity');
 const { UserSession } = require('../../dist/modules/auth/entities/user-session.entity');
 const { SessionsRepository } = require('../../dist/modules/auth/sessions.repository');
-const { hashRefreshToken } = require('../../dist/modules/auth/sessions.service');
 const { OrganizationMember } = require('../../dist/modules/organizations/entities/organization-member.entity');
 const { OrganizationMembersRepository } = require('../../dist/modules/organizations/organization-members.repository');
 const { RolesGuard } = require('../../dist/modules/rbac');
@@ -33,13 +32,13 @@ function createFakeStore() {
   const sessionRecord = (row) => row && {
     id: row.id, userId: row.userId, idleExpiresAt: row.idleExpiresAt, absoluteExpiresAt: row.absoluteExpiresAt, revokedAt: row.revokedAt,
   };
-  const lockedSession = (row) => row && { ...sessionRecord(row), tokenHash: row.tokenHash, previousTokenHash: row.previousTokenHash };
+  const lockedSession = (row) => row && { ...sessionRecord(row), familyId: row.familyId, tokenHash: row.tokenHash };
   const revoke = async (id, reason, at) => {
     const row = store.sessions.find((session) => session.id === id && !session.revokedAt);
     if (row) Object.assign(row, { revokedAt: at, revokedReason: reason });
   };
   const sessionsTransaction = {
-    lockByTokenHash: async (hash) => lockedSession(store.sessions.find((row) => row.tokenHash === hash || row.previousTokenHash === hash)),
+    lockByFamilyId: async (familyId) => lockedSession(store.sessions.find((row) => row.familyId === familyId)),
     rotate: async (id, change) => { Object.assign(store.sessions.find((row) => row.id === id), change); },
     revoke,
   };
@@ -51,8 +50,8 @@ function createFakeStore() {
       touchLastLogin: async (id) => { store.lastLogins.push(id); },
     },
     sessions: {
-      insert: async (session) => { store.sessions.push({ id: String(nextSessionId++), previousTokenHash: null, revokedAt: null, revokedReason: null, ...session }); },
-      findActiveByTokenHash: async (hash) => sessionRecord(store.sessions.find((row) => row.tokenHash === hash && !row.revokedAt)),
+      insert: async (session) => { store.sessions.push({ id: String(nextSessionId++), revokedAt: null, revokedReason: null, ...session }); },
+      findActiveByFamilyId: async (familyId) => sessionRecord(store.sessions.find((row) => row.familyId === familyId && !row.revokedAt)),
       revoke,
       transaction: (work) => work(sessionsTransaction),
     },
@@ -64,7 +63,8 @@ function createFakeStore() {
     permissions: { findScope: async () => undefined },
     platformRoles: { hasPlatformAccess: async (userId) => store.platformAdmins.has(userId) },
   };
-  store.sessionFor = (refreshToken) => store.sessions.find((row) => row.tokenHash === hashRefreshToken(refreshToken));
+  // A refresh token is "<familyId>.<secret>"; the family id names the session row.
+  store.sessionFor = (refreshToken) => store.sessions.find((row) => row.familyId === refreshToken.split('.')[0]);
   return store;
 }
 

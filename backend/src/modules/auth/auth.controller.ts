@@ -10,7 +10,7 @@ import { type User, UsersRepository } from '../users';
 import { AuthService } from './auth.service';
 import { AuthThrottlerGuard } from './auth.throttler';
 import { LoginDto } from './dto/login.dto';
-import { clearedRefreshCookieOptions, REFRESH_COOKIE, refreshCookieOptions } from './refresh-cookie';
+import { clearRefreshCookie, REFRESH_COOKIE, setRefreshCookie } from './refresh-cookie';
 import { requestMeta } from './request-meta';
 import { SameOriginGuard } from './same-origin.guard';
 import { type IssuedSession, SessionsService } from './sessions.service';
@@ -56,7 +56,7 @@ export class AuthController {
     const session = typeof token === 'string' ? await this.sessions.refresh(token, requestMeta(request)) : undefined;
     const user = session ? await this.users.findById(session.userId) : undefined;
     if (!session || !user) {
-      response.clearCookie(REFRESH_COOKIE, clearedRefreshCookieOptions());
+      clearRefreshCookie(response);
       throw new UnauthorizedException(SESSION_EXPIRED);
     }
     return this.respondWithSession(response, session, user);
@@ -70,7 +70,7 @@ export class AuthController {
   async logout(@Req() request: Request, @Res({ passthrough: true }) response: Response): Promise<void> {
     const token: unknown = request.cookies?.[REFRESH_COOKIE];
     if (typeof token === 'string') await this.sessions.end(token, requestMeta(request));
-    response.clearCookie(REFRESH_COOKIE, clearedRefreshCookieOptions());
+    clearRefreshCookie(response);
   }
 
   @Authenticated()
@@ -88,7 +88,7 @@ export class AuthController {
   }
 
   private respondWithSession(response: Response, session: IssuedSession, user: User) {
-    response.cookie(REFRESH_COOKIE, session.refreshToken, refreshCookieOptions(session.absoluteExpiresAt));
+    setRefreshCookie(response, session);
     return { accessToken: session.accessToken, user: publicUser(user) };
   }
 }

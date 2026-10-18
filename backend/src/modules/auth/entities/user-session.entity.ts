@@ -2,7 +2,7 @@ import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn } from 'typeor
 
 export type RevokeReason = 'logout' | 'reuse' | 'inactive';
 
-// Mirrors `user_sessions` (migration 1792195200000): one row per login on a device.
+// Mirrors `user_sessions` (migrations 1792195200000 and 1792281600000): one row per login on a device.
 @Entity('user_sessions')
 export class UserSession {
   @PrimaryGeneratedColumn({ type: 'bigint', unsigned: true })
@@ -11,12 +11,13 @@ export class UserSession {
   @Column({ name: 'user_id', type: 'bigint', unsigned: true })
   userId!: string;
 
-  // SHA-256 of the refresh token; the token itself only lives in the cookie.
+  // Random, never changes: the first part of the refresh token ("<familyId>.<secret>").
+  @Column({ name: 'family_id', type: 'char', length: 22, unique: true })
+  familyId!: string;
+
+  // SHA-256 of the current secret; the secret itself only lives in the cookie.
   @Column({ name: 'token_hash', type: 'char', length: 64, unique: true })
   tokenHash!: string;
-
-  @Column({ name: 'previous_token_hash', type: 'char', length: 64, nullable: true })
-  previousTokenHash!: string | null;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamp' })
   createdAt!: Date;

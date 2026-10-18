@@ -175,3 +175,25 @@ test('login names are plain ASCII, so accented look-alikes cannot dodge the per-
   const fresh = await createAuthApp(t, await storeWithUsers());
   await login(fresh.server, '  dana.saleh  ').expect(200);
 });
+
+test('a token copied and refreshed twice is still caught when the old token comes back', async (t) => {
+  const { server, store } = await createAuthApp(t, await storeWithUsers());
+  const stolen = refreshCookie(await login(server, 'dana.saleh').expect(200)).value;
+  const second = refreshCookie(await refresh(server, stolen).expect(200)).value;
+  const third = refreshCookie(await refresh(server, second).expect(200)).value;
+  // Two generations later the original token comes back: the session must end, not just refuse this one token.
+  assert.equal((await refresh(server, stolen).expect(401)).body.code, 'AUTH_SESSION_EXPIRED');
+  await refresh(server, third).expect(401);
+  assert.equal(store.sessions[0].revokedReason, 'reuse');
+  assert.deepEqual(store.audit.map((entry) => entry.action), ['login', 'session_reuse']);
+});
+
+test('other logins (42) set the refresh cookie through the same exported helper', () => {
+  const auth = require('../dist/modules/auth');
+  assert.equal(typeof auth.SessionsService, 'function');
+  assert.equal(typeof auth.requestMeta, 'function');
+  const calls = [];
+  const expires = new Date('2026-11-17T00:00:00Z');
+  auth.setRefreshCookie({ cookie: (...args) => calls.push(args) }, { refreshToken: 'token-value', absoluteExpiresAt: expires });
+  assert.deepEqual(calls, [['transcend_refresh', 'token-value', { httpOnly: true, secure: true, sameSite: 'strict', path: '/api/auth', expires }]]);
+});

@@ -18,6 +18,10 @@ test('the migrations add the sessions table and the documented roles and permiss
     WHERE r.code = 'platform_admin'`), 0);
   assert.equal(await count(`SELECT COUNT(*) AS total FROM information_schema.tables
     WHERE table_schema = DATABASE() AND table_name = 'user_sessions'`), 1);
+  const sessionColumns = async (name) => count(`SELECT COUNT(*) AS total FROM information_schema.columns
+    WHERE table_schema = DATABASE() AND table_name = 'user_sessions' AND column_name = ?`, [name]);
+  assert.equal(await sessionColumns('family_id'), 1);
+  assert.equal(await sessionColumns('previous_token_hash'), 0);
 });
 
 const { User } = require('../../dist/modules/users/entities/user.entity');
@@ -93,7 +97,7 @@ const { AuthAuditRepository } = require('../../dist/modules/auth/auth-audit.repo
 const { AuditLog } = require('../../dist/modules/auth/entities/audit-log.entity');
 const { UserSession } = require('../../dist/modules/auth/entities/user-session.entity');
 const { SessionsRepository } = require('../../dist/modules/auth/sessions.repository');
-const { hashRefreshToken, SessionsService } = require('../../dist/modules/auth/sessions.service');
+const { SessionsService } = require('../../dist/modules/auth/sessions.service');
 
 const META = { ip: '127.0.0.1', userAgent: 'node-test' };
 const DAY = 86_400_000;
@@ -102,7 +106,8 @@ const createSessions = () => new SessionsService(
   new JwtService({ secret: 'test-secret-with-at-least-32-characters', signOptions: { expiresIn: '15m' } }),
   new AuthAuditRepository(database.getRepository(AuditLog)),
 );
-const sessionRow = (refreshToken) => database.getRepository(UserSession).findOneByOrFail({ tokenHash: hashRefreshToken(refreshToken) });
+// A refresh token is "<familyId>.<secret>"; the family id names the session row.
+const sessionRow = (refreshToken) => database.getRepository(UserSession).findOneByOrFail({ familyId: refreshToken.split('.')[0] });
 const auditCount = (action, userId) => database.getRepository(AuditLog).countBy({ module: 'auth', action, userId });
 
 test('session times survive the round trip to the database', async () => {
@@ -124,6 +129,18 @@ test('a refresh token works once; using it again ends the session and is audited
   assert.equal(await sessions.refresh(issued.refreshToken, META), undefined);
   assert.equal(await sessions.refresh(renewed.refreshToken, META), undefined);
   assert.equal((await sessionRow(renewed.refreshToken)).revokedReason, 'reuse');
+  assert.equal(await auditCount('session_reuse', userId), 1);
+});
+
+test('a token copied and refreshed twice is still caught when the old token comes back', async () => {
+  const sessions = createSessions();
+  const userId = await createUser('session.thief');
+  const stolen = await sessions.start(userId, META);
+  const second = await sessions.refresh(stolen.refreshToken, META);
+  const third = await sessions.refresh(second.refreshToken, META);
+  assert.equal(await sessions.refresh(stolen.refreshToken, META), undefined);
+  assert.equal((await sessionRow(third.refreshToken)).revokedReason, 'reuse');
+  assert.equal(await sessions.refresh(third.refreshToken, META), undefined);
   assert.equal(await auditCount('session_reuse', userId), 1);
 });
 
