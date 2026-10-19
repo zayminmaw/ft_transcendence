@@ -54,6 +54,10 @@ input,
 a {
 	outline-offset: 4px;
 }
+/* Edge adds its own eye to password fields; PasswordInput has one already. */
+input::-ms-reveal {
+	display: none;
+}
 
 .marketing-title {
 	font-family: 'Neo Grotesk Medium', 'Arial Narrow', 'Helvetica Neue', Arial, sans-serif;

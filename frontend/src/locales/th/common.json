@@ -2,6 +2,9 @@
 	"language": {
 		"label": "ภาษา"
 	},
+	"password": {
+		"show": "แสดงรหัสผ่าน"
+	},
 	"layout": {
 		"skipToContent": "ข้ามไปยังเนื้อหา",
 		"openNavigation": "เปิดเมนูนำทาง",

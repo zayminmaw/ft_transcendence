@@ -9,6 +9,7 @@ import { billingRoutes } from '@modules/billing';
 import { rbacRoutes } from '@modules/rbac';
 import { marketingRoutes } from '@modules/marketing';
 import { platformRoutes } from '@modules/platform';
+import { authRoutes } from '@modules/auth';
 import { App } from './App';
 import { CompatibilityRedirect, NotFoundPage, OverviewPage } from './WorkspacePages';
 
@@ -25,6 +26,7 @@ const workspaceRoutes = [
 
 export const router = createBrowserRouter([
 	...marketingRoutes,
+	...authRoutes,
 	...platformRoutes,
 	{
 		path: 'app',
