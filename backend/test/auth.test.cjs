@@ -4,6 +4,9 @@ const request = require('supertest');
 const { hashPassword } = require('../dist/modules/auth/password');
 const { ORIGIN, createAuthApp, createFakeStore, refreshCookie } = require('./helpers/auth-app.cjs');
 
+// The cookie's Secure flag depends on NODE_ENV; pin it so a run in the development container checks the same flags.
+process.env.NODE_ENV = 'test';
+
 const PASSWORD = 'Correct-horse-1';
 let passwordHash;
 
@@ -196,6 +199,17 @@ test('other logins (42) set the refresh cookie through the same exported helper'
   const expires = new Date('2026-11-17T00:00:00Z');
   auth.setRefreshCookie({ cookie: (...args) => calls.push(args) }, { refreshToken: 'token-value', absoluteExpiresAt: expires });
   assert.deepEqual(calls, [['transcend_refresh', 'token-value', { httpOnly: true, secure: true, sameSite: 'strict', path: '/api/auth', expires }]]);
+});
+
+test('development leaves Secure off the refresh cookie, because Safari drops it on http://localhost', (t) => {
+  const { clearedRefreshCookieOptions, refreshCookieOptions } = require('../dist/modules/auth/refresh-cookie');
+  t.after(() => { process.env.NODE_ENV = 'test'; });
+  const expires = new Date('2026-11-17T00:00:00Z');
+  for (const [mode, secure] of [['development', false], ['production', true], ['test', true]]) {
+    process.env.NODE_ENV = mode;
+    assert.equal(refreshCookieOptions(expires).secure, secure, mode);
+    assert.equal(clearedRefreshCookieOptions().secure, secure, mode);
+  }
 });
 
 test('logging out with an old token is treated as a copied token', async (t) => {
