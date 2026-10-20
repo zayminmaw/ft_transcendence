@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, NavLink } from 'react-router-dom';
 
@@ -11,9 +12,20 @@ export type SidebarContentProps = {
 	homeTo: string;
 	groups: NavigationGroup[];
 	onNavigate?: () => void;
+	// Replaces the scope card at the top, e.g. with the workspace switcher.
+	header?: ReactNode;
+	// Shown above "Back to website", e.g. the logged-in account.
+	footer?: ReactNode;
 };
 
-export function SidebarContent({ scope, homeTo, groups, onNavigate }: SidebarContentProps) {
+export function SidebarContent({
+	scope,
+	homeTo,
+	groups,
+	onNavigate,
+	header,
+	footer,
+}: SidebarContentProps) {
 	const { t } = useTranslation();
 
 	return (
@@ -26,10 +38,12 @@ export function SidebarContent({ scope, homeTo, groups, onNavigate }: SidebarCon
 			>
 				transcend
 			</Link>
-			<div className="rounded-xl bg-base-200 p-3">
-				<p className="text-sm font-medium">{scope}</p>
-				<p className="mt-1 text-xs text-[var(--color-slate)]">{t('layout.preview')}</p>
-			</div>
+			{header ?? (
+				<div className="rounded-xl bg-base-200 p-3">
+					<p className="text-sm font-medium">{scope}</p>
+					<p className="mt-1 text-xs text-[var(--color-slate)]">{t('layout.preview')}</p>
+				</div>
+			)}
 			<nav aria-label={t('layout.navigation', { scope })} className="flex flex-col gap-6">
 				{groups.map(({ label, items }, index) => (
 					<div key={label ?? index} role="group" aria-label={label}>
@@ -59,9 +73,12 @@ export function SidebarContent({ scope, homeTo, groups, onNavigate }: SidebarCon
 					</div>
 				))}
 			</nav>
-			<Link to="/" onClick={onNavigate} className="btn btn-ghost mt-auto bg-base-200">
-				{t('sidebar.backToWebsite')}
-			</Link>
+			<div className="mt-auto flex flex-col gap-4">
+				{footer}
+				<Link to="/" onClick={onNavigate} className="btn btn-ghost bg-base-200">
+					{t('sidebar.backToWebsite')}
+				</Link>
+			</div>
 		</div>
 	);
 }
