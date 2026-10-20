@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Dialog, ModulePage, TipCard, useToast } from '@global-components';
+import { useCompanyPath } from '@hooks/useCompanyPath';
 import { findDriver, parcelStatusLabels, parcels } from '../data/sampleParcels';
 
 export function ParcelDetailsPage() {
 	const { parcelId } = useParams();
+	const companyPath = useCompanyPath();
 	const { toast } = useToast();
 	const [returnOpen, setReturnOpen] = useState(false);
 	const parcel = parcels.find((item) => item.id === parcelId);
@@ -58,7 +60,7 @@ export function ParcelDetailsPage() {
 								</button>
 							)}
 							<Link
-								to={`/app/parcels/assign?parcel=${parcel.id}`}
+								to={companyPath(`parcels/assign?parcel=${parcel.id}`)}
 								className="btn btn-primary md:px-8"
 							>
 								{failed ? 'Reassign for reattempt' : 'Assign driver'}

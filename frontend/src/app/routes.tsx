@@ -9,8 +9,11 @@ import { billingRoutes } from '@modules/billing';
 import { rbacRoutes } from '@modules/rbac';
 import { marketingRoutes } from '@modules/marketing';
 import { platformRoutes } from '@modules/platform';
-import { authRoutes } from '@modules/auth';
+import { authRoutes, WorkspacePickerPage } from '@modules/auth';
 import { App } from './App';
+import { CompanyBoundary } from './CompanyBoundary';
+import { RequirePlatform } from './RequirePlatform';
+import { RequireSession } from './RequireSession';
 import { CompatibilityRedirect, NotFoundPage, OverviewPage } from './WorkspacePages';
 
 const workspaceRoutes = [
@@ -27,16 +30,31 @@ const workspaceRoutes = [
 export const router = createBrowserRouter([
 	...marketingRoutes,
 	...authRoutes,
-	...platformRoutes,
 	{
-		path: 'app',
-		element: <App />,
+		element: <RequireSession />,
 		children: [
-			{ index: true, element: <OverviewPage /> },
-			...workspaceRoutes,
-			{ path: '*', element: <NotFoundPage /> },
+			{
+				path: 'app',
+				children: [
+					{ index: true, element: <WorkspacePickerPage /> },
+					{
+						path: ':companySlug',
+						element: <CompanyBoundary />,
+						children: [
+							{
+								element: <App />,
+								children: [
+									{ index: true, element: <OverviewPage /> },
+									...workspaceRoutes,
+									{ path: '*', element: <NotFoundPage /> },
+								],
+							},
+						],
+					},
+				],
+			},
+			{ element: <RequirePlatform />, children: platformRoutes },
 		],
 	},
-	// Keep compatibility URLs inside the canonical tenant layout and future auth boundary.
 	...workspaceRoutes.map(({ path }) => ({ path, element: <CompatibilityRedirect /> })),
 ]);
