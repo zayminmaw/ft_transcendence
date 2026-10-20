@@ -26,11 +26,15 @@ const loginSchema = z.object({
 	login: z
 		.string()
 		.trim()
-		.min(1, 'login.loginRequired' satisfies ParseKeys<'auth'>),
+		.min(1, 'login.loginRequired' satisfies ParseKeys<'auth'>)
+		// The API takes plain ASCII only, so look-alike letters can't dodge its per-name limit.
+		.regex(/^[\x21-\x7E]+$/, 'login.loginAscii' satisfies ParseKeys<'auth'>),
 	password: z.string().min(1, 'login.passwordRequired' satisfies ParseKeys<'auth'>),
 });
 
 function errorMessageKey(error: unknown) {
+	// A login name the API's format check refuses can't belong to an account either.
+	if (error instanceof ApiError && error.status === 400) return 'errors.invalidCredentials';
 	const code = error instanceof ApiError ? error.code : undefined;
 	return code && code in ERROR_MESSAGES
 		? ERROR_MESSAGES[code as keyof typeof ERROR_MESSAGES]
@@ -40,7 +44,7 @@ function errorMessageKey(error: unknown) {
 export function LoginPage() {
 	const { t } = useTranslation('auth');
 	const { accessToken } = useAuth();
-	const checking = useSessionCheck();
+	const { checking } = useSessionCheck();
 	const { state } = useLocation();
 	const login = useLogin();
 	const {

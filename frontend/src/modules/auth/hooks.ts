@@ -28,6 +28,8 @@ export function useLogin() {
 	const navigate = useNavigate();
 	return useMutation({
 		mutationFn: logIn,
+		// The variables are the typed password: don't keep them once the login page is gone.
+		gcTime: 0,
 		onSuccess: ({ accessToken, user }) => {
 			queryClient.removeQueries();
 			sessionStore.start(accessToken, user.id);

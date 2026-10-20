@@ -10,14 +10,21 @@ export function WorkspacePickerPage() {
 	const me = useMe({ refetchOnMount: 'always' });
 	const logout = useLogout();
 	const logOutButton = (
-		<button
-			type="button"
-			className="btn btn-ghost w-fit bg-base-200"
-			disabled={logout.isPending}
-			onClick={() => logout.mutate()}
-		>
-			{t('account.logOut')}
-		</button>
+		<div>
+			<button
+				type="button"
+				className="btn btn-ghost w-fit bg-base-200"
+				disabled={logout.isPending}
+				onClick={() => logout.mutate()}
+			>
+				{t('account.logOut')}
+			</button>
+			{logout.isError && (
+				<p role="alert" className="mt-2 text-sm text-error">
+					{t('account.logOutFailed')}
+				</p>
+			)}
+		</div>
 	);
 
 	if (me.isPending) return <LoadingScreen />;

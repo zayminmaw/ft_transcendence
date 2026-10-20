@@ -16,22 +16,33 @@ export async function apiRequest<T>(path: string, options: RequestInit = {}): Pr
 	const { accessToken, activeOrganizationId } = sessionStore.getSnapshot();
 	let response = await send(path, options, accessToken, activeOrganizationId);
 	if (response.status === 401 && accessToken) {
-		const renewed = await renewAccessToken(accessToken);
-		if (renewed) response = await send(path, options, renewed, activeOrganizationId);
-		else if (sessionStore.getSnapshot().accessToken === accessToken) endSession('expired');
+		const renewal = await renewAccessToken(accessToken);
+		if ('token' in renewal)
+			response = await send(path, options, renewal.token, activeOrganizationId);
+		else if (
+			renewal.failure === 'ended' &&
+			sessionStore.getSnapshot().accessToken === accessToken
+		)
+			endSession('expired');
 	}
 	if (!response.ok) throw await toApiError(response);
 	if (response.status === 204) return undefined as T;
 	return response.json() as Promise<T>;
 }
 
+type Renewal = { token: string } | { failure: 'ended' | 'unavailable' };
+
 // An expired access token gets one refresh. Requests that fail together share it, and a request that fails after
 // another one refreshed just uses the new token. Two refreshes in the same second can return the same token, so
-// the answer comes from the refresh, not from comparing tokens.
-async function renewAccessToken(expired: string): Promise<string | null> {
+// the answer comes from the refresh, not from comparing tokens. 'unavailable' keeps the session: the request fails,
+// and the next one tries again.
+async function renewAccessToken(expired: string): Promise<Renewal> {
 	const current = sessionStore.getSnapshot().accessToken;
-	if (current !== expired) return current;
-	return (await refreshSession()) ? sessionStore.getSnapshot().accessToken : null;
+	if (current !== expired) return current ? { token: current } : { failure: 'ended' };
+	const result = await refreshSession();
+	if (result !== 'ok') return { failure: result };
+	const renewed = sessionStore.getSnapshot().accessToken;
+	return renewed ? { token: renewed } : { failure: 'ended' };
 }
 
 function send(
