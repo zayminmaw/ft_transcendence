@@ -4,10 +4,15 @@ import { createHash, randomBytes } from 'node:crypto';
 import { UsersRepository } from '../users';
 import { AuthAuditRepository } from './auth-audit.repository';
 import type { RequestMeta } from './request-meta';
+import type { UserSession } from './entities/user-session.entity';
 import { SessionsRepository } from './sessions.repository';
 
 export const SESSION_IDLE_MS = 7 * 24 * 60 * 60 * 1000;
 export const SESSION_ABSOLUTE_MS = 30 * 24 * 60 * 60 * 1000;
+// Two quick reloads: the second cancels the first page's refresh, so the browser keeps the secret that refresh
+// replaced. That one secret stays usable this long after it was replaced (Supabase's default); any older one, or this
+// one later, means the token was copied.
+export const REUSE_INTERVAL_MS = 10 * 1000;
 
 export interface IssuedSession {
   userId: string;
@@ -40,6 +45,11 @@ function randomPart(bytes: number): string {
 
 function idleExpiry(now: Date, absoluteExpiresAt: Date): Date {
   return new Date(Math.min(now.getTime() + SESSION_IDLE_MS, absoluteExpiresAt.getTime()));
+}
+
+// The secret the current one replaced, presented within REUSE_INTERVAL_MS of that refresh.
+function justReplaced(session: Pick<UserSession, 'previousTokenHash' | 'rotatedAt'>, hash: string, now: Date): boolean {
+  return session.previousTokenHash === hash && session.rotatedAt !== null && now.getTime() - session.rotatedAt.getTime() <= REUSE_INTERVAL_MS;
 }
 
 // One place that starts, renews and ends logins. Password login and 42 login both end in start() + setRefreshCookie().
@@ -75,8 +85,10 @@ export class SessionsService {
     const outcome = await this.sessions.transaction<RefreshOutcome>(async (sessions) => {
       const session = await sessions.lockByFamilyId(presented.familyId);
       if (!session || session.revokedAt) return { kind: 'invalid' };
-      if (session.tokenHash !== hashSecret(presented.secret)) {
-        // An older secret of this session, however old: the token was copied and someone refreshed with it first.
+      const presentedHash = hashSecret(presented.secret);
+      const current = session.tokenHash === presentedHash;
+      if (!current && !justReplaced(session, presentedHash, now)) {
+        // An older secret of this session: the token was copied and someone refreshed with it first.
         await sessions.revoke(session.id, 'reuse', now);
         return { kind: 'reused', userId: session.userId };
       }
@@ -86,7 +98,15 @@ export class SessionsService {
         return { kind: 'invalid' };
       }
       const next = randomPart(32);
-      await sessions.rotate(session.id, { tokenHash: hashSecret(next), lastUsedAt: now, idleExpiresAt: idleExpiry(now, session.absoluteExpiresAt) });
+      await sessions.rotate(session.id, {
+        tokenHash: hashSecret(next),
+        // The browser holds the presented secret until this answer arrives. Using the just-replaced secret again keeps
+        // the time it was first replaced, so the 10 seconds never stretch.
+        previousTokenHash: presentedHash,
+        rotatedAt: current ? now : (session.rotatedAt ?? now),
+        lastUsedAt: now,
+        idleExpiresAt: idleExpiry(now, session.absoluteExpiresAt),
+      });
       return { kind: 'rotated', userId: session.userId, refreshToken: `${presented.familyId}.${next}`, absoluteExpiresAt: session.absoluteExpiresAt };
     });
     if (outcome.kind === 'reused') await this.audit.record('session_reuse', outcome.userId, meta);
@@ -99,8 +119,9 @@ export class SessionsService {
     if (!presented) return;
     const session = await this.sessions.findActiveByFamilyId(presented.familyId);
     if (!session) return;
-    // Same rule as refresh: logging out with an older secret means the token was copied.
-    const copied = session.tokenHash !== hashSecret(presented.secret);
+    // Same rule as refresh: an older secret means the token was copied, but the one just replaced is still yours.
+    const presentedHash = hashSecret(presented.secret);
+    const copied = session.tokenHash !== presentedHash && !justReplaced(session, presentedHash, now);
     await this.sessions.revoke(session.id, copied ? 'reuse' : 'logout', now);
     await this.audit.record(copied ? 'session_reuse' : 'logout', session.userId, meta);
   }
