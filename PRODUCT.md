@@ -60,7 +60,7 @@ Platform administrators manage tenants across the service through a separate pla
 
 ### Planned capabilities
 
-Business CRUD, login and refresh flows, organization discovery, role seeds, dispatch actions, proof of delivery, resource ownership policies, COD reconciliation, ledger services, invoicing, and settlement remain to be implemented. Real-time updates, dispatch runs, commission calculations, and full double-entry accounting are blueprint concepts rather than completed services.
+The backend provides login, refresh, and logout, organization discovery (`GET /api/auth/me`), and the documented roles and permissions. The login screens, business CRUD, dispatch actions, proof of delivery, resource ownership policies, COD reconciliation, ledger services, invoicing, and settlement remain to be implemented. Real-time updates, dispatch runs, commission calculations, and full double-entry accounting are blueprint concepts rather than completed services.
 
 The required platform administration dashboard will support tenant creation, tenant status changes, tenant administrator assignment, and monitoring of tenant status/activity. It requires explicit platform permissions distinct from tenant permissions. The tenant portal will use authenticated routes and organization-scoped administration. The public website will include privacy and terms-of-service pages alongside marketing/contact pages; legal pages, portal authentication, and the platform dashboard are not yet implemented.
 
@@ -68,7 +68,7 @@ The required platform administration dashboard will support tenant creation, ten
 
 - Organization membership and permissions govern access. Each future business read and mutation must enforce organization scope; ordinary foreign keys do not provide tenant isolation by themselves.
 - Platform authorization is separate from tenant authorization. Tenant administrators cannot manage other tenants or grant themselves platform access. Platform tenant-management permission does not automatically grant access to tenants' financial, payroll, or delivery records.
-- Driver access is intended to be limited to assigned work. Assigned-only permissions currently fail closed until ownership policies exist. The scaffold installs no default accounts or wildcard administrator bypass.
+- Driver access is intended to be limited to assigned work. Assigned-only permissions currently fail closed until ownership policies exist. Migrations install the documented roles and permissions but no accounts and no wildcard administrator bypass; demo accounts exist only after the explicit `npm run seed:demo` command.
 - Financial changes require matching ledger entries and transactionally consistent balances. Currency must retain decimal precision rather than use floating-point arithmetic.
 - Staff and drivers share personnel concepts but have distinct operational responsibilities and records.
 - Public product copy must distinguish working features, illustrative previews, and future capabilities. A workspace preview must not imply that live operational data or authenticated workflows are available.

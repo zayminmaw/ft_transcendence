@@ -17,7 +17,7 @@ The required platform administration dashboard is planned. `organizations` repre
 
 Tenant onboarding must create an `organizations` row, its first administrator's `users` row, and an active `organization_members` row referencing the tenant-scoped `org_admin` role in one transaction. These records are required together; the schema's separate tables do not enforce that onboarding invariant automatically. Tenant administrator membership does not add a platform assignment to `user_roles`.
 
-Usernames and emails are globally unique in the current baseline. A collision must not silently attach or overwrite an existing account. Additional company accounts require `admin.manage_users` and an allowed role/membership in the same tenant; there is no public signup. Store only password hashes and never include credentials in audit payloads. Secure credential handover, recovery/session persistence, role seeds, and provisioning services remain to be implemented; any additional schema support requires new migrations. See [Tenant onboarding and login flow](Tenant-Onboarding-and-Login-Flow.md).
+Usernames and emails are globally unique in the current baseline. A collision must not silently attach or overwrite an existing account. Additional company accounts require `admin.manage_users` and an allowed role/membership in the same tenant; there is no public signup. Store only password hashes and never include credentials in audit payloads. Session persistence (`user_sessions`) and the role and permission seeds exist; secure credential handover, password recovery, and provisioning services remain to be implemented; any additional schema support requires new migrations. See [Tenant onboarding and login flow](Tenant-Onboarding-and-Login-Flow.md).
 
 ### `users`
 
@@ -26,13 +26,15 @@ Usernames and emails are globally unique in the current baseline. A collision mu
 | `id` | `BIGINT UNSIGNED` | `PK`, `AUTO_INCREMENT` | Unique user identifier |
 | `username` | `VARCHAR(64)` | `NOT NULL`, `UNIQUE` | Unique login username |
 | `email` | `VARCHAR(191)` | `NOT NULL`, `UNIQUE` | Login and recovery email |
-| `password_hash` | `VARCHAR(255)` | `NOT NULL` | Hashed password (Argon2id/Bcrypt) |
+| `password_hash` | `VARCHAR(255)` | `NOT NULL` | Argon2id password hash |
 | `is_active` | `BOOLEAN` | `NOT NULL`, `DEFAULT TRUE` | Account active status flag |
 | `last_login_at` | `TIMESTAMP` | `NULL` | Timestamp of most recent login |
 | `created_at` | `TIMESTAMP` | `NOT NULL`, `DEFAULT CURRENT_TIMESTAMP` | Account creation date |
 | `updated_at` | `TIMESTAMP` | `NOT NULL`, `ON UPDATE CURRENT_TIMESTAMP` | Last profile update |
 
 ### `roles`
+
+Migration `1792195260000-AuthReferenceData` seeds `platform_admin`, `org_admin`, `dispatcher`, `hub_sorter`, `finance`, `hr_manager`, `fleet_lead`, and `driver`, with the 30 permission codes and default assignments from sections 4 and 5 of the [ERP outline](ERP-Logistics-System-Outline-v1.md). A `user_roles` row with `platform_admin` is what grants platform access.
 
 | Column | Data Type | Constraints | Description |
 |---|---|---|---|
@@ -67,6 +69,25 @@ Usernames and emails are globally unique in the current baseline. A collision mu
 | `user_id` | `BIGINT UNSIGNED` | `PK`, `FK -> users.id` | Referenced user |
 | `role_id` | `INT UNSIGNED` | `PK`, `FK -> roles.id` | Referenced global role |
 | `assigned_at` | `TIMESTAMP` | `NOT NULL`, `DEFAULT CURRENT_TIMESTAMP` | Assignment timestamp |
+
+### `user_sessions`
+
+Added by migrations `1792195200000-UserSessions` and `1792281600000-UserSessionFamily` (not in the baseline). One row per login on a device. The refresh token is `<familyId>.<secret>` and lives only in an httpOnly cookie scoped to `/api/auth`; the table stores the family id and a SHA-256 hash of the current secret. Every refresh replaces the secret; presenting any older secret of a session ends that session (`revoked_reason = 'reuse'`).
+
+| Column | Data Type | Constraints | Description |
+|---|---|---|---|
+| `id` | `BIGINT UNSIGNED` | `PK`, `AUTO_INCREMENT` | Session identifier |
+| `user_id` | `BIGINT UNSIGNED` | `NOT NULL`, `FK -> users.id` (`ON DELETE CASCADE`), indexed | Session owner |
+| `family_id` | `CHAR(22)` | `NOT NULL`, `UNIQUE` | Random session id; first part of the refresh token |
+| `token_hash` | `CHAR(64)` | `NOT NULL`, `UNIQUE` | SHA-256 (hex) of the current secret |
+| `created_at` | `TIMESTAMP` | `NOT NULL`, `DEFAULT CURRENT_TIMESTAMP` | Login time |
+| `last_used_at` | `TIMESTAMP` | `NOT NULL`, `DEFAULT CURRENT_TIMESTAMP` | Last refresh |
+| `idle_expires_at` | `TIMESTAMP` | `NOT NULL` | Last use + 7 days, never past the absolute expiry |
+| `absolute_expires_at` | `TIMESTAMP` | `NOT NULL` | Login + 30 days |
+| `revoked_at` | `TIMESTAMP` | `NULL` | When the session ended early |
+| `revoked_reason` | `VARCHAR(32)` | `NULL` | `logout`, `reuse`, or `inactive` |
+| `user_agent` | `VARCHAR(255)` | `NULL` | Browser, for a future device list |
+| `ip_address` | `VARCHAR(45)` | `NULL` | Client address at login |
 
 ---
 

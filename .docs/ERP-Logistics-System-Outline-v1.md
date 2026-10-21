@@ -2,7 +2,7 @@
 
 ## Implementation status
 
-This document defines the target product, not a list of completed features. The repository currently contains a NestJS security/database foundation, mirrored domain module skeletons, a React/Vite workspace preview, and public marketing pages styled with Tailwind CSS 4 and daisyUI 5. Business CRUD, login/refresh, role seeds, operational delivery actions, and financial services remain to be implemented.
+This document defines the target product, not a list of completed features. The repository currently contains a NestJS security/database foundation, mirrored domain module skeletons, a React/Vite workspace preview, and public marketing pages styled with Tailwind CSS 4 and daisyUI 5. The backend also provides login, refresh, and the documented roles and permissions. Business CRUD, the login screens, operational delivery actions, and financial services remain to be implemented.
 
 The public website has landing (`/`), product (`/product`), solutions (`/solutions`), and rollout planning (`/contact`) pages in the frontend-only `marketing` module. The rollout planner validates input and downloads a browser-local brief; it does not submit leads or emails. The workspace lives under `/app`, with the original module URLs retained for compatibility.
 
@@ -30,7 +30,7 @@ Each tenant is a courier organization using the service. Platform administrators
 
 **Access boundary:** Require authentication and explicit platform permissions. Tenant administrators can manage users/employees and allowed role/permission assignments only within their own tenant. Platform tenant-management access does not automatically expose tenant payroll, ledgers, or parcel records. Suspension must deny tenant access while leaving authorized platform management available. Exact monitoring metrics and platform routes remain to be agreed.
 
-### Account provisioning and login (required, not implemented)
+### Account provisioning and login (required; backend login implemented, provisioning and screens not implemented)
 
 There is no public signup. The required journey is **platform administrator onboards tenant and creates its first administrator → tenant administrator logs in and chooses company → administrator creates company user → user logs in and chooses company**. Additional accounts require `admin.manage_users` within the acting user's tenant; role-permission mapping changes separately require `admin.manage_roles`. All accounts use the shared proposed `/login` page, with access determined by verified membership and permissions. Creating a tenant administrator must never grant platform access.
 
