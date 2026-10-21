@@ -1,27 +1,57 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import { Link, useParams } from 'react-router-dom';
 import { Dialog, Input, ModulePage, Table, useToast } from '@global-components';
 import type { TableColumn } from '@global-components';
-import { sampleMembers, sampleTenant as tenant } from '../data/sampleTenants';
+import { formatDate } from '@utils/format';
+import type { TenantAdministrator, TenantDetails } from '../api';
+import { useTenantDetails } from '../hooks/useTenants';
 
-type Administrator = (typeof tenant.administrators)[number];
+// Sample members for the "Existing member" choice until the tenant members endpoint exists.
+const sampleMembers = [
+	{ username: 'rami.saleh', role: 'Dispatcher' },
+	{ username: 'huda.amin', role: 'Finance' },
+	{ username: 'samer.kassab', role: 'Hub operator' },
+];
 
 export function TenantAdministratorsPage() {
+	const { tenantId = '' } = useParams();
+	const { tenant, isTenantPending, isTenantError } = useTenantDetails(tenantId);
+
+	if (isTenantPending)
+		return <ModulePage title="Tenant administrators" description="Loading tenant…" />;
+	if (isTenantError || !tenant) {
+		return (
+			<div className="flex flex-col gap-6">
+				<ModulePage
+					title="Something went wrong"
+					description="This tenant couldn't be loaded. Go back to the tenant list and try again."
+				/>
+				<Link to="/platform/tenants" className="btn w-fit border-0 bg-base-200 md:px-8">
+					Back to tenants
+				</Link>
+			</div>
+		);
+	}
+	return <TenantAdministratorsView tenant={tenant} />;
+}
+
+// Assigning and revoking are not wired to the API yet: their dialogs only show a toast.
+function TenantAdministratorsView({ tenant }: { tenant: TenantDetails }) {
+	const { i18n } = useTranslation();
 	const { toast } = useToast();
 	const [assignOpen, setAssignOpen] = useState(false);
 	const [assignMode, setAssignMode] = useState<'new' | 'existing'>('new');
-	const [revoking, setRevoking] = useState<Administrator | null>(null);
+	const [revoking, setRevoking] = useState<TenantAdministrator | null>(null);
 
-	const columns: TableColumn<Administrator>[] = [
+	const columns: TableColumn<TenantAdministrator>[] = [
 		{
 			key: 'administrator',
 			header: 'Administrator',
 			cell: (admin) => (
 				<div>
-					<p className="font-medium">{admin.name}</p>
-					<p className="text-sm text-[var(--color-slate)]">
-						{admin.username} · {admin.email}
-					</p>
+					<p className="font-medium">{admin.username}</p>
+					<p className="text-sm text-[var(--color-slate)]">{admin.email}</p>
 				</div>
 			),
 		},
@@ -30,8 +60,10 @@ export function TenantAdministratorsPage() {
 			header: 'Added',
 			cell: (admin) => (
 				<div>
-					<p>{admin.addedAt}</p>
-					<p className="text-sm text-[var(--color-slate)]">{admin.origin}</p>
+					<p>{formatDate(admin.joinedAt, i18n.language)}</p>
+					{!admin.accountActive && (
+						<p className="text-sm text-[var(--color-slate)]">Account deactivated</p>
+					)}
 				</div>
 			),
 		},
@@ -54,7 +86,7 @@ export function TenantAdministratorsPage() {
 		<div className="flex flex-col gap-6">
 			<ModulePage
 				title="Tenant administrators"
-				description={`${tenant.organization} · These memberships grant company access only. Platform roles are managed separately.`}
+				description={`${tenant.name} · These memberships grant company access only. Platform roles are managed separately.`}
 				actions={
 					<button
 						type="button"
@@ -67,10 +99,10 @@ export function TenantAdministratorsPage() {
 			/>
 
 			<Table
-				caption={`${tenant.organization} administrators`}
+				caption={`${tenant.name} administrators`}
 				columns={columns}
 				rows={tenant.administrators}
-				getRowKey={(admin) => admin.username}
+				getRowKey={(admin) => admin.id}
 			/>
 
 			<Link
@@ -84,7 +116,7 @@ export function TenantAdministratorsPage() {
 				open={assignOpen}
 				onClose={() => setAssignOpen(false)}
 				title="Assign administrator"
-				description={`The administrator gets tenant permissions in ${tenant.organization} only. No platform access is granted.`}
+				description={`The administrator gets tenant permissions in ${tenant.name} only. No platform access is granted.`}
 				onSubmit={(e) => {
 					e.preventDefault();
 					setAssignOpen(false);
@@ -153,11 +185,11 @@ export function TenantAdministratorsPage() {
 							defaultValue=""
 						>
 							<option value="" disabled>
-								Choose a {tenant.organization} member
+								Choose a {tenant.name} member
 							</option>
 							{sampleMembers.map((member) => (
 								<option key={member.username} value={member.username}>
-									{member.name} · {member.role}
+									{member.username} · {member.role}
 								</option>
 							))}
 						</select>
@@ -171,8 +203,8 @@ export function TenantAdministratorsPage() {
 			<Dialog
 				open={revoking !== null}
 				onClose={() => setRevoking(null)}
-				title={`Revoke ${revoking?.name ?? 'administrator'}?`}
-				description={`They lose tenant administrator permissions in ${tenant.organization}. Their account and memberships in other companies are not affected.`}
+				title={`Revoke ${revoking?.username ?? 'administrator'}?`}
+				description={`They lose tenant administrator permissions in ${tenant.name}. Their account and memberships in other companies are not affected.`}
 				onSubmit={(e) => {
 					e.preventDefault();
 					setRevoking(null);

@@ -5,4 +5,5 @@ export { JwtAuthGuard } from './jwt-auth.guard';
 //   setRefreshCookie(response, session);
 export { setRefreshCookie } from './refresh-cookie';
 export { requestMeta } from './request-meta';
+export type { RequestMeta } from './request-meta';
 export { SessionsService } from './sessions.service';

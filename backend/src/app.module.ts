@@ -18,6 +18,7 @@ import { AssetsModule } from './modules/assets';
 import { ParcelsModule } from './modules/parcels';
 import { BillingModule } from './modules/billing';
 import { NotificationsModule } from './modules/notifications';
+import { PlatformModule } from './modules/platform';
 
 @Module({
   imports: [
@@ -34,7 +35,7 @@ import { NotificationsModule } from './modules/notifications';
     }),
     AuthModule, RbacModule, OrganizationsModule, ClientsModule, StaffModule,
     DriversModule, AssetsModule, ParcelsModule, BillingModule,
-    NotificationsModule,
+    NotificationsModule, PlatformModule,
   ],
   controllers: [HealthController],
   providers: [
