@@ -1,7 +1,7 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const request = require('supertest');
-const { hashPassword } = require('../dist/modules/auth/password');
+const { hashPassword } = require('../dist/modules/users/password');
 const { ORIGIN, createAuthApp, createFakeStore, refreshCookie } = require('./helpers/auth-app.cjs');
 
 // The cookie's Secure flag depends on NODE_ENV; pin it so a run in the development container checks the same flags.

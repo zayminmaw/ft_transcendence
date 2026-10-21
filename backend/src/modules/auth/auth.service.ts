@@ -1,8 +1,7 @@
 import { Injectable, type OnModuleInit } from '@nestjs/common';
 import { randomBytes } from 'node:crypto';
-import { type User, UsersRepository } from '../users';
+import { hashPassword, type User, UsersRepository, verifyPassword } from '../users';
 import { AuthAuditRepository } from './auth-audit.repository';
-import { hashPassword, verifyPassword } from './password';
 import type { RequestMeta } from './request-meta';
 
 @Injectable()

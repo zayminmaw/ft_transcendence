@@ -24,6 +24,8 @@ test('the migrations add the sessions table and the documented roles and permiss
   // previous_token_hash came back in 1792454400000, with rotated_at, for the 10-second reuse interval.
   assert.equal(await sessionColumns('previous_token_hash'), 1);
   assert.equal(await sessionColumns('rotated_at'), 1);
+  assert.equal(await count(`SELECT COUNT(*) AS total FROM information_schema.columns
+    WHERE table_schema = DATABASE() AND table_name = 'users' AND column_name = 'must_change_password'`), 1);
 });
 
 const { User } = require('../../dist/modules/users/entities/user.entity');
@@ -187,6 +189,26 @@ test('logout ends the session and is audited', async () => {
   assert.equal(await auditCount('logout', userId), 1);
 });
 
+const { AccountError, createAccount } = require('../../dist/modules/users/accounts');
+
+test('createAccount refuses names that differ only in case, and of two racing creates only one wins', async () => {
+  const input = { username: 'case.db', email: 'case.db@db.test', password: 'Correct-horse-1', mustChangePassword: true };
+  const id = await database.transaction((manager) => createAccount(manager, input));
+  assert.equal((await database.getRepository(User).findOneByOrFail({ id })).mustChangePassword, true);
+  await assert.rejects(
+    database.transaction((manager) => createAccount(manager, { ...input, username: 'CASE.DB', email: 'other.case@db.test' })),
+    AccountError,
+  );
+  const racing = { username: 'race.db', email: 'race.db@db.test', password: 'Correct-horse-1', mustChangePassword: true };
+  const results = await Promise.allSettled([
+    database.transaction((manager) => createAccount(manager, racing)),
+    database.transaction((manager) => createAccount(manager, { ...racing, username: 'race.two.db' })),
+  ]);
+  assert.deepEqual(results.map((result) => result.status).sort(), ['fulfilled', 'rejected']);
+  assert.equal(results.find((result) => result.status === 'rejected').reason.problem, 'taken');
+  assert.equal(await database.getRepository(User).countBy({ email: 'race.db@db.test' }), 1);
+});
+
 const { createPlatformAdmin, PlatformAdminError } = require('../../dist/cli/platform-admin');
 
 test('the first-admin command creates a platform admin and never reuses an account', async () => {
@@ -204,7 +226,7 @@ test('the first-admin command creates a platform admin and never reuses an accou
 
 const { In, Like } = require('typeorm');
 const { DEMO_ACCOUNTS, DEMO_PASSWORD, seedDemo } = require('../../dist/database/seeders/demo.seed');
-const { verifyPassword } = require('../../dist/modules/auth/password');
+const { verifyPassword } = require('../../dist/modules/users/password');
 
 test('the demo seed adds everything once and skips it the second time', async () => {
   assert.deepEqual(await seedDemo(database), { companiesCreated: 2, accountsCreated: 12, accountsSkipped: [] });

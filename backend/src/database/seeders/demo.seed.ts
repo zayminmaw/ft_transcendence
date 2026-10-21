@@ -1,5 +1,5 @@
 import type { DataSource } from 'typeorm';
-import { hashPassword } from '../../modules/auth/password';
+import { hashPassword } from '../../modules/users/password';
 import { Organization } from '../../modules/organizations/entities/organization.entity';
 import { OrganizationMember } from '../../modules/organizations/entities/organization-member.entity';
 import { Role } from '../../modules/rbac/entities/role.entity';
