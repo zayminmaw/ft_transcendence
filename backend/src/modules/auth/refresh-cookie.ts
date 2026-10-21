@@ -2,15 +2,18 @@ import type { CookieOptions, Response } from 'express';
 
 export const REFRESH_COOKIE = 'transcend_refresh';
 
-// Only the auth endpoints receive the cookie; page scripts can never read it.
-const BASE_OPTIONS: CookieOptions = { httpOnly: true, secure: true, sameSite: 'strict', path: '/api/auth' };
+// Only the auth endpoints receive the cookie; page scripts can never read it. Safari drops a Secure cookie on
+// http://localhost, so only development (Vite on plain http) leaves Secure off.
+function baseOptions(): CookieOptions {
+  return { httpOnly: true, secure: process.env.NODE_ENV !== 'development', sameSite: 'strict', path: '/api/auth' };
+}
 
 export function refreshCookieOptions(expiresAt: Date): CookieOptions {
-  return { ...BASE_OPTIONS, expires: expiresAt };
+  return { ...baseOptions(), expires: expiresAt };
 }
 
 export function clearedRefreshCookieOptions(): CookieOptions {
-  return { ...BASE_OPTIONS };
+  return baseOptions();
 }
 
 // The one way any login (password, 42) hands the refresh token to the browser, so the options can't drift apart.

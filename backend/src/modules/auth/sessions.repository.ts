@@ -15,6 +15,8 @@ export interface NewSession {
 
 export interface SessionRotation {
   tokenHash: string;
+  previousTokenHash: string;
+  rotatedAt: Date;
   lastUsedAt: Date;
   idleExpiresAt: Date;
 }

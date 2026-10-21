@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Input, ModulePage, TipCard, useToast } from '@global-components';
+import { useCompanyPath } from '@hooks/useCompanyPath';
 import { drivers, findDriver, parcelStatusLabels, parcels } from '../data/sampleParcels';
 
 // Only sorted parcels and failed attempts can be (re)assigned, and only to available drivers.
@@ -11,6 +12,7 @@ const availableDrivers = drivers.filter((driver) => driver.status === 'available
 
 export function AssignDriverPage() {
 	const navigate = useNavigate();
+	const companyPath = useCompanyPath();
 	const { toast } = useToast();
 	const [searchParams] = useSearchParams();
 	const [parcelId, setParcelId] = useState(searchParams.get('parcel') ?? assignableParcels[0].id);
@@ -43,7 +45,7 @@ export function AssignDriverPage() {
 							title: 'Driver assigned',
 							description: `${parcel.tracking} is assigned to ${driver.name}.`,
 						});
-						navigate('/app/parcels');
+						navigate(companyPath('parcels'));
 					}}
 					className="flex flex-col gap-4 rounded-box border border-base-300 p-4 md:p-8"
 				>

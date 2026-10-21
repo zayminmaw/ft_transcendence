@@ -4,6 +4,9 @@ const request = require('supertest');
 const { hashPassword } = require('../dist/modules/auth/password');
 const { ORIGIN, createAuthApp, createFakeStore, refreshCookie } = require('./helpers/auth-app.cjs');
 
+// The cookie's Secure flag depends on NODE_ENV; pin it so a run in the development container checks the same flags.
+process.env.NODE_ENV = 'test';
+
 const PASSWORD = 'Correct-horse-1';
 let passwordHash;
 
@@ -71,16 +74,31 @@ test('refresh swaps the cookie and returns a new access token', async (t) => {
   assert.equal(store.sessionFor(second).id, '1');
 });
 
-test('using a replaced refresh token again ends the whole session', async (t) => {
+test('using a replaced refresh token more than 10 seconds later ends the whole session', async (t) => {
   const { server, store } = await createAuthApp(t, await storeWithUsers());
   const first = refreshCookie(await login(server, 'dana.saleh').expect(200)).value;
   const second = refreshCookie(await refresh(server, first).expect(200)).value;
+  store.sessionFor(second).rotatedAt = new Date(Date.now() - 11_000);
   const reused = await refresh(server, first).expect(401);
   assert.equal(reused.body.code, 'AUTH_SESSION_EXPIRED');
   assert.match(refreshCookie(reused).header, /Expires=Thu, 01 Jan 1970/);
   await refresh(server, second).expect(401);
   assert.equal(store.sessions[0].revokedReason, 'reuse');
   assert.deepEqual(store.audit.map((entry) => entry.action), ['login', 'session_reuse']);
+});
+
+test('a browser that missed a refresh answer can use the replaced token for 10 seconds', async (t) => {
+  const { server, store } = await createAuthApp(t, await storeWithUsers());
+  const kept = refreshCookie(await login(server, 'dana.saleh').expect(200)).value;
+  const missed = refreshCookie(await refresh(server, kept).expect(200)).value;
+  // A second reload cancelled that answer, so the browser still sends the token it had.
+  const fresh = refreshCookie(await refresh(server, kept).expect(200)).value;
+  await refresh(server, fresh).expect(200);
+  assert.equal(store.sessions[0].revokedAt, null);
+  assert.deepEqual(store.audit.map((entry) => entry.action), ['login']);
+  // The answer that never arrived holds a token no browser has: if it ever turns up, it was copied.
+  await refresh(server, missed).expect(401);
+  assert.equal(store.sessions[0].revokedReason, 'reuse');
 });
 
 test('refresh refuses a missing cookie, expired sessions and deactivated accounts', async (t) => {
@@ -198,15 +216,37 @@ test('other logins (42) set the refresh cookie through the same exported helper'
   assert.deepEqual(calls, [['transcend_refresh', 'token-value', { httpOnly: true, secure: true, sameSite: 'strict', path: '/api/auth', expires }]]);
 });
 
-test('logging out with an old token is treated as a copied token', async (t) => {
+test('development leaves Secure off the refresh cookie, because Safari drops it on http://localhost', (t) => {
+  const { clearedRefreshCookieOptions, refreshCookieOptions } = require('../dist/modules/auth/refresh-cookie');
+  t.after(() => { process.env.NODE_ENV = 'test'; });
+  const expires = new Date('2026-11-17T00:00:00Z');
+  for (const [mode, secure] of [['development', false], ['production', true], ['test', true]]) {
+    process.env.NODE_ENV = mode;
+    assert.equal(refreshCookieOptions(expires).secure, secure, mode);
+    assert.equal(clearedRefreshCookieOptions().secure, secure, mode);
+  }
+});
+
+test('logging out with a token replaced more than 10 seconds ago is treated as a copied token', async (t) => {
   const { server, store } = await createAuthApp(t, await storeWithUsers());
   const stolen = refreshCookie(await login(server, 'dana.saleh').expect(200)).value;
   const current = refreshCookie(await refresh(server, stolen).expect(200)).value;
+  store.sessionFor(current).rotatedAt = new Date(Date.now() - 11_000);
   await request(server).post('/api/auth/logout').set('Origin', ORIGIN)
     .set('Cookie', `transcend_refresh=${encodeURIComponent(stolen)}`).expect(204);
   assert.equal(store.sessions[0].revokedReason, 'reuse');
   assert.deepEqual(store.audit.map((entry) => entry.action), ['login', 'session_reuse']);
   await refresh(server, current).expect(401);
+});
+
+test('logging out with the token a refresh just replaced is a normal logout', async (t) => {
+  const { server, store } = await createAuthApp(t, await storeWithUsers());
+  const kept = refreshCookie(await login(server, 'dana.saleh').expect(200)).value;
+  await refresh(server, kept).expect(200);
+  await request(server).post('/api/auth/logout').set('Origin', ORIGIN)
+    .set('Cookie', `transcend_refresh=${encodeURIComponent(kept)}`).expect(204);
+  assert.equal(store.sessions[0].revokedReason, 'logout');
+  assert.deepEqual(store.audit.map((entry) => entry.action), ['login', 'logout']);
 });
 
 test('login works from the site\'s own hostname even when it differs from CORS_ORIGIN', async (t) => {

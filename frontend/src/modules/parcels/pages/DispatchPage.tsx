@@ -25,13 +25,14 @@ const queueFilters = [
 	{ value: 'exceptions', label: 'Exceptions · 12' },
 ];
 
+// Links are relative to this page (/app/<companySlug>/parcels), so they stay in the open company.
 // Sorted parcels without a driver are assigned; failed attempts are reassigned for a reattempt.
 function ParcelAction({ parcel }: { parcel: Parcel }) {
 	if (parcel.status === 'in_hub_sorted' && !parcel.driverId) {
-		return <Link to={`/app/parcels/assign?parcel=${parcel.id}`}>Assign</Link>;
+		return <Link to={`assign?parcel=${parcel.id}`}>Assign</Link>;
 	}
 	if (parcel.status === 'failed_attempt') {
-		return <Link to={`/app/parcels/assign?parcel=${parcel.id}`}>Reassign</Link>;
+		return <Link to={`assign?parcel=${parcel.id}`}>Reassign</Link>;
 	}
 	return <span aria-label="No action">—</span>;
 }
@@ -43,7 +44,7 @@ const columns: TableColumn<Parcel>[] = [
 		sortable: true,
 		className: 'font-medium whitespace-nowrap',
 		cell: (parcel) => (
-			<Link to={`/app/parcels/${parcel.id}`}>
+			<Link to={`${parcel.id}`}>
 				{parcel.tracking} · {parcel.recipient}
 			</Link>
 		),
@@ -75,10 +76,7 @@ export function DispatchPage() {
 				title="Dispatch & parcels"
 				description="Assign ready parcels and resolve delivery exceptions."
 				actions={
-					<Link
-						to="/app/parcels/assign"
-						className="btn btn-primary w-full md:w-auto md:px-12"
-					>
+					<Link to="assign" className="btn btn-primary w-full md:w-auto md:px-12">
 						Assign driver
 					</Link>
 				}

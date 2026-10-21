@@ -2,6 +2,9 @@
 	"language": {
 		"label": "Language"
 	},
+	"password": {
+		"show": "Show password"
+	},
 	"layout": {
 		"skipToContent": "Skip to content",
 		"openNavigation": "Open navigation",

@@ -21,7 +21,9 @@ test('the migrations add the sessions table and the documented roles and permiss
   const sessionColumns = async (name) => count(`SELECT COUNT(*) AS total FROM information_schema.columns
     WHERE table_schema = DATABASE() AND table_name = 'user_sessions' AND column_name = ?`, [name]);
   assert.equal(await sessionColumns('family_id'), 1);
-  assert.equal(await sessionColumns('previous_token_hash'), 0);
+  // previous_token_hash came back in 1792454400000, with rotated_at, for the 10-second reuse interval.
+  assert.equal(await sessionColumns('previous_token_hash'), 1);
+  assert.equal(await sessionColumns('rotated_at'), 1);
 });
 
 const { User } = require('../../dist/modules/users/entities/user.entity');
@@ -120,13 +122,13 @@ test('session times survive the round trip to the database', async () => {
   assert.equal(await sessions.refresh(issued.refreshToken, META, new Date(now.getTime() + 8 * DAY)), undefined);
 });
 
-test('a refresh token works once; using it again ends the session and is audited', async () => {
+test('a refresh token works once; using it again more than 10 seconds later ends the session and is audited', async () => {
   const sessions = createSessions();
   const userId = await createUser('session.reuse');
   const issued = await sessions.start(userId, META);
   const renewed = await sessions.refresh(issued.refreshToken, META);
   assert.ok(renewed);
-  assert.equal(await sessions.refresh(issued.refreshToken, META), undefined);
+  assert.equal(await sessions.refresh(issued.refreshToken, META, new Date(Date.now() + 11_000)), undefined);
   assert.equal(await sessions.refresh(renewed.refreshToken, META), undefined);
   assert.equal((await sessionRow(renewed.refreshToken)).revokedReason, 'reuse');
   assert.equal(await auditCount('session_reuse', userId), 1);
@@ -144,23 +146,36 @@ test('a token copied and refreshed twice is still caught when the old token come
   assert.equal(await auditCount('session_reuse', userId), 1);
 });
 
-test('logging out with an old token is recorded as a copied token', async () => {
+test('logging out with a token replaced more than 10 seconds ago is recorded as a copied token', async () => {
   const sessions = createSessions();
   const userId = await createUser('session.stale.logout');
   const stolen = await sessions.start(userId, META);
   const current = await sessions.refresh(stolen.refreshToken, META);
-  await sessions.end(stolen.refreshToken, META);
+  await sessions.end(stolen.refreshToken, META, new Date(Date.now() + 11_000));
   assert.equal((await sessionRow(current.refreshToken)).revokedReason, 'reuse');
   assert.equal(await auditCount('session_reuse', userId), 1);
   assert.equal(await auditCount('logout', userId), 0);
 });
 
-test('two refreshes with the same token at once: one wins and the session ends', async () => {
+test('two refreshes with the same token at once both work: the second counts as a missed answer', async () => {
   const sessions = createSessions();
-  const issued = await sessions.start(await createUser('session.race'), META);
+  const userId = await createUser('session.race');
+  const issued = await sessions.start(userId, META);
   const results = await Promise.all([sessions.refresh(issued.refreshToken, META), sessions.refresh(issued.refreshToken, META)]);
-  assert.equal(results.filter(Boolean).length, 1);
-  assert.equal(await sessions.refresh(results.find(Boolean).refreshToken, META), undefined);
+  assert.equal(results.filter(Boolean).length, 2);
+  assert.equal((await sessionRow(issued.refreshToken)).revokedAt, null);
+  assert.equal(await auditCount('session_reuse', userId), 0);
+});
+
+test('a replaced token works for 10 seconds after it was replaced, and repeating it does not stretch that', async () => {
+  const sessions = createSessions();
+  const userId = await createUser('session.missed');
+  const start = new Date(Math.floor(Date.now() / 1000) * 1000);
+  const kept = await sessions.start(userId, META, start);
+  assert.ok(await sessions.refresh(kept.refreshToken, META, start));
+  assert.ok(await sessions.refresh(kept.refreshToken, META, new Date(start.getTime() + 6_000)));
+  assert.equal(await sessions.refresh(kept.refreshToken, META, new Date(start.getTime() + 11_000)), undefined);
+  assert.equal(await auditCount('session_reuse', userId), 1);
 });
 
 test('logout ends the session and is audited', async () => {

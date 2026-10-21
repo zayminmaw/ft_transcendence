@@ -2,7 +2,7 @@ import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn } from 'typeor
 
 export type RevokeReason = 'logout' | 'reuse' | 'inactive';
 
-// Mirrors `user_sessions` (migrations 1792195200000 and 1792281600000): one row per login on a device.
+// Mirrors `user_sessions` (migrations 1792195200000, 1792281600000 and 1792454400000): one row per login on a device.
 @Entity('user_sessions')
 export class UserSession {
   @PrimaryGeneratedColumn({ type: 'bigint', unsigned: true })
@@ -18,6 +18,14 @@ export class UserSession {
   // SHA-256 of the current secret; the secret itself only lives in the cookie.
   @Column({ name: 'token_hash', type: 'char', length: 64, unique: true })
   tokenHash!: string;
+
+  // The secret the current one replaced, and when. A browser that missed that refresh's answer still holds it, so it
+  // keeps working for a few seconds (SessionsService.refresh).
+  @Column({ name: 'previous_token_hash', type: 'char', length: 64, nullable: true })
+  previousTokenHash!: string | null;
+
+  @Column({ name: 'rotated_at', type: 'timestamp', nullable: true })
+  rotatedAt!: Date | null;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamp' })
   createdAt!: Date;

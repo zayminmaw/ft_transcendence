@@ -3,6 +3,7 @@ export * from './AnalyticsCard/types.tsx';
 export { Button } from './Button/Button';
 export { Dialog } from './Dialog/Dialog';
 export { Input } from './Input/Input';
+export { PasswordInput } from './Input/PasswordInput';
 export { LanguageSwitcher } from './LanguageSwitcher/LanguageSwitcher';
 export { ModulePage } from './ModulePage';
 export { SelectFilter } from './SelectFilter/SelectFilter';

@@ -72,7 +72,7 @@ Migration `1792195260000-AuthReferenceData` seeds `platform_admin`, `org_admin`,
 
 ### `user_sessions`
 
-Added by migrations `1792195200000-UserSessions` and `1792281600000-UserSessionFamily` (not in the baseline). One row per login on a device. The refresh token is `<familyId>.<secret>` and lives only in an httpOnly cookie scoped to `/api/auth`; the table stores the family id and a SHA-256 hash of the current secret. Every refresh replaces the secret; presenting any older secret of a session ends that session (`revoked_reason = 'reuse'`).
+Added by migrations `1792195200000-UserSessions`, `1792281600000-UserSessionFamily` and `1792454400000-UserSessionReuseInterval` (not in the baseline). One row per login on a device. The refresh token is `<familyId>.<secret>` and lives only in an httpOnly cookie scoped to `/api/auth`; the table stores the family id and SHA-256 hashes of the current and just-replaced secrets. Every refresh replaces the secret; the just-replaced secret remains usable for 10 seconds after rotation to tolerate a lost refresh response. Presenting any older secret, or the just-replaced secret after that interval, ends the session (`revoked_reason = 'reuse'`).
 
 | Column | Data Type | Constraints | Description |
 |---|---|---|---|
@@ -80,6 +80,8 @@ Added by migrations `1792195200000-UserSessions` and `1792281600000-UserSessionF
 | `user_id` | `BIGINT UNSIGNED` | `NOT NULL`, `FK -> users.id` (`ON DELETE CASCADE`), indexed | Session owner |
 | `family_id` | `CHAR(22)` | `NOT NULL`, `UNIQUE` | Random session id; first part of the refresh token |
 | `token_hash` | `CHAR(64)` | `NOT NULL`, `UNIQUE` | SHA-256 (hex) of the current secret |
+| `previous_token_hash` | `CHAR(64)` | `NULL` | SHA-256 (hex) of the just-replaced secret |
+| `rotated_at` | `TIMESTAMP` | `NULL`, `DEFAULT NULL` | Start of the 10-second reuse interval; not extended by retries |
 | `created_at` | `TIMESTAMP` | `NOT NULL`, `DEFAULT CURRENT_TIMESTAMP` | Login time |
 | `last_used_at` | `TIMESTAMP` | `NOT NULL`, `DEFAULT CURRENT_TIMESTAMP` | Last refresh |
 | `idle_expires_at` | `TIMESTAMP` | `NOT NULL` | Last use + 7 days, never past the absolute expiry |

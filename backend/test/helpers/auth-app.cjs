@@ -32,7 +32,10 @@ function createFakeStore() {
   const sessionRecord = (row) => row && {
     id: row.id, userId: row.userId, idleExpiresAt: row.idleExpiresAt, absoluteExpiresAt: row.absoluteExpiresAt, revokedAt: row.revokedAt,
   };
-  const lockedSession = (row) => row && { ...sessionRecord(row), familyId: row.familyId, tokenHash: row.tokenHash };
+  const lockedSession = (row) => row && {
+    ...sessionRecord(row), familyId: row.familyId, tokenHash: row.tokenHash,
+    previousTokenHash: row.previousTokenHash ?? null, rotatedAt: row.rotatedAt ?? null,
+  };
   const revoke = async (id, reason, at) => {
     const row = store.sessions.find((session) => session.id === id && !session.revokedAt);
     if (row) Object.assign(row, { revokedAt: at, revokedReason: reason });
