@@ -20,6 +20,9 @@ const { PermissionsRepository } = require('../../dist/modules/rbac/permissions.r
 const { PlatformRolesRepository } = require('../../dist/modules/rbac/platform-roles.repository');
 const { User } = require('../../dist/modules/users/entities/user.entity');
 const { UsersRepository } = require('../../dist/modules/users/users.repository');
+const { createAccount } = require('../../dist/modules/users/accounts');
+const { MembersAuditRepository } = require('../../dist/modules/members/members-audit.repository');
+const { MembersRepository } = require('../../dist/modules/members/members.repository');
 
 const ORIGIN = 'http://localhost:5173';
 const ENV = { JWT_SECRET: 'test-secret-with-at-least-32-characters', JWT_ISSUER: 'transcend', JWT_AUDIENCE: 'transcend-web', CORS_ORIGIN: ORIGIN };
@@ -30,8 +33,11 @@ function createFakeStore() {
     users: [], sessions: [], audit: [], workspaces: new Map(), platformAdmins: new Set(), lastLogins: [],
     // Company access for the guard: memberships ({ organizationId, userId, roleId, isActive }) and each role's codes.
     memberships: [], rolePermissions: new Map(),
+    // Roles for the people list and the roles you may give: { id, code, name, description }.
+    roles: [],
   };
   let nextSessionId = 1;
+  let nextUserId = 100;
   const sameText = (a, b) => a.toLowerCase() === b.toLowerCase();
   const sessionRecord = (row) => row && {
     id: row.id, userId: row.userId, idleExpiresAt: row.idleExpiresAt, absoluteExpiresAt: row.absoluteExpiresAt, revokedAt: row.revokedAt,
@@ -40,6 +46,18 @@ function createFakeStore() {
     ...sessionRecord(row), familyId: row.familyId, tokenHash: row.tokenHash,
     previousTokenHash: row.previousTokenHash ?? null, rotatedAt: row.rotatedAt ?? null,
   };
+  // The same shape MembersRepository returns: account, role and membership of one company, sorted by username.
+  const memberRows = (organizationId) => store.memberships
+    .filter((row) => row.organizationId === organizationId)
+    .map((row) => {
+      const user = store.users.find((candidate) => candidate.id === row.userId);
+      const role = store.roles.find((candidate) => String(candidate.id) === row.roleId);
+      return {
+        userId: user.id, username: user.username, email: user.email, role: { id: role.id, code: role.code, name: role.name },
+        isActive: row.isActive, lastLoginAt: user.lastLoginAt ?? null, mustChangePassword: user.mustChangePassword === true,
+      };
+    })
+    .sort((a, b) => a.username.localeCompare(b.username));
   const revoke = async (id, reason, at) => {
     const row = store.sessions.find((session) => session.id === id && !session.revokedAt);
     if (row) Object.assign(row, { revokedAt: at, revokedReason: reason });
@@ -81,6 +99,37 @@ function createFakeStore() {
     },
     permissions: { findScope: async (roleId, code) => (store.rolePermissions.get(roleId)?.has(code) ? 'all' : undefined) },
     platformRoles: { hasPlatformAccess: async (userId) => store.platformAdmins.has(userId) },
+    companyMembers: {
+      // Every company role except platform_admin, sorted by name like the real query.
+      companyRoles: async () => store.roles
+        .filter((role) => role.code !== 'platform_admin')
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map(({ id, code, name, description }) => ({ id, code, name, description })),
+      list: async (organizationId) => memberRows(organizationId),
+      find: async (organizationId, userId) => memberRows(organizationId).find((member) => member.userId === userId),
+      // The real createAccount (its rules and messages), on an in-memory "manager".
+      create: async (organizationId, input) => {
+        const manager = {
+          existsBy: async (_entity, conditions) => conditions.some((condition) => store.users.some((user) =>
+            (condition.username && sameText(user.username, condition.username)) || (condition.email && sameText(user.email, condition.email)))),
+          create: (_entity, values) => ({ ...values }),
+          save: async (row) => {
+            const user = { id: String(nextUserId++), isActive: true, lastLoginAt: null, ...row };
+            store.users.push(user);
+            return user;
+          },
+        };
+        const userId = await createAccount(manager, { username: input.username, email: input.email, password: input.password, mustChangePassword: true });
+        store.memberships.push({ organizationId, userId, roleId: String(input.roleId), isActive: true });
+        return memberRows(organizationId).find((member) => member.userId === userId);
+      },
+      setActive: async (organizationId, userId, isActive) => {
+        Object.assign(store.memberships.find((row) => row.organizationId === organizationId && row.userId === userId), { isActive });
+      },
+      belongsElsewhere: async (organizationId, userId) =>
+        store.memberships.some((row) => row.userId === userId && row.organizationId !== organizationId) || store.platformAdmins.has(userId),
+    },
+    membersAudit: { record: async (action, entry) => { store.audit.push({ action, ...entry }); } },
   };
   // A refresh token is "<familyId>.<secret>"; the family id names the session row.
   store.sessionFor = (refreshToken) => store.sessions.find((row) => row.familyId === refreshToken.split('.')[0]);
@@ -92,10 +141,11 @@ function createFakeStore() {
 const ENTITIES = [User, OrganizationMember, UserRole, UserSession, AuditLog];
 
 // A fresh app per test, so throttling counts never leak from one test into another.
-// `controllers` adds fixture endpoints (e.g. a company endpoint) next to the real auth ones.
-async function createAuthApp(t, store = createFakeStore(), { controllers = [] } = {}) {
+// `controllers` adds fixture endpoints (e.g. a company endpoint) next to the real auth ones; `imports` adds modules
+// (e.g. MembersModule), whose repositories are replaced by the fakes above.
+async function createAuthApp(t, store = createFakeStore(), { controllers = [], imports = [] } = {}) {
   let builder = Test.createTestingModule({
-    imports: [ConfigModule.forRoot({ isGlobal: true, ignoreEnvFile: true, load: [() => ENV] }), AuthModule],
+    imports: [ConfigModule.forRoot({ isGlobal: true, ignoreEnvFile: true, load: [() => ENV] }), AuthModule, ...imports],
     controllers,
   });
   for (const entity of ENTITIES) builder = builder.overrideProvider(getRepositoryToken(entity)).useValue({});
@@ -106,6 +156,8 @@ async function createAuthApp(t, store = createFakeStore(), { controllers = [] } 
     .overrideProvider(OrganizationMembersRepository).useValue(store.repositories.members)
     .overrideProvider(PermissionsRepository).useValue(store.repositories.permissions)
     .overrideProvider(PlatformRolesRepository).useValue(store.repositories.platformRoles)
+    .overrideProvider(MembersRepository).useValue(store.repositories.companyMembers)
+    .overrideProvider(MembersAuditRepository).useValue(store.repositories.membersAudit)
     .compile();
   const app = moduleRef.createNestApplication({ logger: false });
   configureApp(app, ORIGIN);

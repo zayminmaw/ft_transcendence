@@ -223,6 +223,37 @@ test('a password change ends the other sessions and a reset ends them all, again
   assert.equal((await sessionRow(phone.refreshToken)).revokedReason, 'password_change');
 });
 
+const { MembersRepository } = require('../../dist/modules/members/members.repository');
+
+test('the members queries: the roles to give, the list, creating with a membership, switching off, and accounts used elsewhere', async () => {
+  const members = new MembersRepository(database);
+  // Every seeded company role except platform_admin, sorted by name ("Courier / Driver" ... "Tenant Admin").
+  assert.deepEqual((await members.companyRoles()).map((role) => role.code),
+    ['driver', 'dispatcher', 'finance', 'fleet_lead', 'hr_manager', 'hub_sorter', 'org_admin']);
+  const company = await createCompany('delta-db', 'Delta Parcels');
+  const other = await createCompany('epsilon-db', 'Epsilon Post');
+  const dispatcher = await database.getRepository(Role).findOneByOrFail({ code: 'dispatcher' });
+  const created = await members.create(company, { username: 'zed.db', email: 'zed.db@db.test', password: 'Correct-horse-1', roleId: dispatcher.id });
+  assert.deepEqual(created, {
+    userId: created.userId, username: 'zed.db', email: 'zed.db@db.test', role: { id: dispatcher.id, code: 'dispatcher', name: dispatcher.name },
+    isActive: true, lastLoginAt: null, mustChangePassword: true,
+  });
+  const amy = await createUser('amy.db');
+  await addMember(company, amy, 'finance');
+  assert.deepEqual((await members.list(company)).map((member) => member.username), ['amy.db', 'zed.db']);
+  assert.equal(await members.find(other, created.userId), undefined);
+  await members.setActive(company, created.userId, false);
+  assert.equal((await members.find(company, created.userId)).isActive, false);
+  assert.equal(await members.belongsElsewhere(company, created.userId), false);
+  await addMember(other, created.userId, 'driver', false);
+  assert.equal(await members.belongsElsewhere(company, created.userId), true);
+  await createPlatformRoles().grantPlatformAdmin(amy);
+  assert.equal(await members.belongsElsewhere(company, amy), true);
+  // A refused account leaves no membership behind (the transaction rolls back).
+  await assert.rejects(members.create(company, { username: 'ZED.DB', email: 'new.db@db.test', password: 'Correct-horse-1', roleId: dispatcher.id }), AccountError);
+  assert.equal((await members.list(company)).length, 2);
+});
+
 const { createPlatformAdmin, PlatformAdminError } = require('../../dist/cli/platform-admin');
 
 test('the first-admin command creates a platform admin and never reuses an account', async () => {
