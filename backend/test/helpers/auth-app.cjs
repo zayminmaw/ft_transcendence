@@ -26,7 +26,11 @@ const ENV = { JWT_SECRET: 'test-secret-with-at-least-32-characters', JWT_ISSUER:
 
 // In-memory stand-ins for the SQL repositories: same method names and return shapes. test:db checks the real SQL.
 function createFakeStore() {
-  const store = { users: [], sessions: [], audit: [], workspaces: new Map(), platformAdmins: new Set(), lastLogins: [] };
+  const store = {
+    users: [], sessions: [], audit: [], workspaces: new Map(), platformAdmins: new Set(), lastLogins: [],
+    // Company access for the guard: memberships ({ organizationId, userId, roleId, isActive }) and each role's codes.
+    memberships: [], rolePermissions: new Map(),
+  };
   let nextSessionId = 1;
   const sameText = (a, b) => a.toLowerCase() === b.toLowerCase();
   const sessionRecord = (row) => row && {
@@ -51,19 +55,31 @@ function createFakeStore() {
       findById: async (id) => store.users.find((user) => user.id === id),
       isActive: async (id) => Boolean(store.users.find((user) => user.id === id)?.isActive),
       touchLastLogin: async (id) => { store.lastLogins.push(id); },
+      updatePassword: async (id, passwordHash, mustChangePassword) => {
+        Object.assign(store.users.find((user) => user.id === id), { passwordHash, mustChangePassword });
+      },
     },
     sessions: {
       insert: async (session) => { store.sessions.push({ id: String(nextSessionId++), revokedAt: null, revokedReason: null, ...session }); },
       findActiveByFamilyId: async (familyId) => lockedSession(store.sessions.find((row) => row.familyId === familyId && !row.revokedAt)),
       revoke,
+      revokeAllForUser: async (userId, reason, at, keepFamilyId) => {
+        for (const row of store.sessions) {
+          if (row.userId === userId && !row.revokedAt && row.familyId !== keepFamilyId) Object.assign(row, { revokedAt: at, revokedReason: reason });
+        }
+      },
       transaction: (work) => work(sessionsTransaction),
     },
     audit: { record: async (action, userId, meta) => { store.audit.push({ action, userId, ip: meta.ip }); } },
     members: {
-      findActiveMembership: async () => undefined,
+      findActiveMembership: async (userId, organizationId) => {
+        const membership = store.memberships.find((row) => row.userId === userId && row.organizationId === organizationId && row.isActive);
+        const user = store.users.find((row) => row.id === userId);
+        return membership && user?.isActive ? { organizationId, roleId: membership.roleId } : undefined;
+      },
       findActiveWorkspaces: async (userId) => store.workspaces.get(userId) ?? [],
     },
-    permissions: { findScope: async () => undefined },
+    permissions: { findScope: async (roleId, code) => (store.rolePermissions.get(roleId)?.has(code) ? 'all' : undefined) },
     platformRoles: { hasPlatformAccess: async (userId) => store.platformAdmins.has(userId) },
   };
   // A refresh token is "<familyId>.<secret>"; the family id names the session row.
@@ -76,9 +92,11 @@ function createFakeStore() {
 const ENTITIES = [User, OrganizationMember, UserRole, UserSession, AuditLog];
 
 // A fresh app per test, so throttling counts never leak from one test into another.
-async function createAuthApp(t, store = createFakeStore()) {
+// `controllers` adds fixture endpoints (e.g. a company endpoint) next to the real auth ones.
+async function createAuthApp(t, store = createFakeStore(), { controllers = [] } = {}) {
   let builder = Test.createTestingModule({
     imports: [ConfigModule.forRoot({ isGlobal: true, ignoreEnvFile: true, load: [() => ENV] }), AuthModule],
+    controllers,
   });
   for (const entity of ENTITIES) builder = builder.overrideProvider(getRepositoryToken(entity)).useValue({});
   const moduleRef = await builder

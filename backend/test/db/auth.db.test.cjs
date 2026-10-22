@@ -209,6 +209,20 @@ test('createAccount refuses names that differ only in case, and of two racing cr
   assert.equal(await database.getRepository(User).countBy({ email: 'race.db@db.test' }), 1);
 });
 
+test('a password change ends the other sessions and a reset ends them all, against real rows', async () => {
+  const sessions = createSessions();
+  const userId = await createUser('sessions.end.db');
+  const phone = await sessions.start(userId, META);
+  const laptop = await sessions.start(userId, META);
+  await sessions.endOthers(userId, laptop.refreshToken, 'password_change');
+  assert.equal((await sessionRow(phone.refreshToken)).revokedReason, 'password_change');
+  assert.equal((await sessionRow(laptop.refreshToken)).revokedAt, null);
+  await sessions.endAll(userId, 'password_reset');
+  assert.equal((await sessionRow(laptop.refreshToken)).revokedReason, 'password_reset');
+  // An already ended session keeps the reason it ended with.
+  assert.equal((await sessionRow(phone.refreshToken)).revokedReason, 'password_change');
+});
+
 const { createPlatformAdmin, PlatformAdminError } = require('../../dist/cli/platform-admin');
 
 test('the first-admin command creates a platform admin and never reuses an account', async () => {

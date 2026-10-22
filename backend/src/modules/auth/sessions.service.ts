@@ -4,7 +4,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import { UsersRepository } from '../users';
 import { AuthAuditRepository } from './auth-audit.repository';
 import type { RequestMeta } from './request-meta';
-import type { UserSession } from './entities/user-session.entity';
+import type { RevokeReason, UserSession } from './entities/user-session.entity';
 import { SessionsRepository } from './sessions.repository';
 
 export const SESSION_IDLE_MS = 7 * 24 * 60 * 60 * 1000;
@@ -22,7 +22,7 @@ export interface IssuedSession {
 }
 
 type RefreshOutcome =
-  | { kind: 'rotated'; userId: string; refreshToken: string; absoluteExpiresAt: Date }
+  | { kind: 'rotated'; userId: string; mustChangePassword: boolean; refreshToken: string; absoluteExpiresAt: Date }
   | { kind: 'reused'; userId: string }
   | { kind: 'invalid' };
 
@@ -62,6 +62,18 @@ export class SessionsService {
     private readonly audit: AuthAuditRepository,
   ) {}
 
+  // The access token says when the account must still replace an admin-given password; the guards refuse everything
+  // else until it does (see @BeforePasswordChange()).
+  private signAccessToken(userId: string, mustChangePassword: boolean): Promise<string> {
+    return this.jwt.signAsync(mustChangePassword ? { sub: userId, mustChangePassword: true } : { sub: userId });
+  }
+
+  // A fresh access token after the password changed, without the flag.
+  async issueAccessToken(userId: string): Promise<string> {
+    const user = await this.users.findById(userId);
+    return this.signAccessToken(userId, user?.mustChangePassword === true);
+  }
+
   async start(userId: string, meta: RequestMeta, now = new Date()): Promise<IssuedSession> {
     const familyId = randomPart(16);
     const secret = randomPart(32);
@@ -75,7 +87,7 @@ export class SessionsService {
       userAgent: meta.userAgent,
       ipAddress: meta.ip,
     });
-    return { userId, refreshToken: `${familyId}.${secret}`, absoluteExpiresAt, accessToken: await this.jwt.signAsync({ sub: userId }) };
+    return { userId, refreshToken: `${familyId}.${secret}`, absoluteExpiresAt, accessToken: await this.issueAccessToken(userId) };
   }
 
   // Returns undefined when the token can't be used; the caller answers 401 and clears the cookie.
@@ -93,7 +105,8 @@ export class SessionsService {
         return { kind: 'reused', userId: session.userId };
       }
       if (session.idleExpiresAt <= now || session.absoluteExpiresAt <= now) return { kind: 'invalid' };
-      if (!(await this.users.isActive(session.userId))) {
+      const user = await this.users.findById(session.userId);
+      if (!user?.isActive) {
         await sessions.revoke(session.id, 'inactive', now);
         return { kind: 'invalid' };
       }
@@ -107,11 +120,30 @@ export class SessionsService {
         lastUsedAt: now,
         idleExpiresAt: idleExpiry(now, session.absoluteExpiresAt),
       });
-      return { kind: 'rotated', userId: session.userId, refreshToken: `${presented.familyId}.${next}`, absoluteExpiresAt: session.absoluteExpiresAt };
+      return {
+        kind: 'rotated',
+        userId: session.userId,
+        mustChangePassword: user.mustChangePassword,
+        refreshToken: `${presented.familyId}.${next}`,
+        absoluteExpiresAt: session.absoluteExpiresAt,
+      };
     });
     if (outcome.kind === 'reused') await this.audit.record('session_reuse', outcome.userId, meta);
     if (outcome.kind !== 'rotated') return undefined;
-    return { ...outcome, accessToken: await this.jwt.signAsync({ sub: outcome.userId }) };
+    const { mustChangePassword, ...issued } = outcome;
+    return { ...issued, accessToken: await this.signAccessToken(outcome.userId, mustChangePassword) };
+  }
+
+  // After a password change: every other session of the user ends; the one whose refresh token came with the request
+  // stays. Without that token (no cookie), all of them end.
+  async endOthers(userId: string, refreshToken: string | undefined, reason: RevokeReason, now = new Date()): Promise<void> {
+    const keepFamilyId = refreshToken ? parseRefreshToken(refreshToken)?.familyId : undefined;
+    await this.sessions.revokeAllForUser(userId, reason, now, keepFamilyId);
+  }
+
+  // After an admin reset: every session of the user ends.
+  async endAll(userId: string, reason: RevokeReason, now = new Date()): Promise<void> {
+    await this.sessions.revokeAllForUser(userId, reason, now);
   }
 
   async end(refreshToken: string, meta: RequestMeta, now = new Date()): Promise<void> {

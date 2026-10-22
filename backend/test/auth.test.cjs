@@ -163,6 +163,7 @@ test('me works without a company and returns the user, workspaces and platform a
     user: { id: '2', username: 'dana.saleh', email: 'dana@meridian.example.test' },
     workspaces: [{ id: '1', slug: 'meridian-courier', name: 'Meridian Courier' }],
     platformAccess: true,
+    mustChangePassword: false,
   });
   await request(server).get('/api/auth/me').expect(401);
   store.users[0].isActive = false;

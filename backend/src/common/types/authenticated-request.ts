@@ -6,6 +6,7 @@ export interface TenantContext {
 }
 
 export interface AuthenticatedRequest extends Request {
-  user?: { id: string };
+  // mustChangePassword comes from the access token: the account must still replace an admin-given password.
+  user?: { id: string; mustChangePassword: boolean };
   tenant?: TenantContext;
 }
