@@ -28,6 +28,7 @@ Usernames and emails are globally unique in the current baseline. A collision mu
 | `email` | `VARCHAR(191)` | `NOT NULL`, `UNIQUE` | Login and recovery email |
 | `password_hash` | `VARCHAR(255)` | `NOT NULL` | Hashed password (Argon2id/Bcrypt) |
 | `is_active` | `BOOLEAN` | `NOT NULL`, `DEFAULT TRUE` | Account active status flag |
+| `must_change_password` | `BOOLEAN` | `NOT NULL`, `DEFAULT FALSE` | The person must replace an admin-given or admin-reset password at the next login |
 | `last_login_at` | `TIMESTAMP` | `NULL` | Timestamp of most recent login |
 | `created_at` | `TIMESTAMP` | `NOT NULL`, `DEFAULT CURRENT_TIMESTAMP` | Account creation date |
 | `updated_at` | `TIMESTAMP` | `NOT NULL`, `ON UPDATE CURRENT_TIMESTAMP` | Last profile update |

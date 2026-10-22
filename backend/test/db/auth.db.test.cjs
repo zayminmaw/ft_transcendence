@@ -274,13 +274,13 @@ const { DEMO_ACCOUNTS, DEMO_PASSWORD, seedDemo } = require('../../dist/database/
 const { verifyPassword } = require('../../dist/modules/users/password');
 
 test('the demo seed adds everything once and skips it the second time', async () => {
-  assert.deepEqual(await seedDemo(database), { companiesCreated: 2, accountsCreated: 12, accountsSkipped: [] });
+  assert.deepEqual(await seedDemo(database), { companiesCreated: 2, accountsCreated: 13, accountsSkipped: [] });
   const again = await seedDemo(database);
   assert.deepEqual([again.companiesCreated, again.accountsCreated], [0, 0]);
   assert.deepEqual(again.accountsSkipped, DEMO_ACCOUNTS.map((account) => account.username));
   const demoIds = (await database.getRepository(User).findBy({ email: Like('%.example.test') })).map((user) => user.id);
-  assert.equal(demoIds.length, 12);
-  assert.equal(await database.getRepository(OrganizationMember).countBy({ userId: In(demoIds) }), 12);
+  assert.equal(demoIds.length, 13);
+  assert.equal(await database.getRepository(OrganizationMember).countBy({ userId: In(demoIds) }), 13);
   assert.equal(await database.getRepository(UserRole).countBy({ userId: In(demoIds) }), 2);
 });
 
@@ -297,4 +297,7 @@ test('the demo accounts cover the picker cases and share the demo password', asy
   assert.equal(await platformRoles.hasPlatformAccess(await id('zara.platform')), true);
   assert.equal(await platformRoles.hasPlatformAccess(await id('lina')), false);
   assert.equal(await verifyPassword((await users.findByLogin('lina')).passwordHash, DEMO_PASSWORD), true);
+  // new.hire shows the first-login change; everyone else uses the demo password as it is.
+  assert.equal((await users.findByLogin('new.hire')).mustChangePassword, true);
+  assert.equal((await users.findByLogin('lina')).mustChangePassword, false);
 });
