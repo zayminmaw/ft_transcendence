@@ -17,7 +17,7 @@ The required platform administration dashboard is planned. `organizations` repre
 
 Tenant onboarding must create an `organizations` row, its first administrator's `users` row, and an active `organization_members` row referencing the tenant-scoped `org_admin` role in one transaction. These records are required together; the schema's separate tables do not enforce that onboarding invariant automatically. Tenant administrator membership does not add a platform assignment to `user_roles`.
 
-Usernames and emails are globally unique in the current baseline. A collision must not silently attach or overwrite an existing account. Additional company accounts require `admin.manage_users` and an allowed role/membership in the same tenant; there is no public signup. Store only password hashes and never include credentials in audit payloads. Session persistence (`user_sessions`) and the role and permission seeds exist; secure credential handover, password recovery, and provisioning services remain to be implemented; any additional schema support requires new migrations. See [Tenant onboarding and login flow](Tenant-Onboarding-and-Login-Flow.md).
+Usernames and emails are globally unique in the current baseline. A collision must not silently attach or overwrite an existing account. Additional company accounts require `admin.manage_users` and an allowed role/membership in the same tenant; there is no public signup. Store only password hashes and never include credentials in audit payloads. Session persistence (`user_sessions`), the role and permission seeds, and company accounts exist: one shared account creation, a first password chosen by the admin that must be replaced at the first login (`must_change_password`), and admin password resets with a one-time password. Tenant provisioning remains to be implemented; any additional schema support requires new migrations. See [Tenant onboarding and login flow](Tenant-Onboarding-and-Login-Flow.md).
 
 ### `users`
 
@@ -88,7 +88,7 @@ Added by migrations `1792195200000-UserSessions`, `1792281600000-UserSessionFami
 | `idle_expires_at` | `TIMESTAMP` | `NOT NULL` | Last use + 7 days, never past the absolute expiry |
 | `absolute_expires_at` | `TIMESTAMP` | `NOT NULL` | Login + 30 days |
 | `revoked_at` | `TIMESTAMP` | `NULL` | When the session ended early |
-| `revoked_reason` | `VARCHAR(32)` | `NULL` | `logout`, `reuse`, or `inactive` |
+| `revoked_reason` | `VARCHAR(32)` | `NULL` | `logout`, `reuse`, `inactive`, `password_change` (the user changed their password; their other sessions end), or `password_reset` (an admin reset it; every session ends) |
 | `user_agent` | `VARCHAR(255)` | `NULL` | Browser, for a future device list |
 | `ip_address` | `VARCHAR(45)` | `NULL` | Client address at login |
 
