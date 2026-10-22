@@ -1,5 +1,5 @@
 import type { DataSource } from 'typeorm';
-import { hashPassword } from '../../modules/auth/password';
+import { hashPassword } from '../../modules/users/password';
 import { Organization } from '../../modules/organizations/entities/organization.entity';
 import { OrganizationMember } from '../../modules/organizations/entities/organization-member.entity';
 import { Role } from '../../modules/rbac/entities/role.entity';
@@ -19,6 +19,8 @@ interface DemoAccount {
   username: string;
   email: string;
   platformAdmin?: boolean;
+  // Logs in with the demo password, then must choose a new one (auth part 2a's first-login change).
+  mustChangePassword?: boolean;
   memberships: { company: string; role: string; active?: boolean }[];
 }
 
@@ -37,6 +39,7 @@ export const DEMO_ACCOUNTS: DemoAccount[] = [
   { username: 'zara.platform', email: 'zara@demo.example.test', platformAdmin: true, memberships: [{ company: 'meridian-courier', role: 'dispatcher' }] },
   { username: 'platform.ops', email: 'platform.ops@demo.example.test', platformAdmin: true, memberships: [] },
   { username: 'ex.member', email: 'ex.member@meridian.example.test', memberships: [{ company: 'meridian-courier', role: 'hub_sorter', active: false }] },
+  { username: 'new.hire', email: 'new.hire@meridian.example.test', mustChangePassword: true, memberships: [{ company: 'meridian-courier', role: 'dispatcher' }] },
 ];
 
 export interface DemoSeedResult {
@@ -65,7 +68,9 @@ export async function seedDemo(database: DataSource): Promise<DemoSeedResult> {
         result.accountsSkipped.push(account.username);
         continue;
       }
-      const user = await manager.save(manager.create(User, { username: account.username, email: account.email, passwordHash }));
+      const user = await manager.save(manager.create(User, {
+        username: account.username, email: account.email, passwordHash, mustChangePassword: account.mustChangePassword ?? false,
+      }));
       if (account.platformAdmin) await platformRoles.grantPlatformAdmin(user.id, manager);
       for (const membership of account.memberships) {
         const role = await manager.findOneBy(Role, { code: membership.role });

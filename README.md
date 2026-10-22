@@ -128,6 +128,8 @@ docker compose exec -it backend npm run create-platform-admin
 
 It refuses a username or email that already exists and never changes an existing account. The password needs 8-128 characters with an upper-case letter, a lower-case letter, a number, and a symbol.
 
+From then on, company admins (anyone whose role has `admin.manage_users`, `org_admin` by default) run their own people through `/api/members` with `X-Organization-Id`: list them, create an account (username, email, a first password, a role), deactivate or reactivate a membership, and reset a forgotten password (the answer holds a one-time password to hand over). A new or reset account must choose its own password at the next login with `POST /api/auth/password`; until then every other endpoint answers `403 AUTH_PASSWORD_CHANGE_REQUIRED`.
+
 For development and evaluation, load the demo companies and accounts:
 
 ```sh
@@ -147,6 +149,7 @@ docker compose exec backend npm run seed:demo -- --force
 | `zara.platform` | Platform admin, and Dispatcher at Meridian Courier |
 | `platform.ops` | Platform admin only |
 | `ex.member` | Inactive membership only (no workspace) |
+| `new.hire` | Dispatcher at Meridian Courier, must choose a new password at the first login |
 
 Log in with the username or the email (`<name>@meridian.example.test`, `@harbor.example.test`, or `@demo.example.test`). API clients such as curl or Postman must send `Origin` equal to `CORS_ORIGIN` (for example `-H 'Origin: https://localhost'`) on login, refresh, and logout; browsers do this on their own.
 

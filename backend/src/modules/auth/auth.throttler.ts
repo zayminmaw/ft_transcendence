@@ -13,6 +13,8 @@ export const AUTH_THROTTLERS: ThrottlerOptions[] = [
   { name: 'login', ttl: MINUTE, limit: 5, getTracker: (request) => `${request.ip}|${loginName(request)}` },
   { name: 'loginIp', ttl: MINUTE, limit: 20 },
   { name: 'refresh', ttl: MINUTE, limit: 30 },
+  // Changing your password checks the current one: a stolen access token mustn't be able to guess it.
+  { name: 'password', ttl: MINUTE, limit: 5, getTracker: (request) => (request.user as { id?: string } | undefined)?.id ?? request.ip },
 ];
 
 @Injectable()

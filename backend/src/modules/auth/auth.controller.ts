@@ -2,6 +2,7 @@ import { Body, Controller, Get, HttpCode, Post, Req, Res, UnauthorizedException,
 import { SkipThrottle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { Authenticated } from '../../common/decorators/authenticated.decorator';
+import { BeforePasswordChange } from '../../common/decorators/before-password-change.decorator';
 import { Public } from '../../common/decorators/public.decorator';
 import type { AuthenticatedRequest } from '../../common/types/authenticated-request';
 import { OrganizationMembersService } from '../organizations';
@@ -9,6 +10,7 @@ import { PlatformRolesRepository } from '../rbac';
 import { type User, UsersRepository } from '../users';
 import { AuthService } from './auth.service';
 import { AuthThrottlerGuard } from './auth.throttler';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { LoginDto } from './dto/login.dto';
 import { clearRefreshCookie, REFRESH_COOKIE, setRefreshCookie } from './refresh-cookie';
 import { requestMeta } from './request-meta';
@@ -38,7 +40,7 @@ export class AuthController {
   @HttpCode(200)
   // Another site must not be able to log a visitor into a different account (login CSRF via an auto-submitted form).
   @UseGuards(SameOriginGuard)
-  @SkipThrottle({ refresh: true })
+  @SkipThrottle({ refresh: true, password: true })
   async login(@Body() body: LoginDto, @Req() request: Request, @Res({ passthrough: true }) response: Response) {
     const meta = requestMeta(request);
     const user = await this.auth.verifyLogin(body.login, body.password, meta);
@@ -50,7 +52,7 @@ export class AuthController {
   @Post('refresh')
   @HttpCode(200)
   @UseGuards(SameOriginGuard)
-  @SkipThrottle({ login: true, loginIp: true })
+  @SkipThrottle({ login: true, loginIp: true, password: true })
   async refresh(@Req() request: Request, @Res({ passthrough: true }) response: Response) {
     const token: unknown = request.cookies?.[REFRESH_COOKIE];
     const session = typeof token === 'string' ? await this.sessions.refresh(token, requestMeta(request)) : undefined;
@@ -66,7 +68,7 @@ export class AuthController {
   @Post('logout')
   @HttpCode(204)
   @UseGuards(SameOriginGuard)
-  @SkipThrottle({ login: true, loginIp: true })
+  @SkipThrottle({ login: true, loginIp: true, password: true })
   async logout(@Req() request: Request, @Res({ passthrough: true }) response: Response): Promise<void> {
     const token: unknown = request.cookies?.[REFRESH_COOKIE];
     if (typeof token === 'string') await this.sessions.end(token, requestMeta(request));
@@ -74,8 +76,9 @@ export class AuthController {
   }
 
   @Authenticated()
+  @BeforePasswordChange()
   @Get('me')
-  @SkipThrottle({ login: true, loginIp: true, refresh: true })
+  @SkipThrottle({ login: true, loginIp: true, refresh: true, password: true })
   async me(@Req() request: AuthenticatedRequest) {
     const userId = request.user!.id;
     const user = await this.users.findById(userId);
@@ -84,7 +87,19 @@ export class AuthController {
       this.members.listActiveWorkspaces(userId),
       this.platformRoles.hasPlatformAccess(userId),
     ]);
-    return { user: publicUser(user), workspaces, platformAccess };
+    return { user: publicUser(user), workspaces, platformAccess, mustChangePassword: user.mustChangePassword === true };
+  }
+
+  @Authenticated()
+  @BeforePasswordChange()
+  @Post('password')
+  @HttpCode(200)
+  @SkipThrottle({ login: true, loginIp: true, refresh: true })
+  async changePassword(@Body() body: ChangePasswordDto, @Req() request: AuthenticatedRequest) {
+    const userId = request.user!.id;
+    const token: unknown = request.cookies?.[REFRESH_COOKIE];
+    await this.auth.changePassword(userId, body, typeof token === 'string' ? token : undefined, requestMeta(request));
+    return { accessToken: await this.sessions.issueAccessToken(userId) };
   }
 
   private respondWithSession(response: Response, session: IssuedSession, user: User) {

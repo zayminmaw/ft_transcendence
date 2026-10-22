@@ -4,7 +4,7 @@ import { Repository } from 'typeorm';
 import { AuditLog } from './entities/audit-log.entity';
 import type { RequestMeta } from './request-meta';
 
-export type AuthAuditAction = 'login' | 'login_failed' | 'logout' | 'session_reuse';
+export type AuthAuditAction = 'login' | 'login_failed' | 'logout' | 'session_reuse' | 'password_changed';
 
 @Injectable()
 export class AuthAuditRepository {

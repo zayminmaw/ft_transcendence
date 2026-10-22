@@ -20,6 +20,10 @@ export class UsersRepository {
     return this.users.existsBy({ id, isActive: true });
   }
 
+  async updatePassword(id: string, passwordHash: string, mustChangePassword: boolean): Promise<void> {
+    await this.users.update({ id }, { passwordHash, mustChangePassword });
+  }
+
   async touchLastLogin(id: string): Promise<void> {
     await this.users.update({ id }, { lastLoginAt: new Date() });
   }
