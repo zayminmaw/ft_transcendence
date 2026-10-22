@@ -249,3 +249,34 @@ test('logging out with the token a refresh just replaced is a normal logout', as
   assert.equal(store.sessions[0].revokedReason, 'logout');
   assert.deepEqual(store.audit.map((entry) => entry.action), ['login', 'logout']);
 });
+
+test('login works from the site\'s own hostname even when it differs from CORS_ORIGIN', async (t) => {
+  const { server } = await createAuthApp(t, await storeWithUsers());
+  // Opening the app by IP: the browser sends Origin https://127.0.0.1; NGINX passes Host 127.0.0.1 and
+  // X-Forwarded-Proto https.
+  await request(server).post('/api/auth/login').set('Host', '127.0.0.1').set('X-Forwarded-Proto', 'https')
+    .set('Origin', 'https://127.0.0.1').send({ login: 'dana.saleh', password: PASSWORD }).expect(200);
+});
+
+test('refusals from another site or another origin on the same host carry AUTH_FORBIDDEN_ORIGIN', async (t) => {
+  const { server } = await createAuthApp(t, await storeWithUsers());
+  // A different login name per try, so the 5-per-minute login limit (checked first) never answers instead.
+  const attempt = (headers, index) => {
+    let call = request(server).post('/api/auth/login').set('Host', 'localhost').set('X-Forwarded-Proto', 'https');
+    for (const [name, value] of Object.entries(headers)) call = call.set(name, value);
+    return call.send({ login: `origin.check${index}`, password: PASSWORD }).expect(403);
+  };
+  for (const [index, headers] of [
+    { Origin: 'https://evil.example' },
+    { Origin: 'https://evil.example', 'X-Forwarded-Host': 'evil.example' },
+    // Same hostname, but another app on another port or scheme is a different origin.
+    { Origin: 'http://localhost:9999' },
+    { Origin: 'http://localhost' },
+    { Origin: 'null' },
+    {},
+  ].entries()) {
+    const refused = await attempt(headers, index);
+    assert.equal(refused.body.code, 'AUTH_FORBIDDEN_ORIGIN');
+    assert.equal(refused.body.message, 'Requests must come from this site.');
+  }
+});

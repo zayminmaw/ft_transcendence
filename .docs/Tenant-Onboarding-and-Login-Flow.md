@@ -2,7 +2,7 @@
 
 ## Status and scope
 
-This is the required product behavior and the contract for the proposed Figma screens. Tenant provisioning, account creation, login/refresh, and authenticated frontend routing still need implementation. The current dashboard routes are layout previews; this document does not make them authenticated services.
+This is the required product behavior and the contract for the proposed Figma screens. The backend login, refresh, logout, and membership-discovery endpoints (`/api/auth/*`) are implemented; tenant provisioning, account creation, the login screens, and authenticated frontend routing still need implementation. The current dashboard routes are layout previews; this document does not make them authenticated services.
 
 There is no public signup. Accounts are provisioned by authorized administrators. A tenant is a courier organization, not a merchant account.
 
@@ -45,7 +45,7 @@ Create the account and tenant membership together, with an allowed role and a sa
 5. Tenant requests continue to require an active user, active organization, active membership, and the exact required permission. Suspended tenants and inactive memberships cannot enter tenant business workflows, even if the account can authenticate.
 6. On logout or session expiry, clear the client session and organization-scoped cache and return to login. Keep redirects local and limited to routes the user is authorized to access.
 
-Account-only endpoints such as current-user details and logout need an explicit authenticated-without-tenant policy. If an `@Authenticated()` decorator is introduced, retain JWT and active-user verification and update both the permission guard and `TenantContextInterceptor` for that explicit policy. Unannotated protected endpoints must still be denied; tenant and platform endpoints retain their independent authorization requirements. This policy is proposed, not implemented by this documentation change.
+Account-only endpoints such as current-user details and logout need an explicit authenticated-without-tenant policy. If an `@Authenticated()` decorator is introduced, retain JWT and active-user verification and update both the permission guard and `TenantContextInterceptor` for that explicit policy. Unannotated protected endpoints must still be denied; tenant and platform endpoints retain their independent authorization requirements. This policy is implemented as `@Authenticated()` (used by `GET /api/auth/me`); combining it with `@RequirePermission()` is refused.
 
 ## Company workspace picker (required, not implemented)
 
