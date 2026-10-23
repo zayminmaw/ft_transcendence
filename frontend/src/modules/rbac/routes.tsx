@@ -1,14 +1,4 @@
 import type { RouteObject } from 'react-router-dom';
-import { ModulePage } from '@global-components';
+import { PeopleAccessPage } from './pages/PeopleAccessPage';
 
-export const rbacRoutes: RouteObject[] = [
-	{
-		path: 'rbac',
-		element: (
-			<ModulePage
-				title="Access control"
-				description="Manage user accounts, organization roles, and access permissions."
-			/>
-		),
-	},
-];
+export const rbacRoutes: RouteObject[] = [{ path: 'rbac', element: <PeopleAccessPage /> }];

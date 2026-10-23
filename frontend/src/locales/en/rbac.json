@@ -1,0 +1,39 @@
+{
+	"page": {
+		"title": "People & access",
+		"description": "Create company accounts and manage their access within {{company}}.",
+		"loading": "Loading people…",
+		"noAccess": "You don't have access to People & access. Ask your company administrator.",
+		"loadFailed": "The people list could not be loaded.",
+		"retry": "Try again"
+	},
+	"tiles": {
+		"members": "Organization members",
+		"membersNote": "Active and switched off",
+		"active": "Active users",
+		"inactive": "{{n}} inactive",
+		"admins": "Tenant administrators",
+		"adminsNote": "This company only"
+	},
+	"table": {
+		"title": "Organization members",
+		"description": "Accounts with access to this company",
+		"member": "Member",
+		"role": "Role",
+		"status": "Account status",
+		"lastLogin": "Last login",
+		"never": "Never",
+		"search": "Search by username or email",
+		"empty": "No members yet.",
+		"noMatch": "No one matches your search."
+	},
+	"status": {
+		"active": "Active",
+		"inactive": "Inactive",
+		"mustChange": "Must change password"
+	},
+	"tip": {
+		"title": "Access follows responsibility.",
+		"description": "Each person gets the role their job needs. Company roles never grant platform access."
+	}
+}
