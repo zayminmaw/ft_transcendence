@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { AnalyticsCard, Button, ModulePage, Table, TipCard } from '@global-components';
 import type { TableColumn } from '@global-components';
+import { useCompanyPath } from '@hooks/useCompanyPath';
 import { useCurrentWorkspace } from '@modules/auth';
 import { ApiError } from '@services/api-client';
 import { formatDate, formatNumber } from '@utils/format';
@@ -11,12 +13,23 @@ import { useMembers } from '../hooks';
 // People & access: the company's members for anyone with admin.manage_users (the API refuses everyone else).
 export function PeopleAccessPage() {
 	const { t, i18n } = useTranslation('rbac');
+	const companyPath = useCompanyPath();
 	const company = useCurrentWorkspace()?.name ?? '';
 	const members = useMembers();
 	const [search, setSearch] = useState('');
 
 	const header = (
-		<ModulePage title={t('page.title')} description={t('page.description', { company })} />
+		<ModulePage
+			title={t('page.title')}
+			description={t('page.description', { company })}
+			actions={
+				members.isSuccess && (
+					<Link to={companyPath('rbac/new')} className="btn btn-primary">
+						{t('page.create')}
+					</Link>
+				)
+			}
+		/>
 	);
 
 	if (members.isPending)

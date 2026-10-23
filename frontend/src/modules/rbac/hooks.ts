@@ -1,7 +1,7 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ApiError } from '@services/api-client';
 import { tenantQueryKey } from '@utils/query-keys';
-import { listMembers } from './api';
+import { createMember, listAssignableRoles, listMembers } from './api';
 
 // A refusal (403 without user management, 404) won't change on a second try; a network or server error might.
 const retryServerErrors = (failures: number, error: unknown) =>
@@ -12,5 +12,28 @@ export function useMembers() {
 		queryKey: tenantQueryKey('members'),
 		queryFn: listMembers,
 		retry: retryServerErrors,
+	});
+}
+
+export function useAssignableRoles() {
+	return useQuery({
+		queryKey: tenantQueryKey('members', 'assignable-roles'),
+		queryFn: listAssignableRoles,
+		retry: retryServerErrors,
+	});
+}
+
+function useReloadMembers() {
+	const queryClient = useQueryClient();
+	return () => queryClient.invalidateQueries({ queryKey: tenantQueryKey('members') });
+}
+
+export function useCreateMember() {
+	const reload = useReloadMembers();
+	return useMutation({
+		mutationFn: createMember,
+		// The variables hold the initial password: don't keep them once the page is gone.
+		gcTime: 0,
+		onSuccess: reload,
 	});
 }
