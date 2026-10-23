@@ -8,7 +8,7 @@ import { z } from 'zod';
 import { Button, Input, ModulePage, PasswordInput, TipCard } from '@global-components';
 import { useCompanyPath } from '@hooks/useCompanyPath';
 import { useCurrentWorkspace } from '@modules/auth';
-import { meetsPasswordRule } from '@utils/password';
+import { generatePassword, meetsPasswordRule } from '@utils/password';
 import type { Member, NewMember } from '../api';
 import { UserCreatedDialog } from '../components/UserCreatedDialog';
 import { errorCode, memberErrorKey } from '../errors';
@@ -51,11 +51,15 @@ export function CreateUserPage() {
 	const roles = useAssignableRoles();
 	const create = useCreateMember();
 	const [created, setCreated] = useState<Member | null>(null);
+	// A generated password is shown, so the admin can copy it before creating.
+	const [generated, setGenerated] = useState(false);
+	const [passwordVisible, setPasswordVisible] = useState(false);
 	const roleId = useId();
 	const {
 		register,
 		handleSubmit,
 		setError,
+		setValue,
 		control,
 		formState: { errors },
 	} = useForm<NewMember>({
@@ -133,11 +137,34 @@ export function CreateUserPage() {
 							required
 							autoComplete="new-password"
 							error={fieldError(errors.password?.message)}
+							visible={passwordVisible}
+							onVisibleChange={setPasswordVisible}
 							{...register('password')}
 						/>
-						{!errors.password && (
+						<div className="mt-1 flex flex-wrap items-start justify-between gap-2">
+							{!errors.password && (
+								<p className="text-xs text-[var(--color-slate)]">
+									{t('errors.passwordRule')}
+								</p>
+							)}
+							<button
+								type="button"
+								className="btn btn-ghost btn-sm ms-auto bg-base-200"
+								onClick={() => {
+									setValue('password', generatePassword(), {
+										shouldDirty: true,
+										shouldValidate: true,
+									});
+									setGenerated(true);
+									setPasswordVisible(true);
+								}}
+							>
+								{t('create.generate')}
+							</button>
+						</div>
+						{generated && (
 							<p className="mt-1 text-xs text-[var(--color-slate)]">
-								{t('errors.passwordRule')}
+								{t('create.generatedNote')}
 							</p>
 						)}
 					</div>

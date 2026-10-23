@@ -3,10 +3,19 @@ import type { ComponentProps } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Input } from './Input';
 
-// A password field with an eye button at its end that shows or hides what was typed.
-export function PasswordInput(props: Omit<ComponentProps<typeof Input>, 'type' | 'suffix'>) {
+// A password field with an eye button at its end that shows or hides what was typed. A page can also show it itself
+// (e.g. after generating one) with `visible` and `onVisibleChange`; without them the eye button alone decides.
+export function PasswordInput({
+	visible: shownByPage,
+	onVisibleChange,
+	...props
+}: Omit<ComponentProps<typeof Input>, 'type' | 'suffix'> & {
+	visible?: boolean;
+	onVisibleChange?: (visible: boolean) => void;
+}) {
 	const { t } = useTranslation();
-	const [visible, setVisible] = useState(false);
+	const [shown, setShown] = useState(false);
+	const visible = shownByPage ?? shown;
 
 	return (
 		<Input
@@ -18,7 +27,10 @@ export function PasswordInput(props: Omit<ComponentProps<typeof Input>, 'type' |
 					className="btn btn-ghost btn-sm btn-square"
 					aria-label={t('password.show')}
 					aria-pressed={visible}
-					onClick={() => setVisible((shown) => !shown)}
+					onClick={() => {
+						setShown(!visible);
+						onVisibleChange?.(!visible);
+					}}
 				>
 					<EyeIcon crossed={visible} />
 				</button>

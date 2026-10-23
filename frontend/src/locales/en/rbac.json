@@ -44,6 +44,8 @@
 		"username": "Username",
 		"email": "Login email",
 		"password": "Initial password",
+		"generate": "Generate",
+		"generatedNote": "Copy it before creating: it isn't shown again.",
 		"role": "Role",
 		"chooseRole": "Choose a role",
 		"roleRequired": "Choose a role.",
