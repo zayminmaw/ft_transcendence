@@ -24,3 +24,18 @@ export function listAssignableRoles() {
 export function createMember(values: NewMember) {
 	return apiRequest<Member>('members', { method: 'POST', body: JSON.stringify(values) });
 }
+
+export function setMemberActive({ userId, isActive }: { userId: string; isActive: boolean }) {
+	return apiRequest<Member>(`members/${encodeURIComponent(userId)}`, {
+		method: 'PATCH',
+		body: JSON.stringify({ isActive }),
+	});
+}
+
+// The answer is the one-time password: shown once, never stored.
+export function resetMemberPassword(userId: string) {
+	return apiRequest<{ temporaryPassword: string }>(
+		`members/${encodeURIComponent(userId)}/password-reset`,
+		{ method: 'POST' },
+	);
+}

@@ -1,7 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ApiError } from '@services/api-client';
 import { tenantQueryKey } from '@utils/query-keys';
-import { createMember, listAssignableRoles, listMembers } from './api';
+import {
+	createMember,
+	listAssignableRoles,
+	listMembers,
+	resetMemberPassword,
+	setMemberActive,
+} from './api';
 
 // A refusal (403 without user management, 404) won't change on a second try; a network or server error might.
 const retryServerErrors = (failures: number, error: unknown) =>
@@ -35,5 +41,21 @@ export function useCreateMember() {
 		// The variables hold the initial password: don't keep them once the page is gone.
 		gcTime: 0,
 		onSuccess: reload,
+	});
+}
+
+export function useSetMemberActive() {
+	const reload = useReloadMembers();
+	// A refusal (someone else changed this person meanwhile) reloads the list too.
+	return useMutation({ mutationFn: setMemberActive, onSettled: reload });
+}
+
+export function useResetMemberPassword() {
+	const reload = useReloadMembers();
+	return useMutation({
+		mutationFn: resetMemberPassword,
+		// The answer is the one-time password: the dialog shows it, the cache never keeps it.
+		gcTime: 0,
+		onSettled: reload,
 	});
 }

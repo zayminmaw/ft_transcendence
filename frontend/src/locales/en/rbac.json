@@ -23,6 +23,10 @@
 		"role": "Role",
 		"status": "Account status",
 		"lastLogin": "Last login",
+		"action": "Action",
+		"manage": "Manage",
+		"manageNamed": "Manage {{name}}",
+		"you": "You",
 		"never": "Never",
 		"search": "Search by username or email",
 		"empty": "No members yet.",
@@ -36,6 +40,27 @@
 	"tip": {
 		"title": "Access follows responsibility.",
 		"description": "Each person gets the role their job needs. Company roles never grant platform access."
+	},
+	"manage": {
+		"title": "Manage {{name}}",
+		"description": "Access to {{company}}.",
+		"email": "Email",
+		"role": "Role",
+		"status": "Status",
+		"lastLogin": "Last login",
+		"deactivate": "Deactivate",
+		"reactivate": "Reactivate",
+		"reset": "Reset password",
+		"cancel": "Cancel",
+		"close": "Close",
+		"deactivateConfirm": "{{name}} loses access to {{company}} on their next request. Their other companies aren't affected.",
+		"reactivateConfirm": "{{name}} gets access to {{company}} again, with the same role.",
+		"resetConfirm": "This logs {{name}} out everywhere and gives you a one-time password to hand over.",
+		"passwordIntro": "{{name}}'s one-time password:",
+		"passwordNote": "Shown once. Hand it over securely; they'll choose their own at the next login.",
+		"copy": "Copy",
+		"copied": "Copied",
+		"listReloaded": "The list has been reloaded."
 	},
 	"create": {
 		"back": "Back to People & access",

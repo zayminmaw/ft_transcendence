@@ -3,11 +3,13 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { AnalyticsCard, Button, ModulePage, Table, TipCard } from '@global-components';
 import type { TableColumn } from '@global-components';
+import { useAuth } from '@hooks/useAuth';
 import { useCompanyPath } from '@hooks/useCompanyPath';
 import { useCurrentWorkspace } from '@modules/auth';
 import { ApiError } from '@services/api-client';
 import { formatDate, formatNumber } from '@utils/format';
 import type { Member } from '../api';
+import { ManageMemberDialog } from '../components/ManageMemberDialog';
 import { useMembers } from '../hooks';
 
 // People & access: the company's members for anyone with admin.manage_users (the API refuses everyone else).
@@ -15,8 +17,10 @@ export function PeopleAccessPage() {
 	const { t, i18n } = useTranslation('rbac');
 	const companyPath = useCompanyPath();
 	const company = useCurrentWorkspace()?.name ?? '';
+	const { userId } = useAuth();
 	const members = useMembers();
 	const [search, setSearch] = useState('');
+	const [managedId, setManagedId] = useState<string | null>(null);
 
 	const header = (
 		<ModulePage
@@ -74,6 +78,7 @@ export function PeopleAccessPage() {
 					username.toLowerCase().includes(needle) || email.toLowerCase().includes(needle),
 			)
 		: list;
+	const managed = list.find((member) => member.userId === managedId);
 
 	const columns: TableColumn<Member>[] = [
 		{
@@ -101,6 +106,23 @@ export function PeopleAccessPage() {
 							dateStyle: 'medium',
 						})
 					: t('table.never'),
+		},
+		{
+			key: 'action',
+			header: t('table.action'),
+			cell: (member) =>
+				member.userId === userId ? (
+					<span aria-label={t('table.you')}>—</span>
+				) : (
+					<button
+						type="button"
+						className="btn btn-ghost btn-sm"
+						aria-label={t('table.manageNamed', { name: member.username })}
+						onClick={() => setManagedId(member.userId)}
+					>
+						{t('table.manage')}
+					</button>
+				),
 		},
 	];
 
@@ -143,6 +165,14 @@ export function PeopleAccessPage() {
 				/>
 			</section>
 			<TipCard title={t('tip.title')} description={t('tip.description')} />
+			{managed && (
+				<ManageMemberDialog
+					key={managed.userId}
+					member={managed}
+					company={company}
+					onClose={() => setManagedId(null)}
+				/>
+			)}
 		</div>
 	);
 }
