@@ -59,14 +59,29 @@ test('WebSocket notifications reach only authenticated, authorized members of th
 	const orgTwoOtherUser = await connect({ token: token('9'), organizationId: '2' });
 
 	const gateway = app.get(EventsGateway);
-	await gateway.sendNotification({ organizationId: '1', permission: 'parcels.view' }, { action: 'CREATE', module: 'parcels', data: { id: '10' } });
-	await gateway.sendNotification({ organizationId: '2', permission: 'parcels.view', userId: '9' }, { action: 'UPDATE', module: 'parcels', data: { id: '20' } });
-	await gateway.sendNotification({ organizationId: '2', permission: 'billing.view' }, { action: 'UPDATE', module: 'billing', data: { id: '30' } });
-	await assert.rejects(gateway.sendNotification({ organizationId: '', permission: 'parcels.view' }, { action: 'CREATE', module: 'parcels', data: {} }));
+	await gateway.sendNotification({ organizationId: '1', permission: 'parcels.view' }, { action: 'CREATE', module: 'parcels', resourceId: '10' });
+	await gateway.sendNotification({ organizationId: '2', permission: 'parcels.view', userId: '9' }, { action: 'UPDATE', module: 'parcels', resourceId: '20' });
+	await gateway.sendNotification({ organizationId: '2', permission: 'billing.view' }, { action: 'UPDATE', module: 'billing', resourceId: '30' });
+	await assert.rejects(gateway.sendNotification({ organizationId: '', permission: 'parcels.view' }, { action: 'CREATE', module: 'parcels', resourceId: '1' }));
+	await assert.rejects(gateway.sendNotification({ organizationId: '1', permission: 'parcels.view' }, { action: 'CREATE', module: 'parcels', resourceId: 'x' }));
 	await new Promise((resolve) => setTimeout(resolve, 100));
 
-	assert.deepEqual(orgOneViewer.received.map((payload) => [payload.organizationId, payload.data.id]), [['1', '10']]);
+	assert.deepEqual(orgOneViewer.received.map((payload) => [payload.organizationId, payload.resourceId]), [['1', '10']]);
 	assert.deepEqual(orgOneWithoutPermission.received, []);
 	assert.deepEqual(orgTwoMember.received, []);
-	assert.deepEqual(orgTwoOtherUser.received.map((payload) => [payload.organizationId, payload.data.id]), [['2', '20']]);
+	assert.deepEqual(orgTwoOtherUser.received.map((payload) => [payload.organizationId, payload.resourceId]), [['2', '20']]);
+	assert.deepEqual(Object.keys(orgOneViewer.received[0]).sort(), ['action', 'module', 'organizationId', 'resourceId', 'timestamp']);
+
+	// The server closes a socket when its access token expires, so a revoked membership cannot keep it open.
+	const shortLived = await connect({ token: token('7', '2s'), organizationId: '1' });
+	const reason = await new Promise((resolve) => shortLived.on('disconnect', resolve));
+	assert.equal(reason, 'io server disconnect');
+});
+
+test('canAccess allows only permissions granted with the all scope', async () => {
+	const scopes = { 'parcels.view': 'all', 'parcels.update_status': 'assigned_only' };
+	const policy = new PermissionPolicyService({ async findScope(roleId, permission) { return scopes[permission]; } });
+	assert.equal(await policy.canAccess('3', 'parcels.view'), true);
+	assert.equal(await policy.canAccess('3', 'parcels.update_status'), false);
+	assert.equal(await policy.canAccess('3', 'billing.view'), false);
 });
