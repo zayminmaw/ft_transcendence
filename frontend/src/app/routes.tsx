@@ -1,4 +1,4 @@
-import { createBrowserRouter } from 'react-router-dom';
+import { createBrowserRouter, type RouteObject } from 'react-router-dom';
 import { organizationsRoutes } from '@modules/organizations';
 import { clientsRoutes } from '@modules/clients';
 import { staffRoutes } from '@modules/staff';
@@ -9,23 +9,36 @@ import { billingRoutes } from '@modules/billing';
 import { rbacRoutes } from '@modules/rbac';
 import { marketingRoutes } from '@modules/marketing';
 import { platformRoutes } from '@modules/platform';
-import { authRoutes, ChangePasswordPage, WorkspacePickerPage } from '@modules/auth';
+import {
+	authRoutes,
+	ChangePasswordPage,
+	RequirePermission,
+	WorkspacePickerPage,
+} from '@modules/auth';
 import { App } from './App';
 import { CompanyBoundary } from './CompanyBoundary';
+import { MODULE_ACCESS } from './navigation';
 import { RequirePasswordChosen } from './RequirePasswordChosen';
 import { RequirePlatform } from './RequirePlatform';
 import { RequireSession } from './RequireSession';
 import { CompatibilityRedirect, NotFoundPage, OverviewPage } from './WorkspacePages';
 
+// Every module page needs what its sidebar link needs; a pasted link without it shows "no access".
+const allowed = (module: keyof typeof MODULE_ACCESS, routes: RouteObject[]) =>
+	routes.map((route) => ({
+		...route,
+		element: <RequirePermission {...MODULE_ACCESS[module]}>{route.element}</RequirePermission>,
+	}));
+
 const workspaceRoutes = [
-	...organizationsRoutes,
-	...clientsRoutes,
-	...staffRoutes,
-	...driversRoutes,
-	...assetsRoutes,
-	...parcelsRoutes,
-	...billingRoutes,
-	...rbacRoutes,
+	...allowed('organizations', organizationsRoutes),
+	...allowed('clients', clientsRoutes),
+	...allowed('staff', staffRoutes),
+	...allowed('drivers', driversRoutes),
+	...allowed('assets', assetsRoutes),
+	...allowed('parcels', parcelsRoutes),
+	...allowed('billing', billingRoutes),
+	...allowed('rbac', rbacRoutes),
 ];
 
 export const router = createBrowserRouter([
