@@ -134,6 +134,9 @@ function createFakeStore() {
       setActive: async (organizationId, userId, isActive) => {
         Object.assign(store.memberships.find((row) => row.organizationId === organizationId && row.userId === userId), { isActive });
       },
+      setRole: async (organizationId, userId, roleId) => {
+        Object.assign(store.memberships.find((row) => row.organizationId === organizationId && row.userId === userId), { roleId: String(roleId) });
+      },
       belongsElsewhere: async (organizationId, userId) =>
         store.memberships.some((row) => row.userId === userId && row.organizationId !== organizationId) || store.platformAdmins.has(userId),
     },

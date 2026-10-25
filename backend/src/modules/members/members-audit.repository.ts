@@ -3,13 +3,19 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { AuditLog, type RequestMeta } from '../auth';
 
-export type MemberAuditAction = 'member_created' | 'member_deactivated' | 'member_reactivated' | 'password_reset';
+export type MemberAuditAction =
+  | 'member_created'
+  | 'member_deactivated'
+  | 'member_reactivated'
+  | 'member_role_changed'
+  | 'password_reset';
 
 export interface MemberAuditEntry {
   organizationId: string;
   actorId: string;
   targetId: string;
   newValues?: Record<string, unknown>;
+  oldValues?: Record<string, unknown>;
 }
 
 // Who did what to whose account in which company. Never a password.
@@ -24,6 +30,7 @@ export class MembersAuditRepository {
       organizationId: entry.organizationId,
       userId: entry.actorId,
       recordId: entry.targetId,
+      ...(entry.oldValues ? { oldValues: entry.oldValues } : {}),
       ...(entry.newValues ? { newValues: entry.newValues } : {}),
       ipAddress: meta.ip,
       userAgent: meta.userAgent,

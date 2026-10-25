@@ -81,6 +81,10 @@ export class MembersRepository {
     await this.database.getRepository(OrganizationMember).update({ organizationId, userId }, { isActive });
   }
 
+  async setRole(organizationId: string, userId: string, roleId: number): Promise<void> {
+    await this.database.getRepository(OrganizationMember).update({ organizationId, userId }, { roleId });
+  }
+
   // True when the account also belongs to another company (active or not) or has a platform role: a company admin
   // must not be able to reset its password.
   async belongsElsewhere(organizationId: string, userId: string): Promise<boolean> {
