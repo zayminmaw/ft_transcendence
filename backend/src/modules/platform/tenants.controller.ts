@@ -1,19 +1,9 @@
-import { BadRequestException, Body, Controller, Get, HttpCode, Param, Patch, Post, Query, Req } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Param, Patch, Post, Query, Req } from '@nestjs/common';
 import { PlatformAdmin } from '../../common/decorators/platform-admin.decorator';
 import type { AuthenticatedRequest } from '../../common/types/authenticated-request';
-import { requestMeta } from '../auth';
 import { CreateTenantDto, ListTenantsQueryDto, ReactivateTenantDto, SuspendTenantDto, UpdateTenantDto } from './dto/tenant.dto';
-import type { PlatformActor } from './types/tenant';
+import { actor, tenantId } from './route-params';
 import { TenantsService } from './tenants.service';
-
-function tenantId(value: string): string {
-  if (!/^[1-9]\d{0,19}$/.test(value)) throw new BadRequestException('The tenant id must be a positive integer.');
-  return value;
-}
-
-function actor(request: AuthenticatedRequest): PlatformActor {
-  return { userId: request.user!.id, ...requestMeta(request) };
-}
 
 // Platform administrators only. Tenant roles and X-Organization-Id never open these routes.
 @PlatformAdmin()

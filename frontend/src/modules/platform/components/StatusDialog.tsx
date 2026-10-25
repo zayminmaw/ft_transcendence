@@ -17,6 +17,9 @@ export function StatusDialog({
 		useTenantMutations();
 	const [reason, setReason] = useState('');
 	const suspended = !tenant.isActive;
+	// The API refuses to reactivate a company with no administrator who can sign in.
+	const needsAdministrator =
+		suspended && !tenant.administrators.some((admin) => admin.accountActive);
 	const close = () => {
 		setReason('');
 		resetSetActive();
@@ -56,13 +59,19 @@ export function StatusDialog({
 					<button
 						type="submit"
 						className={`btn ${suspended ? 'btn-primary' : 'btn-neutral'}`}
-						disabled={isSettingActive}
+						disabled={isSettingActive || needsAdministrator}
 					>
 						{suspended ? 'Reactivate tenant' : 'Suspend tenant'}
 					</button>
 				</>
 			}
 		>
+			{needsAdministrator && (
+				<p role="status" className="alert alert-warning alert-soft text-sm">
+					{tenant.name} has no active administrator. Assign one on the administrators page
+					before reactivating it.
+				</p>
+			)}
 			{setActiveError && (
 				<p role="alert" className="alert alert-error alert-soft text-sm">
 					{setActiveError.message}

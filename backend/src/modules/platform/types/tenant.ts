@@ -1,4 +1,5 @@
 import type { RequestMeta } from '../../auth';
+import type { MEMBER_ROLES } from '../constants';
 import type { Organization } from '../../organizations';
 import type { User } from '../../users';
 
@@ -41,9 +42,15 @@ export interface TenantMembership {
   activeMembers: number;
 }
 
+export interface NewAdministrator {
+  username: string;
+  email: string;
+  passwordHash: string;
+}
+
 export interface NewTenant {
   organization: { name: string; slug: string; contactEmail: string; contactPhone: string | null; address: string | null };
-  administrator: { username: string; email: string; passwordHash: string };
+  administrator: NewAdministrator;
 }
 
 export type TenantChanges = Partial<Pick<Organization, 'name' | 'contactEmail' | 'contactPhone' | 'address'>>;
@@ -53,6 +60,42 @@ export interface PlatformActor extends RequestMeta {
   userId: string;
 }
 
+export type AccountConflict = 'username' | 'email';
+
 export type CreateTenantResult =
   | { created: true; organization: Organization; administrator: User }
-  | { created: false; conflict: 'slug' | 'username' | 'email' };
+  | { created: false; conflict: 'slug' | AccountConflict };
+
+export type StatusChangeResult =
+  | { changed: true; organization: Organization }
+  | { changed: false; problem: 'not_found' | 'same_status' | 'no_administrator' };
+
+// A member who can be made an administrator: an active membership of an active account, not already org_admin.
+export interface TenantMember {
+  id: string;
+  username: string;
+  email: string;
+  role: { code: string; name: string };
+}
+
+export interface MemberRole {
+  code: (typeof MEMBER_ROLES)[number];
+  name: string;
+  description: string | null;
+}
+
+export type AssignAdministrator =
+  | { mode: 'new'; account: NewAdministrator }
+  | { mode: 'existing'; userId: string };
+
+export type AssignAdministratorResult =
+  | { done: true; administrator: { id: string; username: string; email: string } }
+  | { done: false; problem: 'tenant_not_found' | 'member_not_found' | 'already_administrator' | AccountConflict };
+
+export type RevokeAdministrator =
+  | { outcome: 'change_role'; roleCode: MemberRole['code']; reason: string }
+  | { outcome: 'remove' | 'suspend_tenant'; reason: string };
+
+export type RevokeAdministratorResult =
+  | { done: true; tenantSuspended: boolean }
+  | { done: false; problem: 'tenant_not_found' | 'administrator_not_found' | 'last_administrator' | 'not_last_administrator' };

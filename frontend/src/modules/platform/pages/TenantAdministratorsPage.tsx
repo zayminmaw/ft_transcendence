@@ -1,18 +1,13 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
-import { Dialog, Input, ModulePage, Table, useToast } from '@global-components';
+import { ModulePage, Table } from '@global-components';
 import type { TableColumn } from '@global-components';
 import { formatDate } from '@utils/format';
 import type { TenantAdministrator, TenantDetails } from '../api';
+import { AssignAdministratorDialog } from '../components/AssignAdministratorDialog';
+import { RevokeAdministratorDialog } from '../components/RevokeAdministratorDialog';
 import { useTenantDetails } from '../hooks/useTenants';
-
-// Sample members for the "Existing member" choice until the tenant members endpoint exists.
-const sampleMembers = [
-	{ username: 'rami.saleh', role: 'Dispatcher' },
-	{ username: 'huda.amin', role: 'Finance' },
-	{ username: 'samer.kassab', role: 'Hub operator' },
-];
 
 export function TenantAdministratorsPage() {
 	const { tenantId = '' } = useParams();
@@ -36,12 +31,9 @@ export function TenantAdministratorsPage() {
 	return <TenantAdministratorsView tenant={tenant} />;
 }
 
-// Assigning and revoking are not wired to the API yet: their dialogs only show a toast.
 function TenantAdministratorsView({ tenant }: { tenant: TenantDetails }) {
 	const { i18n } = useTranslation();
-	const { toast } = useToast();
 	const [assignOpen, setAssignOpen] = useState(false);
-	const [assignMode, setAssignMode] = useState<'new' | 'existing'>('new');
 	const [revoking, setRevoking] = useState<TenantAdministrator | null>(null);
 
 	const columns: TableColumn<TenantAdministrator>[] = [
@@ -103,6 +95,7 @@ function TenantAdministratorsView({ tenant }: { tenant: TenantDetails }) {
 				columns={columns}
 				rows={tenant.administrators}
 				getRowKey={(admin) => admin.id}
+				emptyMessage="No active tenant administrator. Assign one before reactivating the tenant."
 			/>
 
 			<Link
@@ -112,129 +105,17 @@ function TenantAdministratorsView({ tenant }: { tenant: TenantDetails }) {
 				Back to tenant
 			</Link>
 
-			<Dialog
-				open={assignOpen}
-				onClose={() => setAssignOpen(false)}
-				title="Assign administrator"
-				description={`The administrator gets tenant permissions in ${tenant.name} only. No platform access is granted.`}
-				onSubmit={(e) => {
-					e.preventDefault();
-					setAssignOpen(false);
-					toast({ variant: 'success', title: 'Administrator assigned' });
-				}}
-				actions={
-					<>
-						<button
-							type="button"
-							className="btn border-0 bg-base-200"
-							onClick={() => setAssignOpen(false)}
-						>
-							Cancel
-						</button>
-						<button type="submit" className="btn btn-primary">
-							Assign administrator
-						</button>
-					</>
-				}
-			>
-				<div role="tablist" aria-label="Administrator source" className="tabs tabs-box">
-					<button
-						type="button"
-						role="tab"
-						aria-selected={assignMode === 'new'}
-						className={`tab flex-1 ${assignMode === 'new' ? 'tab-active' : ''}`}
-						onClick={() => setAssignMode('new')}
-					>
-						New account
-					</button>
-					<button
-						type="button"
-						role="tab"
-						aria-selected={assignMode === 'existing'}
-						className={`tab flex-1 ${assignMode === 'existing' ? 'tab-active' : ''}`}
-						onClick={() => setAssignMode('existing')}
-					>
-						Existing member
-					</button>
-				</div>
-
-				{assignMode === 'new' ? (
-					<div className="flex flex-col gap-4">
-						<Input label="Username" required autoComplete="off" />
-						<Input label="Login email" type="email" required autoComplete="off" />
-						<Input
-							label="Initial password"
-							type="password"
-							required
-							autoComplete="new-password"
-						/>
-						<p className="text-xs text-[var(--color-slate)]">
-							Hand over credentials securely. Passwords are hidden from confirmation
-							and audit records.
-						</p>
-					</div>
-				) : (
-					<div>
-						<label htmlFor="assign-member" className="mb-2 block text-sm font-medium">
-							Member *
-						</label>
-						<select
-							id="assign-member"
-							className="select w-full"
-							required
-							defaultValue=""
-						>
-							<option value="" disabled>
-								Choose a {tenant.name} member
-							</option>
-							{sampleMembers.map((member) => (
-								<option key={member.username} value={member.username}>
-									{member.username} · {member.role}
-								</option>
-							))}
-						</select>
-						<p className="mt-1 text-xs text-[var(--color-slate)]">
-							Their current company role is replaced by Tenant administrator.
-						</p>
-					</div>
-				)}
-			</Dialog>
-
-			<Dialog
-				open={revoking !== null}
-				onClose={() => setRevoking(null)}
-				title={`Revoke ${revoking?.username ?? 'administrator'}?`}
-				description={`They lose tenant administrator permissions in ${tenant.name}. Their account and memberships in other companies are not affected.`}
-				onSubmit={(e) => {
-					e.preventDefault();
-					setRevoking(null);
-					toast({ variant: 'success', title: 'Administrator access revoked' });
-				}}
-				actions={
-					<>
-						<button
-							type="button"
-							className="btn border-0 bg-base-200"
-							onClick={() => setRevoking(null)}
-						>
-							Cancel
-						</button>
-						<button type="submit" className="btn btn-neutral">
-							Revoke access
-						</button>
-					</>
-				}
-			>
-				<div>
-					<label htmlFor="revoke-reason" className="mb-2 block text-sm font-medium">
-						Reason *
-					</label>
-					<textarea id="revoke-reason" className="textarea w-full" rows={3} required />
-					<p className="mt-1 text-xs text-[var(--color-slate)]">
-						Recorded in the tenant activity log with your account.
-					</p>
-				</div>
-			</Dialog>
+			{/* Mounted only while open, so each one starts empty. */}
+			{assignOpen && (
+				<AssignAdministratorDialog tenant={tenant} onClose={() => setAssignOpen(false)} />
+			)}
+			{revoking && (
+				<RevokeAdministratorDialog
+					tenant={tenant}
+					administrator={revoking}
+					onClose={() => setRevoking(null)}
+				/>
+			)}
 		</div>
 	);
 }

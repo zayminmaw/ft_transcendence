@@ -2,7 +2,7 @@ import { BadRequestException, ConflictException, Injectable, NotFoundException }
 import { hashPassword, passwordProblems } from '../auth/password';
 import type { Organization } from '../organizations';
 import { PASSWORD_RULE } from '../users/account-rules';
-import { TENANT_ALREADY_ACTIVE, TENANT_ALREADY_SUSPENDED, TENANT_CONFLICTS, TENANT_NOT_FOUND } from './constants';
+import { TENANT_ALREADY_ACTIVE, TENANT_ALREADY_SUSPENDED, TENANT_CONFLICTS, TENANT_HAS_NO_ADMINISTRATOR, TENANT_NOT_FOUND } from './constants';
 import type { CreateTenantDto, ListTenantsQueryDto, UpdateTenantDto } from './dto/tenant.dto';
 import { TenantsRepository } from './tenants.repository';
 import type { PlatformActor } from './types/tenant';
@@ -48,9 +48,10 @@ export class TenantsService {
   }
 
   async setActive(id: string, isActive: boolean, reason: string | null, actor: PlatformActor) {
-    const organization = await this.tenants.setActive(id, isActive, reason, actor);
-    if (organization) return this.toTenant(organization);
-    if (!(await this.tenants.findById(id))) throw new NotFoundException(TENANT_NOT_FOUND);
+    const result = await this.tenants.setActive(id, isActive, reason, actor);
+    if (result.changed) return this.toTenant(result.organization);
+    if (result.problem === 'not_found') throw new NotFoundException(TENANT_NOT_FOUND);
+    if (result.problem === 'no_administrator') throw new ConflictException(TENANT_HAS_NO_ADMINISTRATOR);
     throw new ConflictException(isActive ? TENANT_ALREADY_ACTIVE : TENANT_ALREADY_SUSPENDED);
   }
 

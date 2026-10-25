@@ -1,12 +1,16 @@
 import { Transform, Type } from 'class-transformer';
 import { IsDefined, IsIn, IsInt, IsNotEmpty, IsOptional, IsString, Matches, MaxLength, Min, ValidateIf, ValidateNested } from 'class-validator';
 import { EMAIL_MAX_LENGTH, EMAIL_PATTERN, USERNAME_PATTERN } from '../../users/account-rules';
+import { MEMBER_ROLES, REVOKE_OUTCOMES } from '../constants';
 
 const trim = () => Transform(({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim() : value));
 // Left out means unchanged; null is refused, because these columns are required.
 const IsOmittable = () => ValidateIf((_object: object, value: unknown) => value !== undefined);
 // An optional detail sent as "" is cleared, like one sent as null.
 const trimOrNull = () => Transform(({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim() || null : value));
+
+// BIGINT ids in the URL and body.
+export const ID_PATTERN = /^[1-9]\d{0,19}$/;
 
 // The company's URL name (/app/<slug>): lower-case words joined by single dashes.
 export const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -72,6 +76,37 @@ export class SuspendTenantDto {
 export class ReactivateTenantDto {
   @trimOrNull() @IsOptional() @IsString() @MaxLength(500)
   reason?: string | null;
+}
+
+// A new account (account) or an existing member of the company (userId); only the mode's own field is read.
+export class AssignAdministratorDto {
+  @IsIn(['new', 'existing'])
+  mode!: 'new' | 'existing';
+
+  @ValidateIf((body: AssignAdministratorDto) => body.mode === 'new')
+  @IsDefined() @ValidateNested() @Type(() => TenantAdministratorDto)
+  account?: TenantAdministratorDto;
+
+  @ValidateIf((body: AssignAdministratorDto) => body.mode === 'existing')
+  @IsString() @Matches(ID_PATTERN, { message: 'userId must be a positive integer' })
+  userId?: string;
+}
+
+export class SearchMembersQueryDto {
+  @trim() @IsOptional() @IsString() @MaxLength(100)
+  search?: string;
+}
+
+export class RevokeAdministratorDto {
+  @IsIn(REVOKE_OUTCOMES)
+  outcome!: (typeof REVOKE_OUTCOMES)[number];
+
+  @ValidateIf((body: RevokeAdministratorDto) => body.outcome === 'change_role')
+  @IsIn(MEMBER_ROLES)
+  roleCode?: (typeof MEMBER_ROLES)[number];
+
+  @trim() @IsString() @IsNotEmpty() @MaxLength(500)
+  reason!: string;
 }
 
 export const TENANT_STATUSES = ['all', 'active', 'suspended'] as const;

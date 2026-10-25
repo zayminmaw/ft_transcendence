@@ -73,3 +73,30 @@ export type UpdateTenantValues = Pick<Tenant, 'name' | 'contactEmail'> & {
 	contactPhone: string;
 	address: string;
 };
+
+// A member who can be made an administrator.
+export type TenantMember = {
+	id: string;
+	username: string;
+	email: string;
+	role: { code: string; name: string };
+};
+
+// A company role a revoked administrator can be moved to.
+export type MemberRole = { code: string; name: string; description: string | null };
+
+export type NewAdministratorValues = CreateTenantValues['administrator'];
+
+export type AssignAdministratorValues =
+	{ mode: 'new'; account: NewAdministratorValues } | { mode: 'existing'; userId: string };
+
+export type AssignedAdministrator = {
+	administrator: { id: string; username: string; email: string };
+};
+
+// suspend_tenant is the only outcome for the last administrator, and only allowed for them.
+export type RevokeAdministratorValues =
+	| { outcome: 'change_role'; roleCode: string; reason: string }
+	| { outcome: 'remove' | 'suspend_tenant'; reason: string };
+
+export type RevokedAdministrator = { tenantSuspended: boolean };

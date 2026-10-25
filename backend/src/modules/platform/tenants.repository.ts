@@ -1,17 +1,18 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Brackets, DataSource, type EntityManager, type ObjectLiteral, Repository, type SelectQueryBuilder } from 'typeorm';
-import { AuditLog } from '../audit';
+import { Brackets, DataSource, type ObjectLiteral, Repository, type SelectQueryBuilder } from 'typeorm';
 import { Organization, OrganizationMember } from '../organizations';
 import { Role } from '../rbac';
 import { User } from '../users';
-import { SORT_COLUMNS } from './constants';
+import { SORT_COLUMNS, TENANT_ADMIN_ROLE } from './constants';
+import {
+  accountConflict, auditPlatformChange, changeTenantStatus, containsPattern, countUsableAdministrators, insertAdministrator,
+  lockTenant,
+} from './tenant-writes';
 import type {
-  CreateTenantResult, NewTenant, PlatformActor, TenantAdministrator, TenantChanges, TenantCounts, TenantListItem, TenantListQuery,
-  TenantMembership,
+  CreateTenantResult, NewTenant, PlatformActor, StatusChangeResult, TenantAdministrator, TenantChanges, TenantCounts, TenantListItem,
+  TenantListQuery, TenantMembership,
 } from './types/tenant';
-
-export const TENANT_ADMIN_ROLE = 'org_admin';
 
 @Injectable()
 export class TenantsRepository {
@@ -24,7 +25,7 @@ export class TenantsRepository {
   async list(query: TenantListQuery): Promise<{ items: TenantListItem[]; total: number }> {
     const filtered = this.organizations.createQueryBuilder('organization');
     if (query.search) {
-      const pattern = `%${query.search.replace(/[\\%_]/g, (character) => `\\${character}`)}%`;
+      const pattern = containsPattern(query.search);
       filtered.andWhere(new Brackets((where) => {
         where.where('organization.name LIKE :pattern', { pattern }).orWhere('organization.slug LIKE :pattern', { pattern });
       }));
@@ -91,14 +92,11 @@ export class TenantsRepository {
     return this.database.transaction(async (manager) => {
       const { organization: details, administrator: account } = tenant;
       if (await manager.existsBy(Organization, { slug: details.slug })) return { created: false, conflict: 'slug' };
-      if (await manager.existsBy(User, { username: account.username })) return { created: false, conflict: 'username' };
-      if (await manager.existsBy(User, { email: account.email })) return { created: false, conflict: 'email' };
-      const role = await manager.findOneBy(Role, { code: TENANT_ADMIN_ROLE });
-      if (!role) throw new Error('The org_admin role is missing. Run the migrations first.');
+      const conflict = await accountConflict(manager, account);
+      if (conflict) return { created: false, conflict };
       const organization = await manager.save(manager.create(Organization, details));
-      const administrator = await manager.save(manager.create(User, account));
-      await manager.insert(OrganizationMember, { organizationId: organization.id, userId: administrator.id, roleId: role.id });
-      await this.audit(manager, actor, organization.id, 'tenant.create', undefined, {
+      const administrator = await insertAdministrator(manager, organization.id, account);
+      await auditPlatformChange(manager, actor, organization.id, 'tenant.create', undefined, {
         ...details,
         administrator: { id: administrator.id, username: administrator.username, email: administrator.email },
       });
@@ -109,7 +107,7 @@ export class TenantsRepository {
   // Saves only the details that differ and audits them; undefined when the company does not exist.
   update(id: string, changes: TenantChanges, actor: PlatformActor): Promise<Organization | undefined> {
     return this.database.transaction(async (manager) => {
-      const organization = await manager.findOne(Organization, { where: { id }, lock: { mode: 'pessimistic_write' } });
+      const organization = await lockTenant(manager, id);
       if (!organization) return undefined;
       const before: TenantChanges = {};
       const after: TenantChanges = {};
@@ -121,31 +119,20 @@ export class TenantsRepository {
       if (Object.keys(after).length === 0) return organization;
       Object.assign(organization, after);
       const saved = await manager.save(organization);
-      await this.audit(manager, actor, id, 'tenant.update', before, after);
+      await auditPlatformChange(manager, actor, id, 'tenant.update', before, after);
       return saved;
     });
   }
 
-  // Suspending only flips is_active: memberships, parcels and ledgers stay, and every tenant request already
-  // requires an active company. The update only matches a company that still has the other status, so two admins
-  // racing can't both change it. Undefined when nothing changed: no such company, or it already had that status.
-  setActive(id: string, isActive: boolean, reason: string | null, actor: PlatformActor): Promise<Organization | undefined> {
+  // Holding the company lock, so two admins racing can't both change it, and a revoke can't remove the last
+  // administrator while the company is being reactivated. A reactivated company must have someone to manage it.
+  setActive(id: string, isActive: boolean, reason: string | null, actor: PlatformActor): Promise<StatusChangeResult> {
     return this.database.transaction(async (manager) => {
-      const { affected } = await manager.update(Organization, { id, isActive: !isActive }, { isActive });
-      if (!affected) return undefined;
-      await this.audit(manager, actor, id, isActive ? 'tenant.reactivate' : 'tenant.suspend', { isActive: !isActive }, { isActive, reason });
-      return manager.findOneByOrFail(Organization, { id });
-    });
-  }
-
-  // Written in the same transaction as the change, so a change is never saved without its audit row.
-  private async audit(
-    manager: EntityManager, actor: PlatformActor, organizationId: string, action: string,
-    oldValues: object | undefined, newValues: object,
-  ) {
-    await manager.insert(AuditLog, {
-      module: 'platform', action, organizationId, recordId: organizationId, userId: actor.userId,
-      ipAddress: actor.ip, userAgent: actor.userAgent, oldValues, newValues,
+      const organization = await lockTenant(manager, id);
+      if (!organization) return { changed: false, problem: 'not_found' };
+      if (organization.isActive === isActive) return { changed: false, problem: 'same_status' };
+      if (isActive && (await countUsableAdministrators(manager, id)) === 0) return { changed: false, problem: 'no_administrator' };
+      return { changed: true, organization: await changeTenantStatus(manager, actor, organization, isActive, reason) };
     });
   }
 
