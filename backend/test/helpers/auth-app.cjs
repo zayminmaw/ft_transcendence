@@ -113,6 +113,16 @@ function createFakeStore() {
         .filter((role) => role.code !== 'platform_admin')
         .sort((a, b) => a.name.localeCompare(b.name))
         .map(({ id, code, name, description }) => ({ id, code, name, description })),
+      // Every role except platform_admin by id, each fake permission with full scope, and this company's count.
+      roleOverview: async (organizationId) => store.roles
+        .filter((role) => role.code !== 'platform_admin')
+        .sort((a, b) => a.id - b.id)
+        .map((role) => ({
+          code: role.code,
+          name: role.name,
+          members: store.memberships.filter((row) => row.organizationId === organizationId && row.roleId === String(role.id)).length,
+          permissions: [...(store.rolePermissions.get(String(role.id)) ?? [])].map((code) => ({ code, scope: 'all' })),
+        })),
       list: async (organizationId) => memberRows(organizationId),
       find: async (organizationId, userId) => memberRows(organizationId).find((member) => member.userId === userId),
       // The real createAccount (its rules and messages), on an in-memory "manager".

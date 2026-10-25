@@ -167,6 +167,21 @@ test('changing a role is refused for yourself, outsiders, roles you may not give
   await as(request(server).patch('/api/members/13'), dana).send({ roleCode: 'dispatcher' }).expect(403);
 });
 
+test('the roles view: what each company role allows and how many people hold it here, for admin.manage_roles', async (t) => {
+  const { server } = await meridianApp(t);
+  const lina = await tokenFor(server, 'lina');
+  const roles = (await as(request(server).get('/api/members/roles'), lina).expect(200)).body;
+  assert.deepEqual(roles, [
+    { code: 'org_admin', name: 'Organization Admin', members: 1, permissions: [
+      { code: 'admin.manage_users', scope: 'all' }, { code: 'admin.manage_roles', scope: 'all' }, { code: 'admin.audit_logs', scope: 'all' },
+    ] },
+    { code: 'dispatcher', name: 'Dispatcher', members: 3, permissions: [{ code: 'parcels.view', scope: 'all' }] },
+    { code: 'finance', name: 'Finance', members: 0, permissions: [{ code: 'billing.view', scope: 'all' }] },
+  ]);
+  const dana = await tokenFor(server, 'dana.saleh');
+  await as(request(server).get('/api/members/roles'), dana).expect(403);
+});
+
 test('a reset gives a one-time password, forces a change and ends every session of that person', async (t) => {
   const { server, store, jwt } = await meridianApp(t);
   const lina = await tokenFor(server, 'lina');
