@@ -12,7 +12,10 @@ const MENU_COLORS =
 export function WorkspaceSwitcher({ current }: { current: string }) {
 	const { t } = useTranslation('auth');
 	const { pathname } = useLocation();
-	const workspaces = useMe().data?.workspaces ?? [];
+	const me = useMe().data;
+	const workspaces = me?.workspaces ?? [];
+	// One company and no platform access: the picker would only open it again, so there is no menu.
+	const nowhereElse = workspaces.length === 1 && !me?.platformAccess;
 	const menu = useRef<HTMLDetailsElement>(null);
 	const close = () => menu.current?.removeAttribute('open');
 
@@ -38,6 +41,16 @@ export function WorkspaceSwitcher({ current }: { current: string }) {
 	useEffect(() => {
 		menu.current?.removeAttribute('open');
 	}, [pathname]);
+
+	if (nowhereElse)
+		return (
+			<div className="flex flex-col rounded-xl bg-base-200 p-3">
+				<span className="text-sm font-medium">{current}</span>
+				<span className="mt-1 text-xs text-[var(--color-slate)]">
+					{t('workspace.scope', { ns: 'common' })}
+				</span>
+			</div>
+		);
 
 	return (
 		<details ref={menu} className="dropdown w-full">
