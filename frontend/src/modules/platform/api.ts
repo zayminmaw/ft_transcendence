@@ -74,12 +74,13 @@ export type UpdateTenantValues = Pick<Tenant, 'name' | 'contactEmail'> & {
 	address: string;
 };
 
-// A member who can be made an administrator.
+// A member who can be made an administrator. A removed member (left the company) is brought back by assigning.
 export type TenantMember = {
 	id: string;
 	username: string;
 	email: string;
 	role: { code: string; name: string };
+	removed: boolean;
 };
 
 // A company role a revoked administrator can be moved to.

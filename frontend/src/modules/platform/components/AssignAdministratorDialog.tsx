@@ -63,8 +63,17 @@ export function AssignAdministratorDialog({
 									failure.code as keyof typeof NEW_ADMINISTRATOR_FIELD_ERRORS
 								]
 							: undefined;
+					// The account may be a removed member, who comes back through "Existing member" instead.
+					const hint =
+						field === 'username' || field === 'email'
+							? ` If they were in ${tenant.name} before, choose them under Existing member.`
+							: '';
 					if (field)
-						setFieldError(field, { message: failure.message }, { shouldFocus: true });
+						setFieldError(
+							field,
+							{ message: failure.message + hint },
+							{ shouldFocus: true },
+						);
 					else setError(failure.message);
 				},
 			},

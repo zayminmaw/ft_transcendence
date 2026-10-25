@@ -28,7 +28,7 @@ export const TENANT_HAS_NO_ADMINISTRATOR = {
 };
 
 export const ADMINISTRATOR_PROBLEMS = {
-  member_not_found: { message: 'That person is not an active member of this company.', code: 'MEMBER_NOT_FOUND' },
+  member_not_found: { message: 'That person is not a member of this company.', code: 'MEMBER_NOT_FOUND' },
   already_administrator: { message: 'That person is already an administrator of this company.', code: 'ALREADY_ADMINISTRATOR' },
   administrator_not_found: { message: 'That person is not an administrator of this company.', code: 'ADMINISTRATOR_NOT_FOUND' },
   last_administrator: {

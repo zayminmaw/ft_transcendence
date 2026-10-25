@@ -28,9 +28,9 @@ export function MemberPicker({
 	if (!search && !isPending && !isError && members.length === 0) {
 		return (
 			<div role="status" className="rounded-box border border-base-300 p-4 text-sm">
-				<p className="font-medium">{tenantName} has no other active members.</p>
+				<p className="font-medium">{tenantName} has no members to choose.</p>
 				<p className="mt-1 text-[var(--color-slate)]">
-					Only active members who are not already administrators can be chosen.
+					Current and removed members appear here, except its administrators.
 				</p>
 				<button
 					type="button"
@@ -90,7 +90,7 @@ export function MemberPicker({
 										</span>
 									</span>
 									<span className="badge badge-sm shrink-0 border-base-300 bg-base-100">
-										{member.role.name}
+										{member.removed ? 'Removed' : member.role.name}
 									</span>
 								</label>
 							</li>
@@ -102,7 +102,7 @@ export function MemberPicker({
 				{members.length >= MEMBER_LIST_LIMIT
 					? `Showing the first ${MEMBER_LIST_LIMIT}. Search to find others. `
 					: ''}
-				Their current company role is replaced by Tenant administrator.
+				Their company role becomes Tenant administrator. Removed members are added back.
 			</p>
 		</fieldset>
 	);

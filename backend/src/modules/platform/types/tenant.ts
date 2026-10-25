@@ -69,12 +69,14 @@ export type StatusChangeResult =
   | { changed: true; organization: Organization }
   | { changed: false; problem: 'not_found' | 'same_status' | 'no_administrator' };
 
-// A member who can be made an administrator: an active membership of an active account, not already org_admin.
+// A member who can be made an administrator: an active account with a membership in the company, not already an
+// active org_admin. A removed member (inactive membership) can be brought back this way.
 export interface TenantMember {
   id: string;
   username: string;
   email: string;
   role: { code: string; name: string };
+  removed: boolean;
 }
 
 export interface MemberRole {

@@ -69,7 +69,7 @@ test('creating a tenant adds the company, its administrator and their membership
   assert.equal(await database.getRepository(User).count(), users);
 });
 
-test('the member list offers active, non-administrator members of that company only', async () => {
+test('the member list offers that company\'s members and removed members, never its current administrators', async () => {
   const { id } = await createTenant('candidates-db', 'candidates.admin');
   const other = await createTenant('candidates-other-db', 'candidates.other');
   await addMember(id, 'cand.dispatch', 'dispatcher');
@@ -81,8 +81,13 @@ test('the member list offers active, non-administrator members of that company o
   const dispatcherRole = await database.getRepository(Role).findOneByOrFail({ code: 'dispatcher' });
   assert.deepEqual((await administrators.findCandidates(id))[0], {
     id: dispatcher.id, username: 'cand.dispatch', email: 'cand.dispatch@db.test', role: { code: 'dispatcher', name: dispatcherRole.name },
+    removed: false,
   });
-  assert.deepEqual((await administrators.findCandidates(id)).map((member) => member.username), ['cand.dispatch', 'cand.finance']);
+  await addMember(id, 'cand.removed.admin', 'org_admin', { isActive: false });
+  assert.deepEqual(
+    (await administrators.findCandidates(id)).map(({ username, removed }) => [username, removed]),
+    [['cand.dispatch', false], ['cand.finance', false], ['cand.left', true], ['cand.removed.admin', true]],
+  );
   assert.deepEqual((await administrators.findCandidates(id, 'FIN')).map((member) => member.username), ['cand.finance']);
   assert.deepEqual(await administrators.findCandidates(id, '%'), []);
 });
@@ -127,16 +132,31 @@ test('an administrator can be a new account or an existing member, and both are 
   assert.deepEqual(await membership(id, dispatcher), { role: 'org_admin', isActive: true });
   assert.deepEqual(await administrators.assign(id, { mode: 'existing', userId: adminId }, actor), { done: false, problem: 'already_administrator' });
 
+  // A removed administrator keeps their account, so they come back through their old membership.
+  assert.deepEqual(await administrators.revoke(id, dispatcher, { outcome: 'remove', reason: 'Left' }, actor), { done: true, tenantSuspended: false });
+  assert.deepEqual(await membership(id, dispatcher), { role: 'org_admin', isActive: false });
+  assert.equal((await administrators.assign(id, { mode: 'existing', userId: dispatcher }, actor)).done, true);
+  assert.deepEqual(await membership(id, dispatcher), { role: 'org_admin', isActive: true });
+  const [reinstated] = (await audits(id)).slice(-1);
+  assert.equal(reinstated.oldValues.membershipActive, false);
+  assert.equal(reinstated.newValues.membershipActive, true);
+
   const left = await addMember(id, 'assign.left', 'driver', { isActive: false });
+  assert.equal((await administrators.assign(id, { mode: 'existing', userId: left }, actor)).done, true);
+  assert.deepEqual(await membership(id, left), { role: 'org_admin', isActive: true });
+
+  const disabled = await addMember(id, 'assign.disabled', 'driver', { accountActive: false });
   const elsewhere = await addMember((await createTenant('assign-other-db', 'assign.other.admin')).id, 'assign.elsewhere', 'driver');
-  for (const userId of [left, elsewhere, '999999']) {
+  for (const userId of [disabled, elsewhere, '999999']) {
     assert.deepEqual(await administrators.assign(id, { mode: 'existing', userId }, actor), { done: false, problem: 'member_not_found' });
   }
   assert.deepEqual(await administrators.assign('999999', { mode: 'existing', userId: dispatcher }, actor), { done: false, problem: 'tenant_not_found' });
 
   const assigned = (await audits(id)).filter((row) => row.action === 'tenant.administrator.assign');
-  assert.equal(assigned.length, 2);
-  assert.deepEqual(assigned[1].oldValues, { administrator: { id: dispatcher, username: 'assign.dispatch' }, role: 'dispatcher' });
+  assert.equal(assigned.length, 4);
+  assert.deepEqual(
+    assigned[1].oldValues, { administrator: { id: dispatcher, username: 'assign.dispatch' }, role: 'dispatcher', membershipActive: true },
+  );
   assert.equal(JSON.stringify(assigned).includes('placeholder-hash'), false);
 });
 

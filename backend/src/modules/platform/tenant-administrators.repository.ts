@@ -19,16 +19,15 @@ import type {
 export class TenantAdministratorsRepository {
   constructor(private readonly database: DataSource) {}
 
-  // Members who could become administrators, by username.
+  // Members who could become administrators: current members by username, then removed ones.
   async findCandidates(organizationId: string, search?: string): Promise<TenantMember[]> {
     const query = this.database.createQueryBuilder()
       .from(OrganizationMember, 'member')
       .innerJoin(User, 'user', 'user.id = member.userId')
       .innerJoin(Role, 'role', 'role.id = member.roleId')
       .where('member.organizationId = :organizationId', { organizationId })
-      .andWhere('member.isActive = TRUE')
       .andWhere('user.isActive = TRUE')
-      .andWhere('role.code <> :adminRole', { adminRole: TENANT_ADMIN_ROLE });
+      .andWhere('NOT (member.isActive = TRUE AND role.code = :adminRole)', { adminRole: TENANT_ADMIN_ROLE });
     if (search) {
       const pattern = containsPattern(search);
       query.andWhere(new Brackets((where) => {
@@ -41,10 +40,14 @@ export class TenantAdministratorsRepository {
       .addSelect('user.email', 'email')
       .addSelect('role.code', 'roleCode')
       .addSelect('role.name', 'roleName')
-      .orderBy('user.username')
+      .addSelect('member.isActive', 'isActive')
+      .orderBy('member.isActive', 'DESC')
+      .addOrderBy('user.username')
       .limit(CANDIDATE_LIMIT)
-      .getRawMany<{ id: string; username: string; email: string; roleCode: string; roleName: string }>();
-    return rows.map(({ roleCode, roleName, ...member }) => ({ ...member, role: { code: roleCode, name: roleName } }));
+      .getRawMany<{ id: string; username: string; email: string; roleCode: string; roleName: string; isActive: number | boolean }>();
+    return rows.map(({ roleCode, roleName, isActive, ...member }) => ({
+      ...member, role: { code: roleCode, name: roleName }, removed: !isActive,
+    }));
   }
 
   // Roles are shared by every company today, so this is every role but org_admin and platform_admin. Company-made
@@ -54,8 +57,9 @@ export class TenantAdministratorsRepository {
     return roles.map(({ code, name, description }) => ({ code, name, description }));
   }
 
-  // A new account, or an existing member whose role becomes org_admin. Allowed while the company is suspended, so
-  // it can get an administrator before it is reactivated.
+  // A new account, or an existing member whose role becomes org_admin. A removed member is brought back, since their
+  // account still exists and only the membership was turned off. Allowed while the company is suspended, so it can get
+  // an administrator before it is reactivated.
   assign(organizationId: string, request: AssignAdministrator, actor: PlatformActor): Promise<AssignAdministratorResult> {
     return this.database.transaction(async (manager) => {
       if (!(await lockTenant(manager, organizationId))) return { done: false, problem: 'tenant_not_found' };
@@ -75,22 +79,23 @@ export class TenantAdministratorsRepository {
         .innerJoin(Role, 'role', 'role.id = member.roleId')
         .where('member.organizationId = :organizationId', { organizationId })
         .andWhere('member.userId = :userId', { userId: request.userId })
-        .andWhere('member.isActive = TRUE')
         .andWhere('user.isActive = TRUE')
         .select('member.id', 'membershipId')
         .addSelect('user.id', 'id')
         .addSelect('user.username', 'username')
         .addSelect('user.email', 'email')
         .addSelect('role.code', 'roleCode')
-        .getRawOne<{ membershipId: string; id: string; username: string; email: string; roleCode: string }>();
+        .addSelect('member.isActive', 'isActive')
+        .getRawOne<{ membershipId: string; id: string; username: string; email: string; roleCode: string; isActive: number | boolean }>();
       if (!member) return { done: false, problem: 'member_not_found' };
-      if (member.roleCode === TENANT_ADMIN_ROLE) return { done: false, problem: 'already_administrator' };
+      if (member.isActive && member.roleCode === TENANT_ADMIN_ROLE) return { done: false, problem: 'already_administrator' };
       const role = await findRole(manager, TENANT_ADMIN_ROLE);
-      await manager.update(OrganizationMember, { id: member.membershipId }, { roleId: role.id });
+      await manager.update(OrganizationMember, { id: member.membershipId }, { roleId: role.id, isActive: true });
       const { id, username, email } = member;
       await auditPlatformChange(
-        manager, actor, organizationId, 'tenant.administrator.assign', { administrator: { id, username }, role: member.roleCode },
-        { administrator: { id, username }, account: 'existing', role: TENANT_ADMIN_ROLE },
+        manager, actor, organizationId, 'tenant.administrator.assign',
+        { administrator: { id, username }, role: member.roleCode, membershipActive: Boolean(member.isActive) },
+        { administrator: { id, username }, account: 'existing', role: TENANT_ADMIN_ROLE, membershipActive: true },
       );
       return { done: true, administrator: { id, username, email } };
     });
