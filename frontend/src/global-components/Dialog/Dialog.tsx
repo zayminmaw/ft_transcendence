@@ -9,6 +9,7 @@ export function Dialog({
 	children,
 	actions,
 	onSubmit,
+	dismissible = true,
 	className = '',
 }: {
 	open: boolean;
@@ -19,6 +20,9 @@ export function Dialog({
 	actions?: ReactNode;
 	// When set, the dialog body is a form and submit buttons in `actions` submit it.
 	onSubmit?: (event: FormEvent<HTMLFormElement>) => void;
+	// false: a click beside the dialog or Escape doesn't close it, only its own buttons do (e.g. while it shows
+	// something that can't be shown again).
+	dismissible?: boolean;
 	className?: string;
 }) {
 	const dialog = useRef<HTMLDialogElement>(null);
@@ -62,6 +66,7 @@ export function Dialog({
 			aria-describedby={description ? descriptionId : undefined}
 			// Escape and the backdrop close the native dialog; keep `open` in sync.
 			onClose={onClose}
+			onCancel={dismissible ? undefined : (event) => event.preventDefault()}
 		>
 			{onSubmit ? (
 				<form className={bodyClassName} onSubmit={onSubmit}>
@@ -70,9 +75,11 @@ export function Dialog({
 			) : (
 				<div className={bodyClassName}>{content}</div>
 			)}
-			<form method="dialog" className="modal-backdrop">
-				<button aria-label="Close dialog">Close</button>
-			</form>
+			{dismissible && (
+				<form method="dialog" className="modal-backdrop">
+					<button aria-label="Close dialog">Close</button>
+				</form>
+			)}
 		</dialog>
 	);
 }

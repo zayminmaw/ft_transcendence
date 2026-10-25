@@ -9,7 +9,8 @@ import { useResetMemberPassword, useSetMemberActive } from '../hooks';
 type Step = 'details' | 'confirmActive' | 'confirmReset' | 'password';
 
 // One person's access in this company: switch the membership off or on, or reset a forgotten password. The one-time
-// password lives only in this dialog's state; closing the dialog unmounts it and the password is gone.
+// password lives only in this dialog's state; closing the dialog unmounts it and the password is gone, so while it
+// shows only the Close button closes the dialog.
 export function ManageMemberDialog({
 	member,
 	company,
@@ -25,7 +26,10 @@ export function ManageMemberDialog({
 	const [copied, setCopied] = useState(false);
 	const setActive = useSetMemberActive();
 	const reset = useResetMemberPassword();
-	const failure = setActive.error ?? reset.error;
+	// Only the refusal of what this step asks for: a mutation keeps its error until it runs again, so an earlier
+	// refusal would otherwise stay under the next step, even under a change that worked.
+	const failure =
+		step === 'confirmActive' ? setActive.error : step === 'confirmReset' ? reset.error : null;
 	const name = member.username;
 
 	const cancel = (
@@ -137,6 +141,7 @@ export function ManageMemberDialog({
 			title={t('manage.title', { name })}
 			description={description}
 			actions={actions}
+			dismissible={step !== 'password'}
 		>
 			{step === 'details' && (
 				<dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-sm">
@@ -164,7 +169,7 @@ export function ManageMemberDialog({
 				</dl>
 			)}
 			{body}
-			{failure && step !== 'password' && (
+			{failure && (
 				<p role="alert" className="alert alert-error alert-soft text-sm">
 					{t(memberErrorKey(failure))}
 					{errorCode(failure) === 'MEMBER_NOT_FOUND' && ` ${t('manage.listReloaded')}`}
