@@ -35,6 +35,6 @@ import { SessionsService } from './sessions.service';
   ],
   controllers: [AuthController],
   providers: [AuthService, SessionsService, SessionsRepository, AuthAuditRepository, AuthThrottlerGuard, SameOriginGuard],
-  exports: [JwtModule, SessionsService],
+  exports: [JwtModule, SessionsService, AuthAuditRepository],
 })
 export class AuthModule {}
