@@ -24,7 +24,7 @@ export function RevokeAdministratorDialog({
 	const [outcome, setOutcome] = useState<'change_role' | 'remove'>('change_role');
 	const [roleCode, setRoleCode] = useState('');
 	const [reason, setReason] = useState('');
-	const { roles, isRolesPending } = useMemberRoles(!last);
+	const { roles, isRolesPending } = useMemberRoles(tenant.id, !last);
 	const suspends = last && tenant.isActive;
 
 	const values: RevokeAdministratorValues = last

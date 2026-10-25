@@ -19,7 +19,8 @@ export class TenantAdministratorsService {
     return this.administrators.findCandidates(organizationId, search);
   }
 
-  findMemberRoles() {
+  async findMemberRoles(organizationId: string) {
+    if (!(await this.tenants.findById(organizationId))) throw new NotFoundException(TENANT_NOT_FOUND);
     return this.administrators.findMemberRoles();
   }
 

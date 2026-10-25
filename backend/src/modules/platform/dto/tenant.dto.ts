@@ -1,7 +1,7 @@
 import { Transform, Type } from 'class-transformer';
 import { IsDefined, IsIn, IsInt, IsNotEmpty, IsOptional, IsString, Matches, MaxLength, Min, ValidateIf, ValidateNested } from 'class-validator';
 import { EMAIL_MAX_LENGTH, EMAIL_PATTERN, USERNAME_PATTERN } from '../../users/account-rules';
-import { MEMBER_ROLES, REVOKE_OUTCOMES } from '../constants';
+import { REVOKE_OUTCOMES } from '../constants';
 
 const trim = () => Transform(({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim() : value));
 // Left out means unchanged; null is refused, because these columns are required.
@@ -102,8 +102,9 @@ export class RevokeAdministratorDto {
   outcome!: (typeof REVOKE_OUTCOMES)[number];
 
   @ValidateIf((body: RevokeAdministratorDto) => body.outcome === 'change_role')
-  @IsIn(MEMBER_ROLES)
-  roleCode?: (typeof MEMBER_ROLES)[number];
+  // Checked against the database when revoking.
+  @trim() @IsString() @IsNotEmpty() @MaxLength(64)
+  roleCode?: string;
 
   @trim() @IsString() @IsNotEmpty() @MaxLength(500)
   reason!: string;

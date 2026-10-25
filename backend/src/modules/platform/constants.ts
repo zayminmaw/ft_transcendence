@@ -1,9 +1,10 @@
+import { PLATFORM_ADMIN_ROLE } from '../rbac';
 import type { TenantListQuery } from './types/tenant';
 
 export const TENANT_ADMIN_ROLE = 'org_admin';
 
-// The company roles an administrator can be moved to when revoked. org_admin and platform_admin are never offered.
-export const MEMBER_ROLES = ['dispatcher', 'hub_sorter', 'finance', 'hr_manager', 'fleet_lead', 'driver'] as const;
+// Roles a revoked administrator can never be moved to. Every other role in the database is offered.
+export const NON_MEMBER_ROLES = [TENANT_ADMIN_ROLE, PLATFORM_ADMIN_ROLE];
 
 // What happens to a revoked administrator. suspend_tenant is the only choice, and only allowed, for the last one.
 export const REVOKE_OUTCOMES = ['change_role', 'remove', 'suspend_tenant'] as const;
@@ -34,6 +35,7 @@ export const ADMINISTRATOR_PROBLEMS = {
     message: 'This is the company\'s last administrator. Revoking them suspends the tenant.',
     code: 'LAST_ADMINISTRATOR',
   },
+  role_not_available: { message: 'That role is not available in this company.', code: 'ROLE_NOT_AVAILABLE' },
   not_last_administrator: {
     message: 'Other administrators remain, so the tenant is not suspended. Choose what happens to this administrator.',
     code: 'NOT_LAST_ADMINISTRATOR',

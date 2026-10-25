@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { Brackets, DataSource, In } from 'typeorm';
+import { Brackets, DataSource, EntityManager, In, Not } from 'typeorm';
 import { OrganizationMember } from '../organizations';
 import { Role } from '../rbac';
 import { User } from '../users';
-import { CANDIDATE_LIMIT, MEMBER_ROLES, TENANT_ADMIN_ROLE } from './constants';
+import { CANDIDATE_LIMIT, NON_MEMBER_ROLES, TENANT_ADMIN_ROLE } from './constants';
 import {
   accountConflict, auditPlatformChange, changeTenantStatus, containsPattern, countUsableAdministrators, findRole, insertAdministrator,
   lockTenant,
@@ -47,9 +47,11 @@ export class TenantAdministratorsRepository {
     return rows.map(({ roleCode, roleName, ...member }) => ({ ...member, role: { code: roleCode, name: roleName } }));
   }
 
+  // Roles are shared by every company today, so this is every role but org_admin and platform_admin. Company-made
+  // roles would narrow it (and findMemberRole) by company.
   async findMemberRoles(): Promise<MemberRole[]> {
-    const roles = await this.database.getRepository(Role).find({ where: { code: In([...MEMBER_ROLES]) }, order: { id: 'ASC' } });
-    return roles.map(({ code, name, description }) => ({ code: code as MemberRole['code'], name, description }));
+    const roles = await this.database.getRepository(Role).find({ where: { code: Not(In(NON_MEMBER_ROLES)) }, order: { id: 'ASC' } });
+    return roles.map(({ code, name, description }) => ({ code, name, description }));
   }
 
   // A new account, or an existing member whose role becomes org_admin. Allowed while the company is suspended, so
@@ -111,7 +113,8 @@ export class TenantAdministratorsRepository {
       const { username } = await manager.findOneByOrFail(User, { id: userId });
       const administrator = { id: userId, username };
       if (request.outcome === 'change_role') {
-        const role = await findRole(manager, request.roleCode);
+        const role = await findMemberRole(manager, request.roleCode);
+        if (!role) return { done: false, problem: 'role_not_available' };
         await manager.update(OrganizationMember, { id: membership.id }, { roleId: role.id });
         await auditPlatformChange(
           manager, actor, organizationId, 'tenant.administrator.revoke', { administrator, role: TENANT_ADMIN_ROLE },
@@ -131,4 +134,10 @@ export class TenantAdministratorsRepository {
       return { done: true, tenantSuspended: true };
     });
   }
+}
+
+// One of the roles findMemberRoles offers, or nothing.
+async function findMemberRole(manager: EntityManager, code: string): Promise<Role | null> {
+  if (NON_MEMBER_ROLES.includes(code)) return null;
+  return manager.findOneBy(Role, { code });
 }

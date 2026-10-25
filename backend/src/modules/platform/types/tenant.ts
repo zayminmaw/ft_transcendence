@@ -1,5 +1,4 @@
 import type { RequestMeta } from '../../auth';
-import type { MEMBER_ROLES } from '../constants';
 import type { Organization } from '../../organizations';
 import type { User } from '../../users';
 
@@ -79,7 +78,7 @@ export interface TenantMember {
 }
 
 export interface MemberRole {
-  code: (typeof MEMBER_ROLES)[number];
+  code: string;
   name: string;
   description: string | null;
 }
@@ -93,9 +92,9 @@ export type AssignAdministratorResult =
   | { done: false; problem: 'tenant_not_found' | 'member_not_found' | 'already_administrator' | AccountConflict };
 
 export type RevokeAdministrator =
-  | { outcome: 'change_role'; roleCode: MemberRole['code']; reason: string }
+  | { outcome: 'change_role'; roleCode: string; reason: string }
   | { outcome: 'remove' | 'suspend_tenant'; reason: string };
 
 export type RevokeAdministratorResult =
   | { done: true; tenantSuspended: boolean }
-  | { done: false; problem: 'tenant_not_found' | 'administrator_not_found' | 'last_administrator' | 'not_last_administrator' };
+  | { done: false; problem: 'tenant_not_found' | 'administrator_not_found' | 'last_administrator' | 'not_last_administrator' | 'role_not_available' };

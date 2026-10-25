@@ -9,6 +9,7 @@ import { NEW_ADMINISTRATOR_DEFAULT_VALUES, NEW_ADMINISTRATOR_FIELD_ERRORS } from
 import { useTenantMembers } from '../hooks/useTenantAdministrators';
 import { useTenantMutations } from '../hooks/useTenantMutations';
 import { administratorAccountSchema } from '../schemas/administratorAccountSchema';
+import { MemberPicker } from './MemberPicker';
 
 // Mount only while open, so the form and the typed password are gone once it closes.
 export function AssignAdministratorDialog({
@@ -30,6 +31,8 @@ export function AssignAdministratorDialog({
 		debouncedSearch,
 		mode === 'existing',
 	);
+	// A choice hidden by a later search no longer counts, so what is assigned is always on screen.
+	const chosenId = members.some((member) => member.id === userId) ? userId : '';
 	const {
 		register,
 		handleSubmit,
@@ -83,7 +86,7 @@ export function AssignAdministratorDialog({
 				if (mode === 'new')
 					return handleSubmit((account) => assign({ mode: 'new', account }))(event);
 				event.preventDefault();
-				assign({ mode: 'existing', userId });
+				assign({ mode: 'existing', userId: chosenId });
 			}}
 			actions={
 				<>
@@ -93,7 +96,7 @@ export function AssignAdministratorDialog({
 					<button
 						type="submit"
 						className="btn btn-primary"
-						disabled={isAssigning || (mode === 'existing' && !userId)}
+						disabled={isAssigning || (mode === 'existing' && !chosenId)}
 					>
 						Assign administrator
 					</button>
@@ -159,50 +162,18 @@ export function AssignAdministratorDialog({
 					</p>
 				</div>
 			) : (
-				<div key="existing" className="flex flex-col gap-4">
-					<Input
-						label="Search members"
-						type="search"
-						placeholder="Username or email"
-						autoComplete="off"
-						value={search}
-						onChange={(event) => {
-							// A new search lists other members, so the choice starts over.
-							setSearch(event.target.value);
-							setUserId('');
-						}}
-					/>
-					<div>
-						<label htmlFor="assign-member" className="mb-2 block text-sm font-medium">
-							Member *
-						</label>
-						<select
-							id="assign-member"
-							className="select w-full"
-							required
-							value={userId}
-							onChange={(event) => setUserId(event.target.value)}
-						>
-							<option value="" disabled>
-								{isMembersPending
-									? 'Loading members…'
-									: isMembersError
-										? "Members couldn't be loaded"
-										: members.length === 0
-											? 'No members to choose'
-											: `Choose a ${tenant.name} member`}
-							</option>
-							{members.map((member) => (
-								<option key={member.id} value={member.id}>
-									{member.username} · {member.role.name}
-								</option>
-							))}
-						</select>
-						<p className="mt-1 text-xs text-[var(--color-slate)]">
-							Their current company role is replaced by Tenant administrator.
-						</p>
-					</div>
-				</div>
+				<MemberPicker
+					key="existing"
+					tenantName={tenant.name}
+					search={search}
+					onSearch={setSearch}
+					members={members}
+					isPending={isMembersPending}
+					isError={isMembersError}
+					value={chosenId}
+					onChange={setUserId}
+					onCreateNew={() => chooseMode('new')}
+				/>
 			)}
 		</Dialog>
 	);

@@ -14,6 +14,9 @@ export const CREATE_TENANT_FIELD_ERRORS = {
 	PASSWORD_TOO_WEAK: 'administrator.password',
 } as const;
 
+// The API lists at most this many candidate members (CANDIDATE_LIMIT); a search narrows it.
+export const MEMBER_LIST_LIMIT = 50;
+
 export const NEW_ADMINISTRATOR_DEFAULT_VALUES = CREATE_TENANT_DEFAULT_VALUES.administrator;
 
 // API conflicts on a new administrator account that belong to one form field.

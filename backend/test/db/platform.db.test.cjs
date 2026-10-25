@@ -87,11 +87,27 @@ test('the member list offers active, non-administrator members of that company o
   assert.deepEqual(await administrators.findCandidates(id, '%'), []);
 });
 
-test('the roles offered for a revoked administrator are the company roles, never org_admin or platform_admin', async () => {
+test('the roles offered for a revoked administrator come from the database, never org_admin or platform_admin', async () => {
+  const { id, adminId } = await createTenant('roles-db', 'roles.admin');
+  await addMember(id, 'roles.second', 'org_admin');
+  await database.getRepository(Role).save({ code: 'db_test_supervisor', name: 'Supervisor', description: null });
   assert.deepEqual(
     (await administrators.findMemberRoles()).map((role) => role.code).sort(),
-    ['dispatcher', 'driver', 'finance', 'fleet_lead', 'hr_manager', 'hub_sorter'],
+    ['db_test_supervisor', 'dispatcher', 'driver', 'finance', 'fleet_lead', 'hr_manager', 'hub_sorter'],
   );
+
+  for (const roleCode of ['org_admin', 'platform_admin', 'no_such_role']) {
+    assert.deepEqual(
+      await administrators.revoke(id, adminId, { outcome: 'change_role', roleCode, reason: 'Moved' }, actor),
+      { done: false, problem: 'role_not_available' },
+    );
+  }
+  assert.deepEqual(await membership(id, adminId), { role: 'org_admin', isActive: true });
+  assert.deepEqual(
+    await administrators.revoke(id, adminId, { outcome: 'change_role', roleCode: 'db_test_supervisor', reason: 'Moved' }, actor),
+    { done: true, tenantSuspended: false },
+  );
+  assert.deepEqual(await membership(id, adminId), { role: 'db_test_supervisor', isActive: true });
 });
 
 test('an administrator can be a new account or an existing member, and both are audited', async () => {

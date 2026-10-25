@@ -124,7 +124,7 @@ Platform mutations and monitoring access require audit records identifying the a
 | `GET`/`PATCH /api/platform/tenants/:id` | Details with administrators and member counts; edit name and contact details (the slug is fixed) |
 | `POST /api/platform/tenants/:id/suspend`, `…/reactivate` | Flip `is_active`; suspending needs a reason |
 | `GET /api/platform/tenants/:id/members` | Active members who could become administrators |
-| `GET /api/platform/member-roles` | Company roles a revoked administrator can move to (never `org_admin` or `platform_admin`) |
+| `GET /api/platform/tenants/:tenantId/member-roles` | Roles a revoked administrator can move to in that company: every role in the database except `org_admin` and `platform_admin` |
 | `POST /api/platform/tenants/:id/administrators` | Assign a new account, or change an existing member's role to `org_admin` |
 | `POST /api/platform/tenants/:id/administrators/:userId/revoke` | Revoke with a reason and a chosen outcome |
 

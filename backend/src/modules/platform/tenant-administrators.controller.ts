@@ -11,10 +11,10 @@ import { TenantAdministratorsService } from './tenant-administrators.service';
 export class TenantAdministratorsController {
   constructor(private readonly administrators: TenantAdministratorsService) {}
 
-  // The roles a revoked administrator can keep working with.
-  @Get('member-roles')
-  memberRoles() {
-    return this.administrators.findMemberRoles();
+  // The roles a revoked administrator can keep working with in this company.
+  @Get('tenants/:tenantId/member-roles')
+  memberRoles(@Param('tenantId') id: string) {
+    return this.administrators.findMemberRoles(tenantId(id));
   }
 
   // Members who could become administrators.
