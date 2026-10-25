@@ -17,7 +17,7 @@ async function storeWithUsers() {
     { id: '2', username: 'dana.saleh', email: 'dana@meridian.example.test', passwordHash, isActive: true },
     { id: '3', username: 'ex.member', email: 'ex@meridian.example.test', passwordHash, isActive: false },
   );
-  store.workspaces.set('2', [{ id: '1', slug: 'meridian-courier', name: 'Meridian Courier' }]);
+  store.workspaces.set('2', [{ id: '1', slug: 'meridian-courier', name: 'Meridian Courier', role: { code: 'dispatcher', name: 'Dispatcher' } }]);
   return store;
 }
 
@@ -161,7 +161,7 @@ test('me works without a company and returns the user, workspaces and platform a
   const me = await request(server).get('/api/auth/me').set('Authorization', `Bearer ${accessToken}`).expect(200);
   assert.deepEqual(me.body, {
     user: { id: '2', username: 'dana.saleh', email: 'dana@meridian.example.test' },
-    workspaces: [{ id: '1', slug: 'meridian-courier', name: 'Meridian Courier' }],
+    workspaces: [{ id: '1', slug: 'meridian-courier', name: 'Meridian Courier', role: { code: 'dispatcher', name: 'Dispatcher' } }],
     platformAccess: true,
     mustChangePassword: false,
   });
