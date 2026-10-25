@@ -22,6 +22,13 @@ export class MembersController {
     return this.members.assignableRoles();
   }
 
+  // What each role allows, for the Roles & permissions tab. Seeing the role definitions is admin.manage_roles.
+  @Get('roles')
+  @RequirePermission('admin.manage_roles')
+  roles(@Req() request: AuthenticatedRequest) {
+    return this.members.roleOverview(request.tenant!);
+  }
+
   @Post()
   create(@Body() body: CreateMemberDto, @Req() request: AuthenticatedRequest) {
     return this.members.create(request.tenant!, request.user!.id, body, requestMeta(request));

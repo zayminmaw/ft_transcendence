@@ -37,6 +37,10 @@ export class MembersService {
     return (await this.members.companyRoles()).map(({ code, name, description }) => ({ code, name, description }));
   }
 
+  roleOverview(tenant: TenantContext) {
+    return this.members.roleOverview(tenant.organizationId);
+  }
+
   async create(tenant: TenantContext, actorId: string, input: CreateMemberDto, meta: RequestMeta) {
     const role = (await this.members.companyRoles()).find(({ code }) => code === input.roleCode);
     if (!role) throw new ForbiddenException(ROLE_NOT_ASSIGNABLE);

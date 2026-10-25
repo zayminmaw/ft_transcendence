@@ -365,6 +365,26 @@ test('changing a role updates only that membership, and the audit row keeps the 
   assert.deepEqual([row.oldValues, row.newValues], [{ role: 'dispatcher' }, { role: 'finance' }]);
 });
 
+test('the roles view: company roles in seed order, permissions in the docs order with their scope, people here', async () => {
+  const company = await createCompany('kappa-db', 'Kappa Cargo');
+  await addMember(company, await createUser('kappa.one'), 'dispatcher');
+  await addMember(company, await createUser('kappa.two'), 'dispatcher', false);
+  await addMember(company, await createUser('kappa.three'), 'driver');
+  const roles = await new MembersRepository(database).roleOverview(company);
+  assert.deepEqual(roles.map((role) => role.code), ['org_admin', 'dispatcher', 'hub_sorter', 'finance', 'hr_manager', 'fleet_lead', 'driver']);
+  assert.deepEqual(roles.map((role) => role.members), [0, 2, 0, 0, 0, 0, 1]);
+  const dispatcher = roles.find((role) => role.code === 'dispatcher');
+  assert.deepEqual(dispatcher.permissions.map((permission) => permission.code), DOCS_MATRIX.dispatcher);
+  for (const role of roles.filter(({ code }) => code !== 'driver')) {
+    assert.deepEqual(role.permissions.map(({ code }) => code).sort(), [...DOCS_MATRIX[role.code]].sort(), role.code);
+    assert.ok(role.permissions.every(({ scope }) => scope === 'all'), role.code);
+  }
+  assert.deepEqual(roles.find((role) => role.code === 'driver').permissions, [
+    { code: 'parcels.view', scope: 'assigned_only' }, { code: 'parcels.update_status', scope: 'assigned_only' },
+    { code: 'parcels.mark_delivered', scope: 'assigned_only' }, { code: 'drivers.view_earnings', scope: 'assigned_only' },
+  ]);
+});
+
 const { createPlatformAdmin, PlatformAdminError } = require('../../dist/cli/platform-admin');
 
 test('the first-admin command creates a platform admin and never reuses an account', async () => {
