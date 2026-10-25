@@ -56,6 +56,11 @@
 		"notFound": {
 			"title": "Page not found",
 			"description": "Choose a module from the navigation to continue."
+		},
+		"noAccess": {
+			"title": "No access",
+			"description": "You don't have access to {{area}} in {{company}}. Ask your company administrator.",
+			"back": "Back to Overview"
 		}
 	}
 }

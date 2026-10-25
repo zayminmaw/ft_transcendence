@@ -7,6 +7,8 @@ export type Workspace = {
 	name: string;
 	// The person's role in that company, shown next to their name in the sidebar card.
 	role: { code: string; name: string };
+	// What that role allows there (the API's own rule), e.g. "parcels.view": what the interface may offer.
+	permissions: string[];
 };
 export type Me = {
 	user: AccountUser;
