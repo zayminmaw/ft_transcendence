@@ -16,6 +16,7 @@ const { OrganizationMember } = require('../../dist/modules/organizations/entitie
 const { OrganizationMembersRepository } = require('../../dist/modules/organizations/organization-members.repository');
 const { RolesGuard } = require('../../dist/modules/rbac');
 const { UserRole } = require('../../dist/modules/rbac/entities/user-role.entity');
+const { RolePermission } = require('../../dist/modules/rbac/entities/role-permission.entity');
 const { PermissionsRepository } = require('../../dist/modules/rbac/permissions.repository');
 const { PlatformRolesRepository } = require('../../dist/modules/rbac/platform-roles.repository');
 const { User } = require('../../dist/modules/users/entities/user.entity');
@@ -97,7 +98,14 @@ function createFakeStore() {
       },
       findActiveWorkspaces: async (userId) => store.workspaces.get(userId) ?? [],
     },
-    permissions: { findScope: async (roleId, code) => (store.rolePermissions.get(roleId)?.has(code) ? 'all' : undefined) },
+    permissions: {
+      findScope: async (roleId, code) => (store.rolePermissions.get(roleId)?.has(code) ? 'all' : undefined),
+      // By role code, sorted, like the real query (every fake permission has full scope).
+      grantedCodes: async (roleCodes) => Object.fromEntries(roleCodes.map((code) => {
+        const role = store.roles.find((candidate) => candidate.code === code);
+        return [code, role ? [...(store.rolePermissions.get(String(role.id)) ?? [])].sort() : []];
+      })),
+    },
     platformRoles: { hasPlatformAccess: async (userId) => store.platformAdmins.has(userId) },
     companyMembers: {
       // Every company role except platform_admin, sorted by name like the real query.
@@ -138,7 +146,7 @@ function createFakeStore() {
 
 // TypeORM's own repository providers need a database connection; the fakes above replace every class that uses
 // them, so these only have to exist.
-const ENTITIES = [User, OrganizationMember, UserRole, UserSession, AuditLog];
+const ENTITIES = [User, OrganizationMember, UserRole, RolePermission, UserSession, AuditLog];
 
 // A fresh app per test, so throttling counts never leak from one test into another.
 // `controllers` adds fixture endpoints (e.g. a company endpoint) next to the real auth ones; `imports` adds modules

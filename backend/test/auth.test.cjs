@@ -18,6 +18,8 @@ async function storeWithUsers() {
     { id: '3', username: 'ex.member', email: 'ex@meridian.example.test', passwordHash, isActive: false },
   );
   store.workspaces.set('2', [{ id: '1', slug: 'meridian-courier', name: 'Meridian Courier', role: { code: 'dispatcher', name: 'Dispatcher' } }]);
+  store.roles.push({ id: 2, code: 'dispatcher', name: 'Dispatcher', description: 'Assigns parcels' });
+  store.rolePermissions.set('2', new Set(['parcels.view', 'clients.view']));
   return store;
 }
 
@@ -153,7 +155,7 @@ test('login slows down after 20 tries a minute from one address, whatever the lo
   assert.equal((await login(server, 'guess-final').expect(429)).body.code, 'AUTH_TOO_MANY_ATTEMPTS');
 });
 
-test('me works without a company and returns the user, workspaces and platform access', async (t) => {
+test('me works without a company and returns the user, workspaces with what the role allows, and platform access', async (t) => {
   const store = await storeWithUsers();
   store.platformAdmins.add('2');
   const { server } = await createAuthApp(t, store);
@@ -161,7 +163,10 @@ test('me works without a company and returns the user, workspaces and platform a
   const me = await request(server).get('/api/auth/me').set('Authorization', `Bearer ${accessToken}`).expect(200);
   assert.deepEqual(me.body, {
     user: { id: '2', username: 'dana.saleh', email: 'dana@meridian.example.test' },
-    workspaces: [{ id: '1', slug: 'meridian-courier', name: 'Meridian Courier', role: { code: 'dispatcher', name: 'Dispatcher' } }],
+    workspaces: [{
+      id: '1', slug: 'meridian-courier', name: 'Meridian Courier', role: { code: 'dispatcher', name: 'Dispatcher' },
+      permissions: ['clients.view', 'parcels.view'],
+    }],
     platformAccess: true,
     mustChangePassword: false,
   });
