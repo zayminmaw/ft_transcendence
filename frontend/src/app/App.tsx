@@ -8,13 +8,14 @@ import { getTenantNavigation } from './navigation';
 export function App() {
 	const { t } = useTranslation();
 	const companyPath = useCompanyPath();
-	const name = useCurrentWorkspace()?.name ?? t('workspace.scope');
+	const workspace = useCurrentWorkspace();
+	const name = workspace?.name ?? t('workspace.scope');
 	return (
 		<DashboardLayout
 			scope={name}
 			homeTo={companyPath()}
 			groups={getTenantNavigation(t, companyPath())}
-			header={<WorkspaceSwitcher current={name} />}
+			header={<WorkspaceSwitcher current={name} role={workspace?.role.name} />}
 			footer={<AccountFooter />}
 		/>
 	);

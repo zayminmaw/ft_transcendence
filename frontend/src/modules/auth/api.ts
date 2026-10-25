@@ -1,7 +1,13 @@
 import { apiRequest } from '@services/api-client';
 
 export type AccountUser = { id: string; username: string; email: string };
-export type Workspace = { id: string; slug: string; name: string };
+export type Workspace = {
+	id: string;
+	slug: string;
+	name: string;
+	// The person's role in that company, shown next to their name in the sidebar card.
+	role: { code: string; name: string };
+};
 export type Me = {
 	user: AccountUser;
 	workspaces: Workspace[];
