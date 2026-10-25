@@ -144,11 +144,23 @@ docker compose exec backend npm run seed:demo -- --force
 | `omar.hub`, `rania.finance`, `yusuf.hr`, `maya.fleet`, `samir.farah` | Hub Sorter, Finance, HR Manager, Fleet Lead, Driver at Meridian Courier |
 | `karim.harbor` | Tenant admin, Harbor Express |
 | `noor` | Dispatcher at Meridian Courier and Finance at Harbor Express |
+| `alaa`, `zaid` | Dispatcher at Meridian Courier and Finance at Harbor Express (42 login) |
+| `zmin` | Platform admin, and Dispatcher at Meridian Courier (42 login) |
+| `wai` | Tenant admin, Harbor Express (42 login) |
 | `zara.platform` | Platform admin, and Dispatcher at Meridian Courier |
 | `platform.ops` | Platform admin only |
 | `ex.member` | Inactive membership only (no workspace) |
 
-Log in with the username or the email (`<name>@meridian.example.test`, `@harbor.example.test`, or `@demo.example.test`). API clients such as curl or Postman must send `Origin` equal to `CORS_ORIGIN` (for example `-H 'Origin: https://localhost'`) on login, refresh, and logout; browsers do this on their own.
+Log in with the username or the email (`<name>@meridian.example.test`, `@harbor.example.test`, or `@demo.example.test`). The accounts marked 42 login use team members' 42 emails, so they can also sign in with **Log in with 42**. API clients such as curl or Postman must send `Origin` equal to `CORS_ORIGIN` (for example `-H 'Origin: https://localhost'`) on login, refresh, and logout; browsers do this on their own.
+
+### Log in with 42
+
+The login page also offers **Log in with 42**. It never creates an account: after 42 confirms the user, the API signs in the active account whose email matches the 42 profile's email, and refuses otherwise. To enable it, register these redirect URIs on the 42 intra application:
+
+- `http://localhost:5173/api/auth/42/callback` (development with hot reload)
+- `https://localhost/api/auth/42/callback` (the NGINX build)
+
+Then set `FORTYTWO_APP_ID` (the 42 UID) and `FORTYTWO_APP_SECRET` in the root `.env`, plus `backend/.env` for host development. The callback URL is `CORS_ORIGIN` followed by `/api/auth/42/callback`; set `FORTYTWO_REDIRECT_URI` only to override it. Without the two values the API still starts, and the button returns a "not available" message. To try it, create an account (for example with `create-platform-admin`) whose email is the one on your 42 profile.
 
 ## Local quality gates
 
