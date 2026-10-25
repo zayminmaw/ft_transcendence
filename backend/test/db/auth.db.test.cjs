@@ -346,6 +346,25 @@ test('the members queries: the roles to give, the list, creating with a membersh
   assert.equal((await members.list(company)).length, 2);
 });
 
+const { MembersAuditRepository } = require('../../dist/modules/members/members-audit.repository');
+
+test('changing a role updates only that membership, and the audit row keeps the old and new role', async () => {
+  const members = new MembersRepository(database);
+  const company = await createCompany('theta-db', 'Theta Freight');
+  const other = await createCompany('iota-db', 'Iota Post');
+  const person = await createUser('role.change.db');
+  await addMember(company, person, 'dispatcher');
+  await addMember(other, person, 'dispatcher');
+  const finance = await database.getRepository(Role).findOneByOrFail({ code: 'finance' });
+  await members.setRole(company, person, finance.id);
+  assert.equal((await members.find(company, person)).role.code, 'finance');
+  assert.equal((await members.find(other, person)).role.code, 'dispatcher');
+  const entry = { organizationId: company, actorId: person, targetId: person, oldValues: { role: 'dispatcher' }, newValues: { role: 'finance' } };
+  await new MembersAuditRepository(database.getRepository(AuditLog)).record('member_role_changed', entry, META);
+  const row = await database.getRepository(AuditLog).findOneByOrFail({ module: 'members', action: 'member_role_changed', recordId: person });
+  assert.deepEqual([row.oldValues, row.newValues], [{ role: 'dispatcher' }, { role: 'finance' }]);
+});
+
 const { createPlatformAdmin, PlatformAdminError } = require('../../dist/cli/platform-admin');
 
 test('the first-admin command creates a platform admin and never reuses an account', async () => {

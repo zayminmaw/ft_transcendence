@@ -62,6 +62,20 @@ export class MembersService {
     return publicMember({ ...member, isActive });
   }
 
+  // Another role in this company, from the person's next request (the guard reads the membership every time). A role
+  // belongs to one membership, so people who also work elsewhere can change too. The current role again changes
+  // nothing.
+  async changeRole(tenant: TenantContext, actorId: string, userId: string, roleCode: string, meta: RequestMeta) {
+    const member = await this.requireTarget(tenant, actorId, userId);
+    const role = (await this.members.companyRoles()).find(({ code }) => code === roleCode);
+    if (!role) throw new ForbiddenException(ROLE_NOT_ASSIGNABLE);
+    if (member.role.code === role.code) return publicMember(member);
+    await this.members.setRole(tenant.organizationId, member.userId, role.id);
+    const entry = this.entry(tenant, actorId, member.userId, { role: role.code }, { role: member.role.code });
+    await this.audit.record('member_role_changed', entry, meta);
+    return publicMember({ ...member, role: { id: role.id, code: role.code, name: role.name } });
+  }
+
   // A forgotten password: a one-time password generated here and shown once. The person must replace it at the next
   // login, and all their sessions end. Only for accounts that belong to this company alone.
   async resetPassword(tenant: TenantContext, actorId: string, userId: string, meta: RequestMeta) {
@@ -83,7 +97,13 @@ export class MembersService {
     return member;
   }
 
-  private entry(tenant: TenantContext, actorId: string, targetId: string, newValues?: Record<string, unknown>) {
-    return { organizationId: tenant.organizationId, actorId, targetId, newValues };
+  private entry(
+    tenant: TenantContext,
+    actorId: string,
+    targetId: string,
+    newValues?: Record<string, unknown>,
+    oldValues?: Record<string, unknown>,
+  ) {
+    return { organizationId: tenant.organizationId, actorId, targetId, newValues, ...(oldValues ? { oldValues } : {}) };
   }
 }
