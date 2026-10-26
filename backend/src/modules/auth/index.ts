@@ -1,3 +1,4 @@
+export { AuthAuditRepository } from './auth-audit.repository';
 export { AuthModule } from './auth.module';
 export { JwtAuthGuard } from './jwt-auth.guard';
 // For the 42 login, so it ends exactly like password login:

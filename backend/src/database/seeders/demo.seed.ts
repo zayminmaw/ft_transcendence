@@ -36,6 +36,14 @@ export const DEMO_ACCOUNTS: DemoAccount[] = [
   { username: 'noor', email: 'noor@demo.example.test', memberships: [
     { company: 'meridian-courier', role: 'dispatcher' }, { company: 'harbor-express', role: 'finance' },
   ] },
+  { username: 'alaa', email: 'ataan@student.42bangkok.com', memberships: [
+    { company: 'meridian-courier', role: 'dispatcher' }, { company: 'harbor-express', role: 'finance' },
+  ] },
+  { username: 'zaid', email: 'zabu-bak@student.42bangkok.com', memberships: [
+    { company: 'meridian-courier', role: 'dispatcher' }, { company: 'harbor-express', role: 'finance' },
+  ] },
+  { username: 'zmin', email: 'zmin@student.42bangkok.com', platformAdmin: true, memberships: [{ company: 'meridian-courier', role: 'dispatcher' }] },
+  { username: 'wai', email: 'wmin-kha@student.42bangkok.com', memberships: [{ company: 'harbor-express', role: 'org_admin' }] },
   { username: 'zara.platform', email: 'zara@demo.example.test', platformAdmin: true, memberships: [{ company: 'meridian-courier', role: 'dispatcher' }] },
   { username: 'platform.ops', email: 'platform.ops@demo.example.test', platformAdmin: true, memberships: [] },
   { username: 'ex.member', email: 'ex.member@meridian.example.test', memberships: [{ company: 'meridian-courier', role: 'hub_sorter', active: false }] },
