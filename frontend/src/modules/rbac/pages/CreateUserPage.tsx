@@ -7,7 +7,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { z } from 'zod';
 import { Button, Input, ModulePage, PasswordInput, TipCard } from '@global-components';
 import { useCompanyPath } from '@hooks/useCompanyPath';
-import { useCurrentWorkspace } from '@modules/auth';
+import { useCurrentWorkspace, useRoleName } from '@modules/auth';
 import { generatePassword, meetsPasswordRule } from '@utils/password';
 import type { Member, NewMember } from '../api';
 import { UserCreatedDialog } from '../components/UserCreatedDialog';
@@ -49,6 +49,7 @@ export function CreateUserPage() {
 	const companyPath = useCompanyPath();
 	const company = useCurrentWorkspace()?.name ?? '';
 	const roles = useAssignableRoles();
+	const roleName = useRoleName();
 	const create = useCreateMember();
 	const [created, setCreated] = useState<Member | null>(null);
 	// A generated password is shown, so the admin can copy it before creating.
@@ -67,7 +68,7 @@ export function CreateUserPage() {
 		defaultValues: { username: '', email: '', password: '', roleCode: '' },
 	});
 	const [username, roleCode] = useWatch({ control, name: ['username', 'roleCode'] });
-	const roleName = roles.data?.find((role) => role.code === roleCode)?.name;
+	const chosenRole = roles.data?.find((role) => role.code === roleCode);
 	const fieldError = (key?: string) => key && t(key as ParseKeys<'rbac'>);
 	const code = errorCode(create.error);
 	const formError = create.isError && !(code && code in FIELD_CODES);
@@ -76,7 +77,7 @@ export function CreateUserPage() {
 	const review = [
 		{ label: t('create.reviewCompany'), value: company },
 		{ label: t('create.reviewUser'), value: username.trim() || '—' },
-		{ label: t('create.reviewRole'), value: roleName ?? '—' },
+		{ label: t('create.reviewRole'), value: chosenRole ? roleName(chosenRole) : '—' },
 		{ label: t('create.reviewAccess'), value: t('create.reviewAccessValue') },
 	];
 
@@ -184,7 +185,7 @@ export function CreateUserPage() {
 							<option value="">{t('create.chooseRole')}</option>
 							{roles.data?.map((role) => (
 								<option key={role.code} value={role.code}>
-									{role.name}
+									{roleName(role)}
 								</option>
 							))}
 						</select>
