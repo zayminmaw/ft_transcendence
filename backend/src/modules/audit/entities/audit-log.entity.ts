@@ -1,7 +1,6 @@
 import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn } from 'typeorm';
 
-// Mirrors the shared `audit_logs` table. Auth is its first writer; move this entity to a shared place when another
-// module starts writing audit rows.
+// Mirrors the shared `audit_logs` table. Auth and platform tenant management write to it.
 @Entity('audit_logs')
 export class AuditLog {
   @PrimaryGeneratedColumn({ type: 'bigint', unsigned: true })

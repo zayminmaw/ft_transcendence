@@ -98,7 +98,7 @@ test('platform access comes from user_roles only, never from a membership', asyn
 
 const { JwtService } = require('@nestjs/jwt');
 const { AuthAuditRepository } = require('../../dist/modules/auth/auth-audit.repository');
-const { AuditLog } = require('../../dist/modules/auth/entities/audit-log.entity');
+const { AuditLog } = require('../../dist/modules/audit/entities/audit-log.entity');
 const { UserSession } = require('../../dist/modules/auth/entities/user-session.entity');
 const { SessionsRepository } = require('../../dist/modules/auth/sessions.repository');
 const { SessionsService } = require('../../dist/modules/auth/sessions.service');

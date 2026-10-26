@@ -5,6 +5,6 @@ export { JwtAuthGuard } from './jwt-auth.guard';
 //   const session = await sessions.start(user.id, requestMeta(request));
 //   setRefreshCookie(response, session);
 export { setRefreshCookie } from './refresh-cookie';
-export { type RequestMeta, requestMeta } from './request-meta';
-export { AuditLog } from './entities/audit-log.entity';
+export { requestMeta } from './request-meta';
+export type { RequestMeta } from './request-meta';
 export { SessionsService } from './sessions.service';

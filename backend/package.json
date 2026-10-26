@@ -14,7 +14,7 @@
     "test": "npm run build && node --test test/*.test.cjs",
     "migration:run": "npm run build && typeorm migration:run -d dist/database/data-source.js",
     "migration:show": "npm run build && typeorm migration:show -d dist/database/data-source.js",
-    "test:db": "npm run build && node --env-file-if-exists=../.env --env-file-if-exists=.env --test test/db/*.test.cjs",
+    "test:db": "npm run build && node --env-file-if-exists=../.env --env-file-if-exists=.env --test --test-concurrency=1 test/db/*.test.cjs",
     "create-platform-admin": "node dist/cli/create-platform-admin.js",
     "seed:demo": "node dist/cli/seed-demo.js"
   },

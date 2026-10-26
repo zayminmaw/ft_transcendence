@@ -1,7 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { AuditLog, type RequestMeta } from '../auth';
+import { AuditLog } from '../audit';
+import type { RequestMeta } from '../auth';
 
 export type MemberAuditAction = 'member_created' | 'member_deactivated' | 'member_reactivated' | 'password_reset';
 

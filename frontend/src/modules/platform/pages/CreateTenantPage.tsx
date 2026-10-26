@@ -1,12 +1,34 @@
-import { Input, ModulePage, TipCard, useToast } from '@global-components';
-import { useState } from 'react';
+import { useForm, useWatch } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { useNavigate } from 'react-router-dom';
+import { Button, Input, ModulePage, PasswordInput, TipCard, useToast } from '@global-components';
+import { ApiError } from '@services/api-client';
+import { toSlug } from '@utils/slug';
+import type { CreateTenantValues } from '../api';
+import { CREATE_TENANT_DEFAULT_VALUES, CREATE_TENANT_FIELD_ERRORS } from '../constants';
+import { useTenantMutations } from '../hooks/useTenantMutations';
+import { createTenantSchema } from '../schemas/createTenantSchema';
 
 export function CreateTenantPage() {
 	const navigate = useNavigate();
 	const { toast } = useToast();
-	const [orgName, setOrgName] = useState('');
-	const [username, setUsername] = useState('');
+	const { createTenant, isCreating } = useTenantMutations();
+	const {
+		register,
+		handleSubmit,
+		setError,
+		setValue,
+		control,
+		getFieldState,
+		formState: { errors },
+	} = useForm<CreateTenantValues>({
+		resolver: zodResolver(createTenantSchema),
+		defaultValues: CREATE_TENANT_DEFAULT_VALUES,
+	});
+	const [orgName, username] = useWatch({
+		control,
+		name: ['organization.name', 'administrator.username'],
+	});
 
 	const review = [
 		{ label: 'Company', value: orgName.trim() || '—' },
@@ -14,6 +36,34 @@ export function CreateTenantPage() {
 		{ label: 'Role', value: 'Tenant administrator' },
 		{ label: 'Access', value: 'This company only' },
 	];
+
+	const onSubmit = handleSubmit((values) =>
+		createTenant(values, {
+			onSuccess: ({ tenant, administrator }) => {
+				toast({
+					variant: 'success',
+					title: 'Tenant created',
+					description: `${tenant.name} is ready. ${administrator.username} can now log in.`,
+				});
+				navigate(`/platform/tenants/${tenant.id}`, { replace: true });
+			},
+			onError: (error) => {
+				const field =
+					error instanceof ApiError && error.code
+						? CREATE_TENANT_FIELD_ERRORS[
+								error.code as keyof typeof CREATE_TENANT_FIELD_ERRORS
+							]
+						: undefined;
+				if (field) setError(field, { message: error.message }, { shouldFocus: true });
+				else
+					toast({
+						variant: 'error',
+						title: "Couldn't create the tenant",
+						description: error.message,
+					});
+			},
+		}),
+	);
 
 	return (
 		<div className="flex flex-col gap-6">
@@ -23,49 +73,59 @@ export function CreateTenantPage() {
 			/>
 			<div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
 				<form
-					onSubmit={(e) => {
-						e.preventDefault();
-						toast({
-							variant: 'success',
-							title: 'Tenant created',
-							description: `${orgName.trim()} is ready. ${username.trim()} can now sign in.`,
-						});
-					}}
+					noValidate
+					onSubmit={onSubmit}
 					className="flex flex-col gap-6 rounded-box border border-base-300 p-4 md:p-8"
 				>
 					<section className="flex flex-col gap-4">
 						<h2 className="text-lg font-semibold">Organization</h2>
 						<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
 							<Input
-								id="orgName"
-								name="orgName"
 								label="Organization name"
 								placeholder="Meridian Courier"
 								required
-								value={orgName}
-								onChange={(e) => setOrgName(e.target.value)}
+								error={errors.organization?.name?.message}
+								{...register('organization.name', {
+									// The slug follows the name until it is edited by hand.
+									onChange: (event: { target: { value: string } }) => {
+										if (!getFieldState('organization.slug').isDirty)
+											setValue(
+												'organization.slug',
+												toSlug(event.target.value),
+											);
+									},
+								})}
 							/>
 							<Input
-								id="orgSlug"
-								name="orgSlug"
 								label="Organization slug"
 								placeholder="meridian-courier"
 								required
+								autoCapitalize="none"
+								spellCheck={false}
+								error={errors.organization?.slug?.message}
+								{...register('organization.slug')}
 							/>
 							<Input
-								id="contactEmail"
-								name="contactEmail"
 								label="Contact email"
 								type="email"
 								placeholder="office@meridian.example.test"
 								required
+								error={errors.organization?.contactEmail?.message}
+								{...register('organization.contactEmail')}
 							/>
 							<Input
-								id="phone"
-								name="phone"
 								label="Phone (optional)"
 								type="tel"
 								placeholder="+962 7 9000 0000"
+								error={errors.organization?.contactPhone?.message}
+								{...register('organization.contactPhone')}
+							/>
+							<Input
+								label="Address (optional)"
+								placeholder="14 Al-Madina Street, Amman"
+								containerClassName="md:col-span-2"
+								error={errors.organization?.address?.message}
+								{...register('organization.address')}
 							/>
 						</div>
 					</section>
@@ -81,34 +141,37 @@ export function CreateTenantPage() {
 						</div>
 						<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
 							<Input
-								id="username"
-								name="username"
 								label="Username"
 								placeholder="lina.haddad"
 								required
-								value={username}
-								onChange={(e) => setUsername(e.target.value)}
+								autoComplete="off"
+								autoCapitalize="none"
+								spellCheck={false}
+								error={errors.administrator?.username?.message}
+								{...register('administrator.username')}
 							/>
 							<Input
-								id="loginEmail"
-								name="loginEmail"
 								label="Login email"
 								type="email"
 								placeholder="lina@meridian.example.test"
 								required
+								autoComplete="off"
+								error={errors.administrator?.email?.message}
+								{...register('administrator.email')}
 							/>
-							<Input
-								id="password"
-								name="password"
+							<PasswordInput
 								label="Initial password"
-								type="password"
 								required
+								autoComplete="new-password"
 								containerClassName="md:col-span-2"
+								error={errors.administrator?.password?.message}
+								{...register('administrator.password')}
 							/>
 						</div>
 						<p className="text-xs text-slate">
-							Hand over credentials securely. Passwords are hidden from confirmation
-							and audit records.
+							8-128 characters with an upper-case letter, a lower-case letter, a
+							number and a symbol. Hand over credentials securely. Passwords are
+							hidden from confirmation and audit records.
 						</p>
 					</section>
 
@@ -120,9 +183,15 @@ export function CreateTenantPage() {
 						>
 							Cancel
 						</button>
-						<button type="submit" className="btn btn-primary">
-							Create tenant & administrator
-						</button>
+						<Button type="submit" disabled={isCreating}>
+							{isCreating && (
+								<span
+									className="loading loading-spinner loading-sm"
+									aria-hidden="true"
+								/>
+							)}
+							{isCreating ? 'Creating…' : 'Create tenant & administrator'}
+						</Button>
 					</div>
 				</form>
 				<aside className="flex flex-col gap-6">
