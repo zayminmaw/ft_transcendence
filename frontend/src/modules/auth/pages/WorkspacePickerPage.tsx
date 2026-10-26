@@ -40,10 +40,15 @@ export function WorkspacePickerPage() {
 			</CenteredPage>
 		);
 
-	const { workspaces, platformAccess } = me.data;
+	const { user, workspaces, platformAccess } = me.data;
+	const loggedInAs = t('picker.loggedInAs', { username: user.username });
 	if (workspaces.length === 0 && !platformAccess)
 		return (
-			<CenteredPage title={t('noAccess.title')} description={t('noAccess.description')}>
+			<CenteredPage
+				title={t('noAccess.title')}
+				subtitle={loggedInAs}
+				description={t('noAccess.description')}
+			>
 				{logOutButton}
 			</CenteredPage>
 		);
@@ -52,7 +57,11 @@ export function WorkspacePickerPage() {
 		return <Navigate to={`/app/${workspaces[0].slug}`} replace />;
 
 	return (
-		<CenteredPage title={t('picker.title')} description={t('picker.intro')}>
+		<CenteredPage
+			title={t('picker.title')}
+			subtitle={loggedInAs}
+			description={t('picker.intro')}
+		>
 			<ul className="flex flex-col gap-6">
 				{workspaces.map(({ id, slug, name }) => (
 					<li key={id} className="rounded-box bg-base-200 p-6">

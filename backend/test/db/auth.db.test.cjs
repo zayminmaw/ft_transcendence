@@ -68,7 +68,7 @@ async function addMember(organizationId, userId, roleCode, isActive = true) {
   await database.getRepository(OrganizationMember).insert({ organizationId, userId, roleId: role.id, isActive });
 }
 
-test('the picker lists active memberships in active companies, sorted by name', async () => {
+test('the picker lists active memberships in active companies, sorted by name, each with its role', async () => {
   const members = createMembers();
   const alpha = await createCompany('alpha-db', 'Alpha Freight');
   const beta = await createCompany('beta-db', 'Beta Couriers');
@@ -78,8 +78,8 @@ test('the picker lists active memberships in active companies, sorted by name', 
   await addMember(alpha, both, 'finance');
   await addMember(alpha, switchedOff, 'hub_sorter', false);
   assert.deepEqual(await members.findActiveWorkspaces(both), [
-    { id: alpha, slug: 'alpha-db', name: 'Alpha Freight' },
-    { id: beta, slug: 'beta-db', name: 'Beta Couriers' },
+    { id: alpha, slug: 'alpha-db', name: 'Alpha Freight', role: { code: 'finance', name: 'Finance' } },
+    { id: beta, slug: 'beta-db', name: 'Beta Couriers', role: { code: 'dispatcher', name: 'Dispatcher' } },
   ]);
   assert.deepEqual(await members.findActiveWorkspaces(switchedOff), []);
   await database.getRepository(Organization).update({ id: beta }, { isActive: false });

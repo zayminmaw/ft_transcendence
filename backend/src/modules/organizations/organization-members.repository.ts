@@ -8,6 +8,8 @@ export interface Workspace {
   id: string;
   slug: string;
   name: string;
+  // The person's role in this company, shown next to their name in the sidebar.
+  role: { code: string; name: string };
 }
 
 @Injectable()
@@ -30,13 +32,18 @@ export class OrganizationMembersRepository {
     return rows[0] ? { organizationId, roleId: rows[0].roleId } : undefined;
   }
 
-  // The workspace picker: active memberships in active companies only.
+  // The workspace picker and the sidebar: active memberships in active companies only, each with the person's role.
   async findActiveWorkspaces(userId: string): Promise<Workspace[]> {
     const memberships = await this.members.find({
       where: { userId, isActive: true, organization: { isActive: true } },
-      relations: { organization: true },
+      relations: { organization: true, role: true },
       order: { organization: { name: 'ASC' } },
     });
-    return memberships.map(({ organization }) => ({ id: organization.id, slug: organization.slug, name: organization.name }));
+    return memberships.map(({ organization, role }) => ({
+      id: organization.id,
+      slug: organization.slug,
+      name: organization.name,
+      role: { code: role.code, name: role.name },
+    }));
   }
 }

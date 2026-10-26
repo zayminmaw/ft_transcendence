@@ -14,7 +14,7 @@ export type SidebarContentProps = {
 	onNavigate?: () => void;
 	// Replaces the scope card at the top, e.g. with the workspace switcher.
 	header?: ReactNode;
-	// Shown above "Back to website", e.g. the logged-in account.
+	// Shown under "Back to website", e.g. Log out.
 	footer?: ReactNode;
 };
 
@@ -74,10 +74,10 @@ export function SidebarContent({
 				))}
 			</nav>
 			<div className="mt-auto flex flex-col gap-4">
-				{footer}
 				<Link to="/" onClick={onNavigate} className="btn btn-ghost bg-base-200">
 					{t('sidebar.backToWebsite')}
 				</Link>
+				{footer}
 			</div>
 		</div>
 	);
