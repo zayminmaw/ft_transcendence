@@ -12,6 +12,7 @@ import { AuthModule, JwtAuthGuard } from './modules/auth';
 import { FortyTwoModule } from './modules/forty-two';
 import { OrganizationsModule } from './modules/organizations';
 import { RbacModule, RolesGuard } from './modules/rbac';
+import { MembersModule } from './modules/members';
 import { ClientsModule } from './modules/clients';
 import { StaffModule } from './modules/staff';
 import { DriversModule } from './modules/drivers';
@@ -33,7 +34,7 @@ import { NotificationsModule } from './modules/notifications';
         DB_NAME: config.get('DB_NAME', { infer: true }),
       }),
     }),
-    AuthModule, FortyTwoModule, RbacModule, OrganizationsModule, ClientsModule, StaffModule,
+    AuthModule, FortyTwoModule, RbacModule, OrganizationsModule, MembersModule, ClientsModule, StaffModule,
     DriversModule, AssetsModule, ParcelsModule, BillingModule,
     NotificationsModule,
   ],

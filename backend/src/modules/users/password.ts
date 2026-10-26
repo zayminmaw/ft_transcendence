@@ -1,7 +1,11 @@
 import { argon2id, hash, verify } from 'argon2';
+import { randomInt } from 'node:crypto';
 
 export const PASSWORD_MIN_LENGTH = 8;
 export const PASSWORD_MAX_LENGTH = 128;
+
+export const PASSWORD_RULE_MESSAGE =
+  'Passwords need 8-128 characters with an upper-case letter, a lower-case letter, a number and a symbol.';
 
 export type PasswordProblem = 'length' | 'lowercase' | 'uppercase' | 'number' | 'symbol';
 
@@ -26,4 +30,20 @@ export async function verifyPassword(passwordHash: string, password: string): Pr
   } catch {
     return false;
   }
+}
+
+// No look-alikes (0/O, 1/l/I), so it can be read out or copied by hand without mistakes.
+const TEMPORARY_SETS = ['ABCDEFGHJKLMNPQRSTUVWXYZ', 'abcdefghijkmnopqrstuvwxyz', '23456789', '!#$%&*+-=?@'];
+
+// A one-time password an admin hands over after a reset: 16 characters, at least one from each set, so it always
+// passes the rule. The person must replace it at their next login.
+export function temporaryPassword(): string {
+  const all = TEMPORARY_SETS.join('');
+  const characters = TEMPORARY_SETS.map((set) => set[randomInt(set.length)]);
+  while (characters.length < 16) characters.push(all[randomInt(all.length)]);
+  for (let i = characters.length - 1; i > 0; i--) {
+    const j = randomInt(i + 1);
+    [characters[i], characters[j]] = [characters[j], characters[i]];
+  }
+  return characters.join('');
 }

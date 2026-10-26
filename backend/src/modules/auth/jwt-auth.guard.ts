@@ -14,11 +14,11 @@ export class JwtAuthGuard implements CanActivate {
     const match = /^Bearer (\S+)$/i.exec(request.headers.authorization ?? '');
     if (!match) throw new UnauthorizedException('A valid bearer token is required.');
     try {
-      const payload = await this.jwt.verifyAsync<{ sub?: unknown; exp?: unknown }>(match[1]);
+      const payload = await this.jwt.verifyAsync<{ sub?: unknown; exp?: unknown; mustChangePassword?: unknown }>(match[1]);
       if (typeof payload.sub !== 'string' || !/^[1-9]\d*$/.test(payload.sub) || typeof payload.exp !== 'number') {
         throw new Error('Invalid token claims');
       }
-      request.user = { id: payload.sub };
+      request.user = { id: payload.sub, mustChangePassword: payload.mustChangePassword === true };
       return true;
     } catch {
       throw new UnauthorizedException('The access token is invalid or expired.');

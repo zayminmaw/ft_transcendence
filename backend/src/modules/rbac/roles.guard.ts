@@ -1,6 +1,7 @@
 import { BadRequestException, CanActivate, ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { IS_AUTHENTICATED_ONLY } from '../../common/decorators/authenticated.decorator';
+import { ALLOWED_BEFORE_PASSWORD_CHANGE } from '../../common/decorators/before-password-change.decorator';
 import { IS_PLATFORM_ADMIN } from '../../common/decorators/platform-admin.decorator';
 import { IS_PUBLIC } from '../../common/decorators/public.decorator';
 import { REQUIRED_PERMISSION } from '../../common/decorators/require-permission.decorator';
@@ -25,6 +26,10 @@ export class RolesGuard implements CanActivate {
     if (this.reflector.getAllAndOverride<boolean>(IS_PUBLIC, targets)) return true;
     const permission = this.reflector.getAllAndOverride<string>(REQUIRED_PERMISSION, targets);
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
+    // An admin-given password must be replaced before anything else (the flag comes from the access token).
+    if (request.user?.mustChangePassword && !this.reflector.getAllAndOverride<boolean>(ALLOWED_BEFORE_PASSWORD_CHANGE, targets)) {
+      throw new ForbiddenException({ message: 'Change your password to continue.', code: 'AUTH_PASSWORD_CHANGE_REQUIRED' });
+    }
     const accountOnly = this.reflector.getAllAndOverride<boolean>(IS_AUTHENTICATED_ONLY, targets);
     if (this.reflector.getAllAndOverride<boolean>(IS_PLATFORM_ADMIN, targets)) {
       if (permission || accountOnly) {
