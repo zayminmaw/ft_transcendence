@@ -141,8 +141,9 @@ export class TenantAdministratorsRepository {
   }
 }
 
-// One of the roles findMemberRoles offers, or nothing.
+// One of the roles findMemberRoles offers, or nothing. The lookup ignores case, so the role it finds is checked, not
+// the code sent: ORG_ADMIN finds org_admin.
 async function findMemberRole(manager: EntityManager, code: string): Promise<Role | null> {
-  if (NON_MEMBER_ROLES.includes(code)) return null;
-  return manager.findOneBy(Role, { code });
+  const role = await manager.findOneBy(Role, { code });
+  return role && !NON_MEMBER_ROLES.includes(role.code) ? role : null;
 }

@@ -1,4 +1,5 @@
 export type TenantStatusFilter = 'all' | 'active' | 'suspended';
+
 export type TenantSortKey = 'name' | 'members' | 'createdAt';
 
 export type TenantListParams = {
@@ -101,3 +102,53 @@ export type RevokeAdministratorValues =
 	| { outcome: 'remove' | 'suspend_tenant'; reason: string };
 
 export type RevokedAdministrator = { tenantSuspended: boolean };
+
+export type ActivityFilter = 'all' | 'created' | 'details' | 'status' | 'administrators';
+
+export type ActivitySortKey = 'createdAt' | 'tenant';
+
+export type TenantActivityParams = {
+	search: string;
+	action: ActivityFilter;
+	sort: ActivitySortKey;
+	direction: 'asc' | 'desc';
+	page: number;
+	pageSize: number;
+};
+
+// What an event shows; which fields are set depends on the action.
+export type ActivityDetails = {
+	reason?: string | null;
+	administrator?: string;
+	account?: 'new' | 'existing';
+	revoke?: 'change_role' | 'remove';
+	role?: string;
+	previousRole?: string;
+	fields?: string[];
+	cause?: 'last_administrator_revoked';
+};
+
+export type TenantActivityEvent = {
+	id: string;
+	createdAt: string;
+	action: string;
+	// Null only if the company has since been deleted.
+	tenant: { id: string; name: string } | null;
+	actor: string | null;
+	details: ActivityDetails;
+};
+
+export type TenantActivity = {
+	items: TenantActivityEvent[];
+	total: number;
+	page: number;
+	pageSize: number;
+	// The last seven days, whatever the search and filter.
+	counts: {
+		events: number;
+		created: number;
+		details: number;
+		status: number;
+		administrators: number;
+	};
+};
