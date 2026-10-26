@@ -1,4 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import type { ParseKeys } from 'i18next';
+import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import { sessionStore } from '@app/store/session';
 import { useAuth } from '@hooks/useAuth';
@@ -21,6 +23,16 @@ export function useMe(options: { refetchOnMount?: 'always' } = {}) {
 export function useCurrentWorkspace() {
 	const { companySlug } = useParams();
 	return useMe().data?.workspaces.find(({ slug }) => slug === companySlug);
+}
+
+// A role's name in the current language, by its code (common.json "roles"); a code without a translation keeps the
+// database's English name.
+export function useRoleName() {
+	const { t, i18n } = useTranslation();
+	return (role: { code: string; name: string }) => {
+		const key = `roles.${role.code}`;
+		return i18n.exists(key) ? t(key as ParseKeys<'common'>) : role.name;
+	};
 }
 
 // What your role allows in the open company: can('billing.view'). Only decides what to show; the API decides what

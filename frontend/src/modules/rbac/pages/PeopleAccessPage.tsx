@@ -5,7 +5,7 @@ import { AnalyticsCard, Button, ModulePage, Table, TipCard } from '@global-compo
 import type { TableColumn } from '@global-components';
 import { useAuth } from '@hooks/useAuth';
 import { useCompanyPath } from '@hooks/useCompanyPath';
-import { useCurrentWorkspace } from '@modules/auth';
+import { useCurrentWorkspace, useRoleName } from '@modules/auth';
 import { ApiError } from '@services/api-client';
 import { formatDate, formatNumber } from '@utils/format';
 import type { Member } from '../api';
@@ -17,6 +17,7 @@ export function PeopleAccessPage() {
 	const { t, i18n } = useTranslation('rbac');
 	const companyPath = useCompanyPath();
 	const company = useCurrentWorkspace()?.name ?? '';
+	const roleName = useRoleName();
 	const { userId } = useAuth();
 	const members = useMembers();
 	const [search, setSearch] = useState('');
@@ -91,7 +92,7 @@ export function PeopleAccessPage() {
 				</div>
 			),
 		},
-		{ key: 'role', header: t('table.role'), cell: (member) => member.role.name },
+		{ key: 'role', header: t('table.role'), cell: (member) => roleName(member.role) },
 		{
 			key: 'status',
 			header: t('table.status'),
