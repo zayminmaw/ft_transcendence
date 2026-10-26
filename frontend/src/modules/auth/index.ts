@@ -6,4 +6,5 @@ export { CenteredPage } from './components/CenteredPage';
 export { LoadingScreen } from './components/LoadingScreen';
 export { ServerUnavailable } from './components/ServerUnavailable';
 export { WorkspaceSwitcher } from './components/WorkspaceSwitcher';
+export { ChangePasswordPage } from './pages/ChangePasswordPage';
 export { WorkspacePickerPage } from './pages/WorkspacePickerPage';

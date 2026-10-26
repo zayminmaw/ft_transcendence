@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { sessionStore } from '@app/store/session';
 import { useAuth } from '@hooks/useAuth';
 import { logOut } from '@services/session-refresh';
-import { fetchMe, logIn } from './api';
+import { changePassword, fetchMe, logIn, type Me } from './api';
 
 // The account, its companies and platform access. The picker passes refetchOnMount: 'always', so a removed
 // membership disappears when it opens.
@@ -34,6 +34,26 @@ export function useLogin() {
 			queryClient.removeQueries();
 			sessionStore.start(accessToken, user.id);
 			navigate('/app', { replace: true });
+		},
+	});
+}
+
+// Keeps this session with the new token (the same user, so the open company stays) and clears the flag in the cached
+// /me, so the change page and the guard let the account through at once.
+export function useChangePassword() {
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: changePassword,
+		// The variables are passwords: don't keep them once the page is gone.
+		gcTime: 0,
+		onSuccess: ({ accessToken }) => {
+			const { userId } = sessionStore.getSnapshot();
+			if (!userId) return;
+			sessionStore.start(accessToken, userId);
+			queryClient.setQueryData<Me>(
+				['auth', 'me', userId],
+				(me) => me && { ...me, mustChangePassword: false },
+			);
 		},
 	});
 }
