@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { type EntityManager, IsNull, Repository } from 'typeorm';
+import { type EntityManager, IsNull, Not, Repository } from 'typeorm';
 import { type RevokeReason, UserSession } from './entities/user-session.entity';
 
 export interface NewSession {
@@ -42,6 +42,14 @@ export class SessionsRepository {
 
   async revoke(id: string, reason: RevokeReason, at: Date): Promise<void> {
     await new EntitySessionsTransaction(this.sessions.manager).revoke(id, reason, at);
+  }
+
+  // Ends every open session of a user, or every one except the session named by keepFamilyId.
+  async revokeAllForUser(userId: string, reason: RevokeReason, at: Date, keepFamilyId?: string): Promise<void> {
+    await this.sessions.update(
+      { userId, revokedAt: IsNull(), ...(keepFamilyId ? { familyId: Not(keepFamilyId) } : {}) },
+      { revokedAt: at, revokedReason: reason },
+    );
   }
 
   transaction<T>(work: (sessions: SessionsTransaction) => Promise<T>): Promise<T> {
