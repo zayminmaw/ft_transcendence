@@ -24,6 +24,8 @@ test('the migrations add the sessions table and the documented roles and permiss
   // previous_token_hash came back in 1792454400000, with rotated_at, for the 10-second reuse interval.
   assert.equal(await sessionColumns('previous_token_hash'), 1);
   assert.equal(await sessionColumns('rotated_at'), 1);
+  assert.equal(await count(`SELECT COUNT(*) AS total FROM information_schema.columns
+    WHERE table_schema = DATABASE() AND table_name = 'users' AND column_name = 'must_change_password'`), 1);
 });
 
 const { User } = require('../../dist/modules/users/entities/user.entity');
@@ -187,6 +189,71 @@ test('logout ends the session and is audited', async () => {
   assert.equal(await auditCount('logout', userId), 1);
 });
 
+const { AccountError, createAccount } = require('../../dist/modules/users/accounts');
+
+test('createAccount refuses names that differ only in case, and of two racing creates only one wins', async () => {
+  const input = { username: 'case.db', email: 'case.db@db.test', password: 'Correct-horse-1', mustChangePassword: true };
+  const id = await database.transaction((manager) => createAccount(manager, input));
+  assert.equal((await database.getRepository(User).findOneByOrFail({ id })).mustChangePassword, true);
+  await assert.rejects(
+    database.transaction((manager) => createAccount(manager, { ...input, username: 'CASE.DB', email: 'other.case@db.test' })),
+    AccountError,
+  );
+  const racing = { username: 'race.db', email: 'race.db@db.test', password: 'Correct-horse-1', mustChangePassword: true };
+  const results = await Promise.allSettled([
+    database.transaction((manager) => createAccount(manager, racing)),
+    database.transaction((manager) => createAccount(manager, { ...racing, username: 'race.two.db' })),
+  ]);
+  assert.deepEqual(results.map((result) => result.status).sort(), ['fulfilled', 'rejected']);
+  assert.equal(results.find((result) => result.status === 'rejected').reason.problem, 'taken');
+  assert.equal(await database.getRepository(User).countBy({ email: 'race.db@db.test' }), 1);
+});
+
+test('a password change ends the other sessions and a reset ends them all, against real rows', async () => {
+  const sessions = createSessions();
+  const userId = await createUser('sessions.end.db');
+  const phone = await sessions.start(userId, META);
+  const laptop = await sessions.start(userId, META);
+  await sessions.endOthers(userId, laptop.refreshToken, 'password_change');
+  assert.equal((await sessionRow(phone.refreshToken)).revokedReason, 'password_change');
+  assert.equal((await sessionRow(laptop.refreshToken)).revokedAt, null);
+  await sessions.endAll(userId, 'password_reset');
+  assert.equal((await sessionRow(laptop.refreshToken)).revokedReason, 'password_reset');
+  // An already ended session keeps the reason it ended with.
+  assert.equal((await sessionRow(phone.refreshToken)).revokedReason, 'password_change');
+});
+
+const { MembersRepository } = require('../../dist/modules/members/members.repository');
+
+test('the members queries: the roles to give, the list, creating with a membership, switching off, and accounts used elsewhere', async () => {
+  const members = new MembersRepository(database);
+  // Every seeded company role except platform_admin, sorted by name ("Courier / Driver" ... "Tenant Admin").
+  assert.deepEqual((await members.companyRoles()).map((role) => role.code),
+    ['driver', 'dispatcher', 'finance', 'fleet_lead', 'hr_manager', 'hub_sorter', 'org_admin']);
+  const company = await createCompany('delta-db', 'Delta Parcels');
+  const other = await createCompany('epsilon-db', 'Epsilon Post');
+  const dispatcher = await database.getRepository(Role).findOneByOrFail({ code: 'dispatcher' });
+  const created = await members.create(company, { username: 'zed.db', email: 'zed.db@db.test', password: 'Correct-horse-1', roleId: dispatcher.id });
+  assert.deepEqual(created, {
+    userId: created.userId, username: 'zed.db', email: 'zed.db@db.test', role: { id: dispatcher.id, code: 'dispatcher', name: dispatcher.name },
+    isActive: true, lastLoginAt: null, mustChangePassword: true,
+  });
+  const amy = await createUser('amy.db');
+  await addMember(company, amy, 'finance');
+  assert.deepEqual((await members.list(company)).map((member) => member.username), ['amy.db', 'zed.db']);
+  assert.equal(await members.find(other, created.userId), undefined);
+  await members.setActive(company, created.userId, false);
+  assert.equal((await members.find(company, created.userId)).isActive, false);
+  assert.equal(await members.belongsElsewhere(company, created.userId), false);
+  await addMember(other, created.userId, 'driver', false);
+  assert.equal(await members.belongsElsewhere(company, created.userId), true);
+  await createPlatformRoles().grantPlatformAdmin(amy);
+  assert.equal(await members.belongsElsewhere(company, amy), true);
+  // A refused account leaves no membership behind (the transaction rolls back).
+  await assert.rejects(members.create(company, { username: 'ZED.DB', email: 'new.db@db.test', password: 'Correct-horse-1', roleId: dispatcher.id }), AccountError);
+  assert.equal((await members.list(company)).length, 2);
+});
+
 const { createPlatformAdmin, PlatformAdminError } = require('../../dist/cli/platform-admin');
 
 test('the first-admin command creates a platform admin and never reuses an account', async () => {
@@ -204,16 +271,16 @@ test('the first-admin command creates a platform admin and never reuses an accou
 
 const { In, Like } = require('typeorm');
 const { DEMO_ACCOUNTS, DEMO_PASSWORD, seedDemo } = require('../../dist/database/seeders/demo.seed');
-const { verifyPassword } = require('../../dist/modules/auth/password');
+const { verifyPassword } = require('../../dist/modules/users/password');
 
 test('the demo seed adds everything once and skips it the second time', async () => {
-  assert.deepEqual(await seedDemo(database), { companiesCreated: 2, accountsCreated: 12, accountsSkipped: [] });
+  assert.deepEqual(await seedDemo(database), { companiesCreated: 2, accountsCreated: 16, accountsSkipped: [] });
   const again = await seedDemo(database);
   assert.deepEqual([again.companiesCreated, again.accountsCreated], [0, 0]);
   assert.deepEqual(again.accountsSkipped, DEMO_ACCOUNTS.map((account) => account.username));
   const demoIds = (await database.getRepository(User).findBy({ email: Like('%.example.test') })).map((user) => user.id);
-  assert.equal(demoIds.length, 12);
-  assert.equal(await database.getRepository(OrganizationMember).countBy({ userId: In(demoIds) }), 12);
+  assert.equal(demoIds.length, 13);
+  assert.equal(await database.getRepository(OrganizationMember).countBy({ userId: In(demoIds) }), 13);
   assert.equal(await database.getRepository(UserRole).countBy({ userId: In(demoIds) }), 2);
 });
 
@@ -224,10 +291,17 @@ test('the demo accounts cover the picker cases and share the demo password', asy
   const id = async (username) => (await users.findByLogin(username)).id;
   const slugs = async (username) => (await members.findActiveWorkspaces(await id(username))).map((workspace) => workspace.slug);
   assert.deepEqual(await slugs('noor'), ['harbor-express', 'meridian-courier']);
+  assert.deepEqual(await slugs('alaa'), ['harbor-express', 'meridian-courier']);
+  assert.deepEqual(await slugs('zaid'), ['harbor-express', 'meridian-courier']);
+  assert.deepEqual(await slugs('wai'), ['harbor-express']);
   assert.deepEqual(await slugs('ex.member'), []);
   assert.deepEqual(await slugs('platform.ops'), []);
   assert.equal(await platformRoles.hasPlatformAccess(await id('platform.ops')), true);
+  assert.equal(await platformRoles.hasPlatformAccess(await id('zmin')), true);
   assert.equal(await platformRoles.hasPlatformAccess(await id('zara.platform')), true);
   assert.equal(await platformRoles.hasPlatformAccess(await id('lina')), false);
   assert.equal(await verifyPassword((await users.findByLogin('lina')).passwordHash, DEMO_PASSWORD), true);
+  // new.hire shows the first-login change; everyone else uses the demo password as it is.
+  assert.equal((await users.findByLogin('new.hire')).mustChangePassword, true);
+  assert.equal((await users.findByLogin('lina')).mustChangePassword, false);
 });

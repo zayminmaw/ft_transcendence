@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import { hashPassword, passwordProblems } from '../auth/password';
+import { hashPassword, passwordProblems } from '../users/password';
 import type { Organization } from '../organizations';
 import { PASSWORD_RULE } from '../users/account-rules';
 import { TENANT_ALREADY_ACTIVE, TENANT_ALREADY_SUSPENDED, TENANT_CONFLICTS, TENANT_HAS_NO_ADMINISTRATOR, TENANT_NOT_FOUND } from './constants';

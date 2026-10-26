@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import { hashPassword, passwordProblems } from '../auth/password';
+import { hashPassword, passwordProblems } from '../users/password';
 import { PASSWORD_RULE } from '../users/account-rules';
 import { ADMINISTRATOR_PROBLEMS, TENANT_CONFLICTS, TENANT_NOT_FOUND } from './constants';
 import type { AssignAdministratorDto, RevokeAdministratorDto } from './dto/tenant.dto';

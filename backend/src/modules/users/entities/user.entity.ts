@@ -19,6 +19,10 @@ export class User {
   @Column({ name: 'is_active', type: 'boolean', default: true })
   isActive!: boolean;
 
+  // Set when an admin typed or reset the password; the person must choose their own before using the app.
+  @Column({ name: 'must_change_password', type: 'boolean', default: false })
+  mustChangePassword!: boolean;
+
   @Column({ name: 'last_login_at', type: 'timestamp', nullable: true })
   lastLoginAt!: Date | null;
 

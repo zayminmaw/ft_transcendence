@@ -9,8 +9,10 @@ import { HealthService } from './common/health/health.service';
 import { TenantContextInterceptor } from './common/interceptors/tenant-context.interceptor';
 import { databaseOptions } from './database/database.config';
 import { AuthModule, JwtAuthGuard } from './modules/auth';
+import { FortyTwoModule } from './modules/forty-two';
 import { OrganizationsModule } from './modules/organizations';
 import { RbacModule, RolesGuard } from './modules/rbac';
+import { MembersModule } from './modules/members';
 import { ClientsModule } from './modules/clients';
 import { StaffModule } from './modules/staff';
 import { DriversModule } from './modules/drivers';
@@ -33,7 +35,7 @@ import { PlatformModule } from './modules/platform';
         DB_NAME: config.get('DB_NAME', { infer: true }),
       }),
     }),
-    AuthModule, RbacModule, OrganizationsModule, ClientsModule, StaffModule,
+    AuthModule, FortyTwoModule, RbacModule, OrganizationsModule, MembersModule, ClientsModule, StaffModule,
     DriversModule, AssetsModule, ParcelsModule, BillingModule,
     NotificationsModule, PlatformModule,
   ],

@@ -1,6 +1,6 @@
 import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn } from 'typeorm';
 
-export type RevokeReason = 'logout' | 'reuse' | 'inactive';
+export type RevokeReason = 'logout' | 'reuse' | 'inactive' | 'password_change' | 'password_reset';
 
 // Mirrors `user_sessions` (migrations 1792195200000, 1792281600000 and 1792454400000): one row per login on a device.
 @Entity('user_sessions')
