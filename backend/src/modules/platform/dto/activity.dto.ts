@@ -1,12 +1,11 @@
-import { Transform, Type } from 'class-transformer';
+import { Type } from 'class-transformer';
 import { IsIn, IsInt, IsOptional, IsString, Matches, MaxLength, Min } from 'class-validator';
+import { Trim } from '../../../common/decorators/trim.decorator';
 import { ACTIVITY_FILTERS, ACTIVITY_SORTS } from '../constants';
 import { ID_PATTERN, PAGE_SIZES } from './tenant.dto';
 
-const trim = () => Transform(({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim() : value));
-
 export class ListActivityQueryDto {
-  @trim() @IsOptional() @IsString() @MaxLength(100)
+  @Trim() @IsOptional() @IsString() @MaxLength(100)
   search?: string;
 
   @IsOptional() @IsIn(ACTIVITY_FILTERS)
