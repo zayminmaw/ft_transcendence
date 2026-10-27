@@ -6,6 +6,7 @@ import {
 	createMember,
 	listAssignableRoles,
 	listMembers,
+	listRoleOverview,
 	resetMemberPassword,
 	setMemberActive,
 } from './api';
@@ -26,6 +27,14 @@ export function useAssignableRoles() {
 	return useQuery({
 		queryKey: tenantQueryKey('members', 'assignable-roles'),
 		queryFn: listAssignableRoles,
+		retry: retryServerErrors,
+	});
+}
+
+export function useRoleOverview() {
+	return useQuery({
+		queryKey: tenantQueryKey('members', 'roles'),
+		queryFn: listRoleOverview,
 		retry: retryServerErrors,
 	});
 }
