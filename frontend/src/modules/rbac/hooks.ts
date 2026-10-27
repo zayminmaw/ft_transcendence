@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ApiError } from '@services/api-client';
 import { tenantQueryKey } from '@utils/query-keys';
 import {
+	changeMemberRole,
 	createMember,
 	listAssignableRoles,
 	listMembers,
@@ -48,6 +49,11 @@ export function useSetMemberActive() {
 	const reload = useReloadMembers();
 	// A refusal (someone else changed this person meanwhile) reloads the list too.
 	return useMutation({ mutationFn: setMemberActive, onSettled: reload });
+}
+
+export function useChangeMemberRole() {
+	const reload = useReloadMembers();
+	return useMutation({ mutationFn: changeMemberRole, onSettled: reload });
 }
 
 export function useResetMemberPassword() {
