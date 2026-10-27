@@ -185,6 +185,25 @@ test('revoking one of several administrators changes their role or removes them,
   assert.deepEqual(revoked.map((row) => row.newValues.reason), ['Moved to dispatch', 'Left the company']);
 });
 
+test('a revoked administrator is never moved to an administrator role, whatever its case', async () => {
+  const { id } = await createTenant('role-case-db', 'role.case.admin');
+  const second = await addMember(id, 'role.case.second', 'org_admin');
+  for (const roleCode of ['org_admin', 'ORG_ADMIN', 'Platform_Admin']) {
+    assert.deepEqual(
+      await administrators.revoke(id, second, { outcome: 'change_role', roleCode, reason: 'Try an admin role' }, actor),
+      { done: false, problem: 'role_not_available' },
+    );
+  }
+  assert.deepEqual(await membership(id, second), { role: 'org_admin', isActive: true });
+  assert.deepEqual((await audits(id)).filter((row) => row.action === 'tenant.administrator.revoke'), []);
+
+  assert.deepEqual(
+    await administrators.revoke(id, second, { outcome: 'change_role', roleCode: 'DISPATCHER', reason: 'Moved to dispatch' }, actor),
+    { done: true, tenantSuspended: false },
+  );
+  assert.deepEqual(await membership(id, second), { role: 'dispatcher', isActive: true });
+});
+
 test('revoking the last administrator must suspend the tenant, and an administrator whose account is off does not count', async () => {
   const { id, adminId } = await createTenant('last-db', 'last.admin');
   const disabled = await addMember(id, 'last.disabled', 'org_admin', { accountActive: false });

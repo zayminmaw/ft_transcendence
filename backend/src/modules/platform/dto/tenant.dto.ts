@@ -1,9 +1,9 @@
 import { Transform, Type } from 'class-transformer';
 import { IsDefined, IsIn, IsInt, IsNotEmpty, IsOptional, IsString, Matches, MaxLength, Min, ValidateIf, ValidateNested } from 'class-validator';
+import { Trim } from '../../../common/decorators/trim.decorator';
 import { EMAIL_MAX_LENGTH, EMAIL_PATTERN, USERNAME_PATTERN } from '../../users/account-rules';
 import { REVOKE_OUTCOMES } from '../constants';
 
-const trim = () => Transform(({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim() : value));
 // Left out means unchanged; null is refused, because these columns are required.
 const IsOmittable = () => ValidateIf((_object: object, value: unknown) => value !== undefined);
 // An optional detail sent as "" is cleared, like one sent as null.
@@ -16,14 +16,14 @@ export const ID_PATTERN = /^[1-9]\d{0,19}$/;
 export const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 export class TenantOrganizationDto {
-  @trim() @IsString() @IsNotEmpty() @MaxLength(191)
+  @Trim() @IsString() @IsNotEmpty() @MaxLength(191)
   name!: string;
 
-  @trim() @IsString() @MaxLength(64)
+  @Trim() @IsString() @MaxLength(64)
   @Matches(SLUG_PATTERN, { message: 'slug must be lower-case letters and numbers joined by single dashes' })
   slug!: string;
 
-  @trim() @IsString() @MaxLength(EMAIL_MAX_LENGTH) @Matches(EMAIL_PATTERN, { message: 'contactEmail must be an email address' })
+  @Trim() @IsString() @MaxLength(EMAIL_MAX_LENGTH) @Matches(EMAIL_PATTERN, { message: 'contactEmail must be an email address' })
   contactEmail!: string;
 
   @trimOrNull() @IsOptional() @IsString() @MaxLength(32)
@@ -34,10 +34,10 @@ export class TenantOrganizationDto {
 }
 
 export class TenantAdministratorDto {
-  @trim() @IsString() @Matches(USERNAME_PATTERN, { message: 'username must be 3-64 letters, numbers, dots, dashes or underscores' })
+  @Trim() @IsString() @Matches(USERNAME_PATTERN, { message: 'username must be 3-64 letters, numbers, dots, dashes or underscores' })
   username!: string;
 
-  @trim() @IsString() @MaxLength(EMAIL_MAX_LENGTH) @Matches(EMAIL_PATTERN, { message: 'email must be an email address' })
+  @Trim() @IsString() @MaxLength(EMAIL_MAX_LENGTH) @Matches(EMAIL_PATTERN, { message: 'email must be an email address' })
   email!: string;
 
   // The password rule itself is checked by the service, so the message matches the other account forms.
@@ -55,10 +55,10 @@ export class CreateTenantDto {
 
 // The slug is left out on purpose: it is in every company URL, so changing it would break links and bookmarks.
 export class UpdateTenantDto {
-  @trim() @IsOmittable() @IsString() @IsNotEmpty() @MaxLength(191)
+  @Trim() @IsOmittable() @IsString() @IsNotEmpty() @MaxLength(191)
   name?: string;
 
-  @trim() @IsOmittable() @IsString() @MaxLength(EMAIL_MAX_LENGTH) @Matches(EMAIL_PATTERN, { message: 'contactEmail must be an email address' })
+  @Trim() @IsOmittable() @IsString() @MaxLength(EMAIL_MAX_LENGTH) @Matches(EMAIL_PATTERN, { message: 'contactEmail must be an email address' })
   contactEmail?: string;
 
   @trimOrNull() @IsOptional() @IsString() @MaxLength(32)
@@ -69,7 +69,7 @@ export class UpdateTenantDto {
 }
 
 export class SuspendTenantDto {
-  @trim() @IsString() @IsNotEmpty() @MaxLength(500)
+  @Trim() @IsString() @IsNotEmpty() @MaxLength(500)
   reason!: string;
 }
 
@@ -93,7 +93,7 @@ export class AssignAdministratorDto {
 }
 
 export class SearchMembersQueryDto {
-  @trim() @IsOptional() @IsString() @MaxLength(100)
+  @Trim() @IsOptional() @IsString() @MaxLength(100)
   search?: string;
 }
 
@@ -103,10 +103,10 @@ export class RevokeAdministratorDto {
 
   @ValidateIf((body: RevokeAdministratorDto) => body.outcome === 'change_role')
   // Checked against the database when revoking.
-  @trim() @IsString() @IsNotEmpty() @MaxLength(64)
+  @Trim() @IsString() @IsNotEmpty() @MaxLength(64)
   roleCode?: string;
 
-  @trim() @IsString() @IsNotEmpty() @MaxLength(500)
+  @Trim() @IsString() @IsNotEmpty() @MaxLength(500)
   reason!: string;
 }
 
@@ -115,7 +115,7 @@ export const TENANT_SORTS = ['name', 'members', 'createdAt'] as const;
 export const PAGE_SIZES = [10, 25, 50];
 
 export class ListTenantsQueryDto {
-  @trim() @IsOptional() @IsString() @MaxLength(100)
+  @Trim() @IsOptional() @IsString() @MaxLength(100)
   search?: string;
 
   @IsOptional() @IsIn(TENANT_STATUSES)
