@@ -6,6 +6,8 @@ import type { MulterOptions } from '@nestjs/platform-express/multer/interfaces/m
 function uploadOptions(mimeTypes: string[], message: string): MulterOptions {
   return {
     limits: { fileSize: 10 * 1024 * 1024, files: 1 },
+    // Multer reads filenames as latin1 by default; browsers send UTF-8.
+    defParamCharset: 'utf8',
     fileFilter: (_request, file, accept) => {
       if (mimeTypes.includes(file.mimetype)) accept(null, true);
       else accept(new BadRequestException(message), false);
