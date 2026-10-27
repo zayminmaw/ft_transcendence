@@ -16,7 +16,7 @@ export function DashboardLayout(props: Omit<SidebarContentProps, 'onNavigate'>) 
 		.flatMap((group) => group.items)
 		.find(({ to, end }) => pathname === to || (!end && pathname.startsWith(`${to}/`)));
 	const links: BreadcrumbLink[] = [
-		{ label: props.scope, href: props.homeTo, status: 'inactive' },
+		{ label: '', href: '', status: 'inactive' },
 		{
 			label: currentPage?.label ?? t('layout.pageNotFound'),
 			href: currentPage?.to ?? pathname,

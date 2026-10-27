@@ -47,6 +47,15 @@ Create the account and tenant membership together, with an allowed role and a sa
 
 Account-only endpoints such as current-user details and logout need an explicit authenticated-without-tenant policy. If an `@Authenticated()` decorator is introduced, retain JWT and active-user verification and update both the permission guard and `TenantContextInterceptor` for that explicit policy. Unannotated protected endpoints must still be denied; tenant and platform endpoints retain their independent authorization requirements. This policy is implemented as `@Authenticated()` (used by `GET /api/auth/me`); combining it with `@RequirePermission()` is refused.
 
+### Log in with 42
+
+The **Log in** page offers **Log in with 42** below the password form. `GET /api/auth/42` sends the browser to the 42 authorization page with a one-time `state` held in an HttpOnly, SameSite=Lax cookie limited to `/api/auth/42`. `GET /api/auth/42/callback` checks that state, exchanges the code, and reads the 42 profile's email.
+
+- 42 login never creates or links an account. It signs in only the active account whose email matches the 42 email (case-insensitive), the same lookup as an email login. This email match is the authorized way an existing account is reached through 42.
+- Success ends exactly like password login: a new session, the same refresh cookie, a `login` audit entry, and a redirect to `/app`, where the workspace picker continues as usual.
+- Every failure returns to `/login?oauth=<reason>` without a session: `denied` (cancelled on 42), `failed` (missing or mismatched state, or 42 refused or did not answer), `no_account` (no active account with that email, audited as `login_failed`), and `unavailable` (the 42 credentials are not configured). The page shows the matching message.
+- 42 tokens and the client secret are never stored, logged, or sent to the browser.
+
 ## Company workspace picker (required, not implemented)
 
 The agreed product flow uses a workspace picker similar to Slack: authenticate once, then choose which company workspace to enter. One account may belong to multiple companies and have different roles in each. Keep the existing Figma **Choose workspace** page as the design starting point; its platform entry illustrates separately authorized platform access, not a company membership or an automatic privilege for tenant administrators.

@@ -9,6 +9,7 @@ import { HealthService } from './common/health/health.service';
 import { TenantContextInterceptor } from './common/interceptors/tenant-context.interceptor';
 import { databaseOptions } from './database/database.config';
 import { AuthModule, JwtAuthGuard } from './modules/auth';
+import { FortyTwoModule } from './modules/forty-two';
 import { OrganizationsModule } from './modules/organizations';
 import { RbacModule, RolesGuard } from './modules/rbac';
 import { MembersModule } from './modules/members';
@@ -19,6 +20,7 @@ import { AssetsModule } from './modules/assets';
 import { ParcelsModule } from './modules/parcels';
 import { BillingModule } from './modules/billing';
 import { NotificationsModule } from './modules/notifications';
+import { PlatformModule } from './modules/platform';
 
 @Module({
   imports: [
@@ -33,9 +35,9 @@ import { NotificationsModule } from './modules/notifications';
         DB_NAME: config.get('DB_NAME', { infer: true }),
       }),
     }),
-    AuthModule, RbacModule, OrganizationsModule, MembersModule, ClientsModule, StaffModule,
+    AuthModule, FortyTwoModule, RbacModule, OrganizationsModule, MembersModule, ClientsModule, StaffModule,
     DriversModule, AssetsModule, ParcelsModule, BillingModule,
-    NotificationsModule,
+    NotificationsModule, PlatformModule,
   ],
   controllers: [HealthController],
   providers: [

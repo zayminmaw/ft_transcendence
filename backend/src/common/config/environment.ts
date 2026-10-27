@@ -1,5 +1,8 @@
 import { z } from 'zod';
 
+// Compose passes an unset variable as an empty string; treat both as "not configured".
+const optionalText = z.string().optional().transform((value) => value || undefined);
+
 export const environmentSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().min(1).max(65535).default(3000),
@@ -12,6 +15,11 @@ export const environmentSchema = z.object({
   JWT_SECRET: z.string().min(32),
   JWT_ISSUER: z.string().min(1).default('transcend'),
   JWT_AUDIENCE: z.string().min(1).default('transcend-web'),
+  // 42 login is optional: without a client id and secret it answers "unavailable" instead of stopping the API.
+  FORTYTWO_APP_ID: optionalText,
+  FORTYTWO_APP_SECRET: optionalText,
+  // Defaults to CORS_ORIGIN + /api/auth/42/callback; it must match a redirect URI registered on the 42 app.
+  FORTYTWO_REDIRECT_URI: optionalText.pipe(z.url().optional()),
 });
 
 export type Environment = z.infer<typeof environmentSchema>;

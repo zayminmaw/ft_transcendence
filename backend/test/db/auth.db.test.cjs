@@ -98,7 +98,7 @@ test('platform access comes from user_roles only, never from a membership', asyn
 
 const { JwtService } = require('@nestjs/jwt');
 const { AuthAuditRepository } = require('../../dist/modules/auth/auth-audit.repository');
-const { AuditLog } = require('../../dist/modules/auth/entities/audit-log.entity');
+const { AuditLog } = require('../../dist/modules/audit/entities/audit-log.entity');
 const { UserSession } = require('../../dist/modules/auth/entities/user-session.entity');
 const { SessionsRepository } = require('../../dist/modules/auth/sessions.repository');
 const { SessionsService } = require('../../dist/modules/auth/sessions.service');
@@ -274,7 +274,7 @@ const { DEMO_ACCOUNTS, DEMO_PASSWORD, seedDemo } = require('../../dist/database/
 const { verifyPassword } = require('../../dist/modules/users/password');
 
 test('the demo seed adds everything once and skips it the second time', async () => {
-  assert.deepEqual(await seedDemo(database), { companiesCreated: 2, accountsCreated: 13, accountsSkipped: [] });
+  assert.deepEqual(await seedDemo(database), { companiesCreated: 2, accountsCreated: 16, accountsSkipped: [] });
   const again = await seedDemo(database);
   assert.deepEqual([again.companiesCreated, again.accountsCreated], [0, 0]);
   assert.deepEqual(again.accountsSkipped, DEMO_ACCOUNTS.map((account) => account.username));
@@ -291,9 +291,13 @@ test('the demo accounts cover the picker cases and share the demo password', asy
   const id = async (username) => (await users.findByLogin(username)).id;
   const slugs = async (username) => (await members.findActiveWorkspaces(await id(username))).map((workspace) => workspace.slug);
   assert.deepEqual(await slugs('noor'), ['harbor-express', 'meridian-courier']);
+  assert.deepEqual(await slugs('alaa'), ['harbor-express', 'meridian-courier']);
+  assert.deepEqual(await slugs('zaid'), ['harbor-express', 'meridian-courier']);
+  assert.deepEqual(await slugs('wai'), ['harbor-express']);
   assert.deepEqual(await slugs('ex.member'), []);
   assert.deepEqual(await slugs('platform.ops'), []);
   assert.equal(await platformRoles.hasPlatformAccess(await id('platform.ops')), true);
+  assert.equal(await platformRoles.hasPlatformAccess(await id('zmin')), true);
   assert.equal(await platformRoles.hasPlatformAccess(await id('zara.platform')), true);
   assert.equal(await platformRoles.hasPlatformAccess(await id('lina')), false);
   assert.equal(await verifyPassword((await users.findByLogin('lina')).passwordHash, DEMO_PASSWORD), true);

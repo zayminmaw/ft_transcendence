@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { AuditLog, AuthModule } from '../auth';
+import { AuditLog } from '../audit';
+import { AuthModule } from '../auth';
 import { UsersModule } from '../users';
 import { MembersAuditRepository } from './members-audit.repository';
 import { MembersController } from './members.controller';

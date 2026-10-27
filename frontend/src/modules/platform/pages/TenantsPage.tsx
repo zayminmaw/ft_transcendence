@@ -1,17 +1,10 @@
-import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { AnalyticsCard, ModulePage, Table } from '@global-components';
-import type { AnalyticsItem, TableColumn, TableSort } from '@global-components';
-import { tenants } from '../data/sampleTenants';
-import type { Tenant } from '../data/sampleTenants';
-
-// Sample data until the tenant endpoints exist.
-const tenantStats: AnalyticsItem[] = [
-	{ label: 'Total tenants', value: 5, description: 'Organization records' },
-	{ label: 'Active', value: 4, description: 'Portal access enabled' },
-	{ label: 'Suspended', value: 1, description: 'History retained' },
-	{ label: 'Admin changes', value: 6, description: 'In the last 7 days' },
-];
+import type { AnalyticsItem, TableColumn } from '@global-components';
+import { formatNumber } from '@utils/format';
+import type { TenantListItem, TenantStatusFilter } from '../api';
+import { useTenants } from '../hooks/useTenants';
 
 const statusFilters = [
 	{ value: 'all', label: 'All tenants' },
@@ -19,30 +12,34 @@ const statusFilters = [
 	{ value: 'suspended', label: 'Suspended' },
 ];
 
-const columns: TableColumn<Tenant>[] = [
+const columns: TableColumn<TenantListItem>[] = [
 	{
-		key: 'organization',
+		key: 'name',
 		header: 'Organization',
 		sortable: true,
 		className: 'font-medium',
-		cell: (tenant) => tenant.organization,
+		cell: (tenant) => (
+			<div>
+				<p>{tenant.name}</p>
+				<p className="text-sm font-normal text-[var(--color-slate)]">{tenant.slug}</p>
+			</div>
+		),
 	},
 	{
 		key: 'administrator',
 		header: 'Tenant administrator',
-		sortable: true,
-		cell: (tenant) => tenant.administrator,
+		cell: (tenant) => tenant.administrator ?? 'None assigned',
 	},
 	{
 		key: 'members',
-		header: 'Memberships',
+		header: 'Active members',
 		sortable: true,
-		cell: (tenant) => `${tenant.members} members`,
+		cell: (tenant) => tenant.activeMembers,
 	},
 	{
 		key: 'status',
 		header: 'Access status',
-		cell: (tenant) => (tenant.status === 'active' ? 'Active' : 'Suspended'),
+		cell: (tenant) => (tenant.isActive ? 'Active' : 'Suspended'),
 	},
 	{
 		key: 'action',
@@ -52,11 +49,41 @@ const columns: TableColumn<Tenant>[] = [
 ];
 
 export function TenantsPage() {
-	const [search, setSearch] = useState('');
-	const [status, setStatus] = useState('all');
-	const [sort, setSort] = useState<TableSort | null>(null);
-	const [page, setPage] = useState(1);
-	const [pageSize, setPageSize] = useState(10);
+	const { i18n } = useTranslation();
+	const {
+		tenants,
+		total,
+		counts,
+		isPending,
+		search,
+		setSearch,
+		status,
+		setStatus,
+		sort,
+		setSort,
+		page,
+		setPage,
+		pageSize,
+		setPageSize,
+	} = useTenants();
+
+	const tenantStats: AnalyticsItem[] = [
+		{
+			label: 'Total tenants',
+			value: formatNumber(counts?.total, i18n.language),
+			description: 'Organization records',
+		},
+		{
+			label: 'Active',
+			value: formatNumber(counts?.active, i18n.language),
+			description: 'Portal access enabled',
+		},
+		{
+			label: 'Suspended',
+			value: formatNumber(counts?.suspended, i18n.language),
+			description: 'History retained',
+		},
+	];
 
 	return (
 		<div className="flex flex-col gap-4">
@@ -88,38 +115,26 @@ export function TenantsPage() {
 					rows={tenants}
 					getRowKey={(tenant) => tenant.id}
 					sort={sort}
-					onSortChange={(next) => {
-						setSort(next);
-						setPage(1);
-					}}
+					onSortChange={setSort}
 					search={{
 						value: search,
-						placeholder: 'Search tenants',
-						onChange: (value) => {
-							setSearch(value);
-							setPage(1);
-						},
+						placeholder: 'Search by name or slug',
+						onChange: setSearch,
 					}}
 					filter={{
 						label: 'Access status',
 						options: statusFilters,
 						value: status,
-						onChange: (value) => {
-							setStatus(value);
-							setPage(1);
-						},
+						onChange: (value) => setStatus(value as TenantStatusFilter),
 					}}
 					pagination={{
 						page,
 						pageSize,
-						total: tenants.length,
+						total,
 						onPageChange: setPage,
-						onPageSizeChange: (size) => {
-							setPageSize(size);
-							setPage(1);
-						},
+						onPageSizeChange: setPageSize,
 					}}
-					emptyMessage="No tenants match this search."
+					emptyMessage={isPending ? 'Loading tenants…' : 'No tenants match this search.'}
 				/>
 			</section>
 		</div>

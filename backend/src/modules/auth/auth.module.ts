@@ -11,7 +11,7 @@ import { AuthAuditRepository } from './auth-audit.repository';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { AUTH_THROTTLERS, AuthThrottlerGuard } from './auth.throttler';
-import { AuditLog } from './entities/audit-log.entity';
+import { AuditLog } from '../audit';
 import { UserSession } from './entities/user-session.entity';
 import { SameOriginGuard } from './same-origin.guard';
 import { SessionsRepository } from './sessions.repository';
@@ -35,6 +35,6 @@ import { SessionsService } from './sessions.service';
   ],
   controllers: [AuthController],
   providers: [AuthService, SessionsService, SessionsRepository, AuthAuditRepository, AuthThrottlerGuard, SameOriginGuard],
-  exports: [JwtModule, SessionsService],
+  exports: [JwtModule, SessionsService, AuthAuditRepository],
 })
 export class AuthModule {}
