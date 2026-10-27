@@ -15,7 +15,7 @@ Transcend is a multi-tenant modular monolith for courier operations and last-mil
 
 Implemented: global validation/error handling, JWT verification, permission checks, active membership resolution, health endpoints, a 22-table baseline, session/header plumbing, module skeletons, and marketing pages. The backend also provides login, refresh, and logout with rotating refresh-token sessions in an httpOnly cookie, `GET /api/auth/me` (user, active workspaces, platform access), `@Authenticated()` account-only endpoints, the documented roles and permissions, a first-platform-administrator command, and a demo seed. Business CRUD, the login screens and authenticated frontend routing, financial services, and record ownership policies remain to be implemented. The blueprint's WebSocket and proof-of-delivery features are planned; they are not current endpoints.
 
-Confirmed requirements also include a platform administration dashboard for creating, managing, activating/suspending, and monitoring tenants, and an authenticated tenant portal with organization-scoped user/employee/role management. Neither dashboard services nor portal route authentication are implemented. Public privacy and terms-of-service pages remain planned.
+Confirmed requirements also include a platform administration dashboard for creating, managing, activating/suspending, and monitoring tenants, and an authenticated tenant portal with organization-scoped user/employee/role management. The platform tenant-management API is implemented (see [Platform tenant management](#platform-tenant-management)); tenant activity monitoring is not. Portal route authentication is not implemented. Public privacy and terms-of-service pages remain planned.
 
 ## 2. Directory standard
 
@@ -83,7 +83,7 @@ Marketing components stay inside modules/marketing. Other modules consume only i
 | Tenant portal | Authenticated users with active organization membership | Courier/accounting workflows and tenant administrators managing their own users, employees, roles, and permissions |
 | Platform dashboard | Authenticated platform administrators with explicit platform permissions | Create/manage tenants, activate/suspend them, assign tenant administrators, and monitor tenant status/activity |
 
-The existing `/app` will become the tenant portal. The platform dashboard has a separate frontend route/layout scaffold, but still needs a dedicated API authorization boundary and reviewed service contracts. The `organizations` workspace placeholder is not a completed platform dashboard. Preserve tenant checks on compatibility URLs when authenticated workflows are introduced.
+The existing `/app` will become the tenant portal. The platform dashboard has its own frontend routes and `@PlatformAdmin()` API routes under `/api/platform`. The `organizations` workspace placeholder is not a completed platform dashboard. Preserve tenant checks on compatibility URLs when authenticated workflows are introduced.
 
 ### Dashboard layout scaffold
 
@@ -93,7 +93,7 @@ The frontend provides separate, public layout previews for the tenant workspace 
 - Platform pages: `/platform/tenants`, `/platform/activity`, `/platform/tenants/new`, `/platform/tenants/:tenantId`, and `/platform/tenants/:tenantId/administrators`. `/platform` redirects to the tenant directory.
 - Original module URLs redirect to their `/app` counterparts so future tenant route protection has one canonical entry point.
 
-Platform frontend compositions live in `modules/platform` and are exported through its root `index.ts`. These URL choices describe the layout scaffold only; platform API contracts and authorization remain planned.
+Platform frontend compositions live in `modules/platform` and are exported through its root `index.ts`. The tenant pages use the platform tenant-management API; `/platform/activity` still shows sample data.
 
 Tenant sidebar configuration lives in `app/navigation.ts`, alongside app route composition. Operations groups overview, parcels/dispatch, clients/merchants, drivers, and fleet/assets. Administration groups billing/COD, staff, access control (users/roles/permissions), and organization settings. All eight domain modules remain reachable; platform tenant management stays in its separate sidebar. These groups organize work and do not imply administrative roles or grant permissions. Future authentication must add verified-session navigation visibility and independent route/API authorization.
 
@@ -112,6 +112,23 @@ The frontend session store holds activeOrganizationId and an in-memory access to
 Platform endpoints must verify a platform role and exact permission independently of tenant membership. Tenant permissions and `X-Organization-Id` must never confer platform authority. Tenant administrators cannot create other tenants, assign platform roles, or access another tenant's records. Platform tenant-management permission alone must not grant operational/financial data access.
 
 Platform mutations and monitoring access require audit records identifying the actor, target tenant, action, and outcome. Suspended tenants must be denied tenant-portal/API access while authorized platform administrators retain access to their tenant management records. Implement this through a dedicated platform policy and reviewed APIs; the existing membership guards are not an implemented platform authorization mechanism.
+
+### Platform tenant management
+
+`modules/platform` serves the tenant pages. Every route needs `@PlatformAdmin()`; tenant roles and `X-Organization-Id` never open them. Each change writes an `audit_logs` row (module `platform`) in the same transaction, never with credentials.
+
+| Route | Purpose |
+| --- | --- |
+| `GET /api/platform/tenants` | Search, status filter, sort and paging, with total/active/suspended counts |
+| `POST /api/platform/tenants` | Company, first administrator account and `org_admin` membership in one transaction |
+| `GET`/`PATCH /api/platform/tenants/:id` | Details with administrators and member counts; edit name and contact details (the slug is fixed) |
+| `POST /api/platform/tenants/:id/suspend`, `…/reactivate` | Flip `is_active`; suspending needs a reason |
+| `GET /api/platform/tenants/:id/members` | Active members who could become administrators |
+| `GET /api/platform/tenants/:tenantId/member-roles` | Roles a revoked administrator can move to in that company: every role in the database except `org_admin` and `platform_admin` |
+| `POST /api/platform/tenants/:id/administrators` | Assign a new account, or change an existing member's role to `org_admin` |
+| `POST /api/platform/tenants/:id/administrators/:userId/revoke` | Revoke with a reason and a chosen outcome |
+
+A membership is one role in one company, so assigning and revoking change that membership. Revoking an administrator either moves them to another company role (`change_role`) or deactivates their membership (`remove`). Revoking the **last** administrator who can still sign in instead deactivates their membership and suspends the tenant (`suspend_tenant`), with the revoke reason as the suspension reason. The API refuses an outcome that does not match the current count (`LAST_ADMINISTRATOR`, `NOT_LAST_ADMINISTRATOR`), so a stale page never causes an unexpected suspension. A tenant without such an administrator cannot be reactivated (`TENANT_HAS_NO_ADMINISTRATOR`); administrators can be assigned while it is suspended. Status and administrator changes lock the company row first, so concurrent revokes cannot leave an active tenant without an administrator.
 
 ### Tenant onboarding and login contract (planned)
 

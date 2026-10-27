@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import type { ParseKeys } from 'i18next';
 import { useTranslation } from 'react-i18next';
-import { Link, Navigate, useLocation } from 'react-router-dom';
+import { Link, Navigate, useLocation, useSearchParams } from 'react-router-dom';
 import { z } from 'zod';
 import { Button, Input, LanguageSwitcher, PasswordInput } from '@global-components';
 import { useAuth } from '@hooks/useAuth';
@@ -18,6 +18,14 @@ import type { LoginValues } from '../api';
 const ERROR_MESSAGES = {
 	AUTH_INVALID_CREDENTIALS: 'errors.invalidCredentials',
 	AUTH_TOO_MANY_ATTEMPTS: 'errors.tooManyAttempts',
+} as const;
+
+// Why a 42 login came back here: the API redirects to /login?oauth=<reason>.
+const OAUTH_MESSAGES = {
+	denied: 'errors.oauthDenied',
+	failed: 'errors.oauthFailed',
+	no_account: 'errors.oauthNoAccount',
+	unavailable: 'errors.oauthUnavailable',
 } as const;
 
 // The API checks the details; the form only makes sure neither field is empty. Its messages are translation keys,
@@ -46,6 +54,7 @@ export function LoginPage() {
 	const { accessToken } = useAuth();
 	const { checking } = useSessionCheck();
 	const { state } = useLocation();
+	const [searchParams] = useSearchParams();
 	const login = useLogin();
 	const {
 		register,
@@ -65,6 +74,11 @@ export function LoginPage() {
 	if (checking) return <LoadingScreen />;
 	if (accessToken) return <Navigate to="/app" replace />;
 	const ended = (state as { ended?: SessionEnd } | null)?.ended;
+	const oauth = searchParams.get('oauth');
+	const oauthMessage =
+		oauth && oauth in OAUTH_MESSAGES
+			? OAUTH_MESSAGES[oauth as keyof typeof OAUTH_MESSAGES]
+			: undefined;
 
 	return (
 		<div className="grid min-h-dvh bg-base-100 text-base-content md:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
@@ -111,6 +125,11 @@ export function LoginPage() {
 								{t(errorMessageKey(login.error))}
 							</p>
 						)}
+						{oauthMessage && !login.isError && (
+							<p role="alert" className="alert alert-error alert-soft text-sm">
+								{t(oauthMessage)}
+							</p>
+						)}
 						<Input
 							label={t('login.login')}
 							autoComplete="username"
@@ -135,6 +154,18 @@ export function LoginPage() {
 							{login.isPending ? t('login.submitting') : t('login.submit')}
 						</Button>
 					</form>
+					<div className="-mt-3 flex flex-col gap-3">
+						<p className="divider my-0 text-xs text-[var(--color-slate)]">
+							{t('login.or')}
+						</p>
+						{/* A full-page navigation: the API sends the browser to 42 and back to /app. */}
+						<a
+							href="/api/auth/42"
+							className="btn w-full border-base-300 bg-base-100 hover:bg-base-200"
+						>
+							{t('login.with42')}
+						</a>
+					</div>
 					<div className="text-sm">
 						<h2 className="font-semibold">{t('login.helpTitle')}</h2>
 						<p className="mt-2 text-[var(--color-slate)]">{t('login.help')}</p>

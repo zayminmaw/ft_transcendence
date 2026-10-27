@@ -12,6 +12,9 @@ x-backend-environment: &backend-environment
   JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in the root .env}
   JWT_ISSUER: transcend
   JWT_AUDIENCE: transcend-web
+  FORTYTWO_APP_ID: ${FORTYTWO_APP_ID:-}
+  FORTYTWO_APP_SECRET: ${FORTYTWO_APP_SECRET:-}
+  FORTYTWO_REDIRECT_URI: ${FORTYTWO_REDIRECT_URI:-}
 
 services:
   mariadb:

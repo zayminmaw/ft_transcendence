@@ -10,3 +10,9 @@ export function tenantQueryKey(...parts: unknown[]) {
 export function platformQueryKey(...parts: unknown[]) {
 	return ['platform', sessionStore.getSnapshot().userId, ...parts] as const;
 }
+
+// Every tenant answer on the platform pages sits under this key, so one invalidation refreshes the list and the
+// details.
+export function tenantsQueryKey() {
+	return platformQueryKey('tenants');
+}
