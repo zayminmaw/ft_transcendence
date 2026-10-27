@@ -76,6 +76,11 @@ function createFakeStore() {
       updatePassword: async (id, passwordHash, mustChangePassword) => {
         Object.assign(store.users.find((user) => user.id === id), { passwordHash, mustChangePassword });
       },
+      updatePasswordIfCurrent: async (id, currentHash, passwordHash) => {
+        const user = store.users.find((row) => row.id === id && row.passwordHash === currentHash);
+        if (user) Object.assign(user, { passwordHash, mustChangePassword: false });
+        return Boolean(user);
+      },
     },
     sessions: {
       insert: async (session) => { store.sessions.push({ id: String(nextSessionId++), revokedAt: null, revokedReason: null, ...session }); },
