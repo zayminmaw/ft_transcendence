@@ -79,7 +79,7 @@ The audit trail records every create, update, and delete, plus security events: 
 * **Keep `resourceLabel` and `params` free of personal data.** They are shown as they are, and the frontend translates the sentence from the action, the resource, and `params`. Store no English descriptions.
 * **Reading the trail** (`GET /api/audit-logs`) needs `admin.audit_logs` and is scoped to the company. The same endpoint serves one record's history (`?resourceType=invoice&recordId=17`). `GET /api/audit-logs/mine` lists your own actions. `GET /api/platform/audit-logs` is for platform administrators, and it hides the values of company business data. Every read is audited, and so is every refused attempt.
 * **For alerts and notifications**, subscribe with `audit.subscribe(listener)`. Listeners hear only about committed rows.
-
+* **Frontend:** put `<InspectChangesButton resourceType="invoice" recordId={invoice.id} title={invoice.number} />` (from `@modules/audit`) next to a record. It shows only to people with `admin.audit_logs`, and opens that record's history. The company log is at `/app/<company>/audit`. When you add a resource, also add its name and field labels under `resources` and `fields` in `locales/<lang>/audit.json`.
 
 ---
 

@@ -3,8 +3,13 @@ import type { NavigationGroup } from '@global-components';
 
 // App-level composition of tenant modules. Grouping does not grant permissions;
 // future session-based visibility must accompany independent route/API authorization.
-// home is the company's address, /app/<companySlug>.
-export function getTenantNavigation(t: TFunction, home: string): NavigationGroup[] {
+// home is the company's address, /app/<companySlug>. canReadAudit comes from the server's access check, which
+// still guards every audit read.
+export function getTenantNavigation(
+	t: TFunction,
+	home: string,
+	{ canReadAudit = false }: { canReadAudit?: boolean } = {},
+): NavigationGroup[] {
 	return [
 		{
 			label: t('workspace.nav.operations'),
@@ -23,6 +28,9 @@ export function getTenantNavigation(t: TFunction, home: string): NavigationGroup
 				{ to: `${home}/staff`, label: t('workspace.nav.staff') },
 				{ to: `${home}/rbac`, label: t('workspace.nav.rbac') },
 				{ to: `${home}/organizations`, label: t('workspace.nav.organizations') },
+				...(canReadAudit
+					? [{ to: `${home}/audit`, label: t('nav', { ns: 'audit' }) }]
+					: []),
 			],
 		},
 	];
