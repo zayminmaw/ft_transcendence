@@ -13,6 +13,7 @@ const { TenantContextInterceptor } = require('../dist/common/interceptors/tenant
 const { JwtAuthGuard } = require('../dist/modules/auth');
 const { AuthAuditRepository } = require('../dist/modules/auth/auth-audit.repository');
 const { AuditLog } = require('../dist/modules/audit/entities/audit-log.entity');
+const { AuditService } = require('../dist/modules/audit/audit.service');
 const { UserSession } = require('../dist/modules/auth/entities/user-session.entity');
 const { SessionsRepository } = require('../dist/modules/auth/sessions.repository');
 const { FortyTwoModule } = require('../dist/modules/forty-two');
@@ -66,6 +67,7 @@ async function createApp(t, { env = CONFIGURED, api = fakeApi() } = {}) {
     .overrideProvider(UsersRepository).useValue(store.repositories.users)
     .overrideProvider(SessionsRepository).useValue(store.repositories.sessions)
     .overrideProvider(AuthAuditRepository).useValue(store.repositories.audit)
+    .overrideProvider(AuditService).useValue(store.repositories.auditService)
     .overrideProvider(OrganizationMembersRepository).useValue(store.repositories.members)
     .overrideProvider(PermissionsRepository).useValue(store.repositories.permissions)
     .overrideProvider(PlatformRolesRepository).useValue(store.repositories.platformRoles)

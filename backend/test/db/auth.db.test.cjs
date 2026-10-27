@@ -99,6 +99,7 @@ test('platform access comes from user_roles only, never from a membership', asyn
 const { JwtService } = require('@nestjs/jwt');
 const { AuthAuditRepository } = require('../../dist/modules/auth/auth-audit.repository');
 const { AuditLog } = require('../../dist/modules/audit/entities/audit-log.entity');
+const { AuditService } = require('../../dist/modules/audit/audit.service');
 const { UserSession } = require('../../dist/modules/auth/entities/user-session.entity');
 const { SessionsRepository } = require('../../dist/modules/auth/sessions.repository');
 const { SessionsService } = require('../../dist/modules/auth/sessions.service');
@@ -108,7 +109,7 @@ const DAY = 86_400_000;
 const createSessions = () => new SessionsService(
   new SessionsRepository(database.getRepository(UserSession)), new UsersRepository(database.getRepository(User)),
   new JwtService({ secret: 'test-secret-with-at-least-32-characters', signOptions: { expiresIn: '15m' } }),
-  new AuthAuditRepository(database.getRepository(AuditLog)),
+  new AuthAuditRepository(new AuditService(database.getRepository(AuditLog))),
 );
 // A refresh token is "<familyId>.<secret>"; the family id names the session row.
 const sessionRow = (refreshToken) => database.getRepository(UserSession).findOneByOrFail({ familyId: refreshToken.split('.')[0] });

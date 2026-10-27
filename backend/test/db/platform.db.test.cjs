@@ -54,7 +54,7 @@ const adminIds = async (id) => (await tenants.findAdministrators(id)).map((admin
 test('creating a tenant adds the company, its administrator and their membership, or nothing at all', async () => {
   const { id, adminId } = await createTenant('create-db', 'create.admin');
   assert.deepEqual(await membership(id, adminId), { role: 'org_admin', isActive: true });
-  assert.deepEqual((await audits(id)).map((row) => row.action), ['tenant.create']);
+  assert.deepEqual((await audits(id)).map((row) => row.action), ['create']);
   assert.equal(JSON.stringify((await audits(id))[0].newValues).includes('placeholder-hash'), false);
 
   const organizations = await database.getRepository(Organization).count();
@@ -152,7 +152,7 @@ test('an administrator can be a new account or an existing member, and both are 
   }
   assert.deepEqual(await administrators.assign('999999', { mode: 'existing', userId: dispatcher }, actor), { done: false, problem: 'tenant_not_found' });
 
-  const assigned = (await audits(id)).filter((row) => row.action === 'tenant.administrator.assign');
+  const assigned = (await audits(id)).filter((row) => row.action === 'assign');
   assert.equal(assigned.length, 4);
   assert.deepEqual(
     assigned[1].oldValues, { administrator: { id: dispatcher, username: 'assign.dispatch' }, role: 'dispatcher', membershipActive: true },
@@ -181,7 +181,7 @@ test('revoking one of several administrators changes their role or removes them,
 
   assert.deepEqual(await administrators.revoke(id, second, { outcome: 'remove', reason: 'Again' }, actor), { done: false, problem: 'administrator_not_found' });
   assert.deepEqual(await administrators.revoke('999999', adminId, { outcome: 'remove', reason: 'No company' }, actor), { done: false, problem: 'tenant_not_found' });
-  const revoked = (await audits(id)).filter((row) => row.action === 'tenant.administrator.revoke');
+  const revoked = (await audits(id)).filter((row) => row.action === 'revoke');
   assert.deepEqual(revoked.map((row) => row.newValues.reason), ['Moved to dispatch', 'Left the company']);
 });
 
@@ -219,15 +219,18 @@ test('revoking the last administrator must suspend the tenant, and an administra
   assert.deepEqual(await membership(id, adminId), { role: 'org_admin', isActive: false });
   assert.equal(await isActive(id), false);
   const [revoke, suspend] = (await audits(id)).slice(-2);
-  assert.equal(revoke.action, 'tenant.administrator.revoke');
-  assert.equal(suspend.action, 'tenant.suspend');
+  assert.equal(revoke.action, 'revoke');
+  assert.equal(suspend.action, 'status_change');
   assert.equal(suspend.newValues.reason, 'Owner left');
   assert.equal(suspend.newValues.cause, 'last_administrator_revoked');
+  // No rename in these changes, yet both are labelled with the company's name.
+  const { name } = await database.getRepository(Organization).findOneByOrFail({ id });
+  assert.deepEqual([revoke.resourceLabel, suspend.resourceLabel], [name, name]);
 
   // The disabled administrator is now the last one too; the company is already suspended, so nothing else changes.
   const before = (await audits(id)).length;
   assert.deepEqual(await administrators.revoke(id, disabled, { outcome: 'suspend_tenant', reason: 'Cleanup' }, actor), { done: true, tenantSuspended: false });
-  assert.deepEqual((await audits(id)).slice(before).map((row) => row.action), ['tenant.administrator.revoke']);
+  assert.deepEqual((await audits(id)).slice(before).map((row) => row.action), ['revoke']);
 });
 
 test('a tenant without an administrator can only be reactivated once one is assigned', async () => {
