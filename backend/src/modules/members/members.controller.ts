@@ -6,7 +6,8 @@ import { CreateMemberDto } from './dto/create-member.dto';
 import { UpdateMemberDto } from './dto/update-member.dto';
 import { MembersService } from './members.service';
 
-// Every route needs admin.manage_users in the company named by X-Organization-Id (checked by RolesGuard).
+// Every route needs admin.manage_users in the company named by X-Organization-Id (checked by RolesGuard), except the
+// roles view: a route's own @RequirePermission replaces this one.
 @Controller('members')
 @RequirePermission('admin.manage_users')
 export class MembersController {
@@ -22,7 +23,7 @@ export class MembersController {
     return this.members.assignableRoles();
   }
 
-  // What each role allows, for the Roles & permissions tab. Seeing the role definitions is admin.manage_roles.
+  // What each role allows, for the Roles & permissions tab. Seeing the role definitions is admin.manage_roles (only).
   @Get('roles')
   @RequirePermission('admin.manage_roles')
   roles(@Req() request: AuthenticatedRequest) {
