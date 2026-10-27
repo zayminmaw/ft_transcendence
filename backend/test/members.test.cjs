@@ -161,6 +161,9 @@ test('changing a role is refused for yourself, outsiders, roles you may not give
   assert.equal((await patch('12', { roleCode: 'no_such_role' }).expect(403)).body.code, 'ROLE_NOT_ASSIGNABLE');
   await patch('12', { roleCode: 'finance', isActive: false }).expect(400);
   await patch('12', {}).expect(400);
+  // null is sent but is neither a boolean nor a role code.
+  await patch('12', { isActive: null }).expect(400);
+  await patch('12', { roleCode: null }).expect(400);
   // A role belongs to one membership: noor also has a Harbor membership, and that doesn't block this one.
   assert.equal((await patch('13', { roleCode: 'finance' }).expect(200)).body.role.code, 'finance');
   const dana = await tokenFor(server, 'dana.saleh');
@@ -168,7 +171,7 @@ test('changing a role is refused for yourself, outsiders, roles you may not give
 });
 
 test('the roles view: what each company role allows and how many people hold it here, for admin.manage_roles', async (t) => {
-  const { server } = await meridianApp(t);
+  const { server, store } = await meridianApp(t);
   const lina = await tokenFor(server, 'lina');
   const roles = (await as(request(server).get('/api/members/roles'), lina).expect(200)).body;
   assert.deepEqual(roles, [
@@ -179,6 +182,10 @@ test('the roles view: what each company role allows and how many people hold it 
     { code: 'finance', name: 'Finance', members: 0, permissions: [{ code: 'billing.view', scope: 'all' }] },
   ]);
   const dana = await tokenFor(server, 'dana.saleh');
+  await as(request(server).get('/api/members/roles'), dana).expect(403);
+  // admin.manage_users opens the members list, not the roles view.
+  store.rolePermissions.set('2', new Set(['admin.manage_users']));
+  await as(request(server).get('/api/members'), dana).expect(200);
   await as(request(server).get('/api/members/roles'), dana).expect(403);
 });
 
