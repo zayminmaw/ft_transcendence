@@ -32,6 +32,14 @@ export function setMemberActive({ userId, isActive }: { userId: string; isActive
 	});
 }
 
+// Applies on the person's next request (the API reads the membership's role every time).
+export function changeMemberRole({ userId, roleCode }: { userId: string; roleCode: string }) {
+	return apiRequest<Member>(`members/${encodeURIComponent(userId)}`, {
+		method: 'PATCH',
+		body: JSON.stringify({ roleCode }),
+	});
+}
+
 // The answer is the one-time password: shown once, never stored.
 export function resetMemberPassword(userId: string) {
 	return apiRequest<{ temporaryPassword: string }>(
