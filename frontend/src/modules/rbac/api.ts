@@ -12,9 +12,21 @@ export type Member = {
 };
 export type AssignableRole = { code: string; name: string; description: string | null };
 export type NewMember = { username: string; email: string; password: string; roleCode: string };
+// /api/members/roles: what each company role allows (read-only; roles are shared by every company) and how many people
+// hold it in this one. scope "assigned_only" means only their own records.
+export type RoleOverview = {
+	code: string;
+	name: string;
+	members: number;
+	permissions: { code: string; scope: 'all' | 'assigned_only' }[];
+};
 
 export function listMembers() {
 	return apiRequest<Member[]>('members');
+}
+
+export function listRoleOverview() {
+	return apiRequest<RoleOverview[]>('members/roles');
 }
 
 export function listAssignableRoles() {
