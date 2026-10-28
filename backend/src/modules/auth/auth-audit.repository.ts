@@ -4,14 +4,20 @@ import { Repository } from 'typeorm';
 import { AuditLog } from '../audit';
 import type { RequestMeta } from './request-meta';
 
-export type AuthAuditAction = 'login' | 'login_failed' | 'logout' | 'session_reuse' | 'password_changed';
+export type AuthAuditAction = 'login' | 'login_failed' | 'logout' | 'session_reuse' | 'password_changed' | 'profile_updated';
+
+// What changed, for actions that change something (a profile's display name). Never a password or a token.
+export interface AuthAuditValues {
+  oldValues?: Record<string, unknown>;
+  newValues?: Record<string, unknown>;
+}
 
 @Injectable()
 export class AuthAuditRepository {
   constructor(@InjectRepository(AuditLog) private readonly auditLogs: Repository<AuditLog>) {}
 
   // Never stores passwords, tokens, or the login name typed for an unknown account.
-  async record(action: AuthAuditAction, userId: string | null, meta: RequestMeta): Promise<void> {
-    await this.auditLogs.insert({ module: 'auth', action, userId, ipAddress: meta.ip, userAgent: meta.userAgent });
+  async record(action: AuthAuditAction, userId: string | null, meta: RequestMeta, values: AuthAuditValues = {}): Promise<void> {
+    await this.auditLogs.insert({ module: 'auth', action, userId, ...values, ipAddress: meta.ip, userAgent: meta.userAgent });
   }
 }

@@ -91,7 +91,7 @@ function createFakeStore() {
       },
       transaction: (work) => work(sessionsTransaction),
     },
-    audit: { record: async (action, userId, meta) => { store.audit.push({ action, userId, ip: meta.ip }); } },
+    audit: { record: async (action, userId, meta, values) => { store.audit.push({ action, userId, ip: meta.ip, ...values }); } },
     members: {
       findActiveMembership: async (userId, organizationId) => {
         const membership = store.memberships.find((row) => row.userId === userId && row.organizationId === organizationId && row.isActive);

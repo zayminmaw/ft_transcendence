@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, Post, Req, Res, UnauthorizedException, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Patch, Post, Req, Res, UnauthorizedException, UseGuards } from '@nestjs/common';
 import { SkipThrottle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { Authenticated } from '../../common/decorators/authenticated.decorator';
@@ -12,6 +12,7 @@ import { AuthService } from './auth.service';
 import { AuthThrottlerGuard } from './auth.throttler';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { LoginDto } from './dto/login.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 import { clearRefreshCookie, REFRESH_COOKIE, setRefreshCookie } from './refresh-cookie';
 import { requestMeta } from './request-meta';
 import { SameOriginGuard } from './same-origin.guard';
@@ -97,6 +98,15 @@ export class AuthController {
       platformAccess,
       mustChangePassword: user.mustChangePassword === true,
     };
+  }
+
+  // Your own profile, no company needed. Not before you choose your own password: only /me and the change itself are.
+  @Authenticated()
+  @Patch('me')
+  @SkipThrottle({ login: true, loginIp: true, refresh: true, password: true })
+  async updateMe(@Body() body: UpdateProfileDto, @Req() request: AuthenticatedRequest) {
+    const user = await this.auth.updateProfile(request.user!.id, body.displayName, requestMeta(request));
+    return { user: publicUser(user) };
   }
 
   @Authenticated()
