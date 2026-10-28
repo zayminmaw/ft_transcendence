@@ -49,6 +49,21 @@ test('users are found by email or username in any case, and inactive users are r
   assert.equal(await users.isActive('999999'), false);
 });
 
+test('a changed password is saved only while the checked hash is still the stored one', async () => {
+  const users = new UsersRepository(database.getRepository(User));
+  const id = await createUser('password.race.db');
+  const stored = async () => {
+    const { passwordHash, mustChangePassword } = await users.findById(id);
+    return { passwordHash, mustChangePassword };
+  };
+  // An admin reset landed after the change checked the old password.
+  await users.updatePassword(id, 'reset-hash', true);
+  assert.equal(await users.updatePasswordIfCurrent(id, 'placeholder-hash', 'changed-hash'), false);
+  assert.deepEqual(await stored(), { passwordHash: 'reset-hash', mustChangePassword: true });
+  assert.equal(await users.updatePasswordIfCurrent(id, 'reset-hash', 'changed-hash'), true);
+  assert.deepEqual(await stored(), { passwordHash: 'changed-hash', mustChangePassword: false });
+});
+
 const { Organization } = require('../../dist/modules/organizations/entities/organization.entity');
 const { OrganizationMember } = require('../../dist/modules/organizations/entities/organization-member.entity');
 const { OrganizationMembersRepository } = require('../../dist/modules/organizations/organization-members.repository');
