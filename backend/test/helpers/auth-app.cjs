@@ -17,6 +17,7 @@ const { OrganizationMember } = require('../../dist/modules/organizations/entitie
 const { OrganizationMembersRepository } = require('../../dist/modules/organizations/organization-members.repository');
 const { RolesGuard } = require('../../dist/modules/rbac');
 const { UserRole } = require('../../dist/modules/rbac/entities/user-role.entity');
+const { RolePermission } = require('../../dist/modules/rbac/entities/role-permission.entity');
 const { PermissionsRepository } = require('../../dist/modules/rbac/permissions.repository');
 const { PlatformRolesRepository } = require('../../dist/modules/rbac/platform-roles.repository');
 const { User } = require('../../dist/modules/users/entities/user.entity');
@@ -109,7 +110,14 @@ function createFakeStore() {
       },
       findActiveWorkspaces: async (userId) => store.workspaces.get(userId) ?? [],
     },
-    permissions: { findScope: async (roleId, code) => (store.rolePermissions.get(roleId)?.has(code) ? 'all' : undefined) },
+    permissions: {
+      findScope: async (roleId, code) => (store.rolePermissions.get(roleId)?.has(code) ? 'all' : undefined),
+      // By role code, sorted, like the real query (every fake permission has full scope).
+      grantedCodes: async (roleCodes) => Object.fromEntries(roleCodes.map((code) => {
+        const role = store.roles.find((candidate) => candidate.code === code);
+        return [code, role ? [...(store.rolePermissions.get(String(role.id)) ?? [])].sort() : []];
+      })),
+    },
     platformRoles: { hasPlatformAccess: async (userId) => store.platformAdmins.has(userId) },
     companyMembers: {
       // Every company role except platform_admin, sorted by name like the real query.
@@ -117,6 +125,16 @@ function createFakeStore() {
         .filter((role) => role.code !== 'platform_admin')
         .sort((a, b) => a.name.localeCompare(b.name))
         .map(({ id, code, name, description }) => ({ id, code, name, description })),
+      // Every role except platform_admin by id, each fake permission with full scope, and this company's count.
+      roleOverview: async (organizationId) => store.roles
+        .filter((role) => role.code !== 'platform_admin')
+        .sort((a, b) => a.id - b.id)
+        .map((role) => ({
+          code: role.code,
+          name: role.name,
+          members: store.memberships.filter((row) => row.organizationId === organizationId && row.roleId === String(role.id)).length,
+          permissions: [...(store.rolePermissions.get(String(role.id)) ?? [])].map((code) => ({ code, scope: 'all' })),
+        })),
       list: async (organizationId) => memberRows(organizationId),
       find: async (organizationId, userId) => memberRows(organizationId).find((member) => member.userId === userId),
       // The real createAccount (its rules and messages), on an in-memory "manager".
@@ -137,6 +155,9 @@ function createFakeStore() {
       },
       setActive: async (organizationId, userId, isActive) => {
         Object.assign(store.memberships.find((row) => row.organizationId === organizationId && row.userId === userId), { isActive });
+      },
+      setRole: async (organizationId, userId, roleId) => {
+        Object.assign(store.memberships.find((row) => row.organizationId === organizationId && row.userId === userId), { roleId: String(roleId) });
       },
       belongsElsewhere: async (organizationId, userId) =>
         store.memberships.some((row) => row.userId === userId && row.organizationId !== organizationId) || store.platformAdmins.has(userId),
@@ -168,7 +189,7 @@ function createFakeStore() {
 
 // TypeORM's own repository providers need a database connection; the fakes above replace every class that uses
 // them, so these only have to exist.
-const ENTITIES = [User, OrganizationMember, UserRole, UserSession, AuditLog];
+const ENTITIES = [User, OrganizationMember, UserRole, RolePermission, UserSession, AuditLog];
 
 // A fresh app per test, so throttling counts never leak from one test into another.
 // `controllers` adds fixture endpoints (e.g. a company endpoint) next to the real auth ones; `imports` adds modules

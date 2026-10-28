@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { DataSource, Not } from 'typeorm';
 import { OrganizationMember } from '../organizations';
-import { PLATFORM_ADMIN_ROLE, Role, UserRole } from '../rbac';
+import { PLATFORM_ADMIN_ROLE, Role, RolePermission, UserRole } from '../rbac';
 import { createAccount, User } from '../users';
 
 export interface Member {
@@ -19,6 +19,14 @@ export interface CompanyRole {
   code: string;
   name: string;
   description: string | null;
+}
+
+// One role for the Roles & permissions view: what it allows and how many people hold it in this company.
+export interface RoleOverview {
+  code: string;
+  name: string;
+  members: number;
+  permissions: { code: string; scope: 'all' | 'assigned_only' }[];
 }
 
 export interface NewMember {
@@ -52,6 +60,31 @@ export class MembersRepository {
     return roles.map(({ id, code, name, description }) => ({ id, code, name, description }));
   }
 
+  // Every company role (never platform_admin) in the seed's order, its permissions in the docs' order, and how many
+  // people hold it here, switched off or not. Roles are shared by every company; only the counts are this company's.
+  async roleOverview(organizationId: string): Promise<RoleOverview[]> {
+    const roles = await this.database.getRepository(Role).find({ where: { code: Not(PLATFORM_ADMIN_ROLE) }, order: { id: 'ASC' } });
+    const grants = await this.database.getRepository(RolePermission).find({
+      relations: { permission: true },
+      order: { permission: { id: 'ASC' } },
+    });
+    const counts = await this.database
+      .createQueryBuilder(OrganizationMember, 'm')
+      .select('m.roleId', 'roleId')
+      .addSelect('COUNT(*)', 'total')
+      .where('m.organizationId = :organizationId', { organizationId })
+      .groupBy('m.roleId')
+      .getRawMany<{ roleId: number; total: number | string }>();
+    return roles.map((role) => ({
+      code: role.code,
+      name: role.name,
+      members: Number(counts.find((row) => Number(row.roleId) === role.id)?.total ?? 0),
+      permissions: grants
+        .filter((grant) => grant.roleId === role.id)
+        .map(({ permission, scope }) => ({ code: permission.code, scope })),
+    }));
+  }
+
   list(organizationId: string): Promise<Member[]> {
     return this.query(organizationId);
   }
@@ -79,6 +112,10 @@ export class MembersRepository {
 
   async setActive(organizationId: string, userId: string, isActive: boolean): Promise<void> {
     await this.database.getRepository(OrganizationMember).update({ organizationId, userId }, { isActive });
+  }
+
+  async setRole(organizationId: string, userId: string, roleId: number): Promise<void> {
+    await this.database.getRepository(OrganizationMember).update({ organizationId, userId }, { roleId });
   }
 
   // True when the account also belongs to another company (active or not) or has a platform role: a company admin

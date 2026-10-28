@@ -71,7 +71,7 @@ const { Role } = require('../../dist/modules/rbac/entities/role.entity');
 const { UserRole } = require('../../dist/modules/rbac/entities/user-role.entity');
 const { PlatformRolesRepository } = require('../../dist/modules/rbac/platform-roles.repository');
 
-const createMembers = () => new OrganizationMembersRepository(database, database.getRepository(OrganizationMember));
+const createMembers = () => new OrganizationMembersRepository(database.getRepository(OrganizationMember));
 const createPlatformRoles = () => new PlatformRolesRepository(database.getRepository(UserRole));
 
 async function createCompany(slug, name) {
@@ -101,6 +101,25 @@ test('the picker lists active memberships in active companies, sorted by name, e
   assert.deepEqual((await members.findActiveWorkspaces(both)).map((workspace) => workspace.slug), ['alpha-db']);
 });
 
+test('a company request needs an active membership, in an active company, on an active account', async () => {
+  const members = createMembers();
+  const zeta = await createCompany('zeta-db', 'Zeta Express');
+  const elsewhere = await createCompany('eta-db', 'Eta Cargo');
+  const member = await createUser('member.zeta.db');
+  const switchedOff = await createUser('switched.off.zeta.db');
+  await addMember(zeta, member, 'dispatcher');
+  await addMember(zeta, switchedOff, 'dispatcher', false);
+  const dispatcher = await database.getRepository(Role).findOneByOrFail({ code: 'dispatcher' });
+  assert.deepEqual(await members.findActiveMembership(member, zeta), { organizationId: zeta, roleId: String(dispatcher.id) });
+  assert.equal(await members.findActiveMembership(member, elsewhere), undefined);
+  assert.equal(await members.findActiveMembership(switchedOff, zeta), undefined);
+  await database.getRepository(User).update({ id: member }, { isActive: false });
+  assert.equal(await members.findActiveMembership(member, zeta), undefined);
+  await database.getRepository(User).update({ id: member }, { isActive: true });
+  await database.getRepository(Organization).update({ id: zeta }, { isActive: false });
+  assert.equal(await members.findActiveMembership(member, zeta), undefined);
+});
+
 test('platform access comes from user_roles only, never from a membership', async () => {
   const platformRoles = createPlatformRoles();
   const admin = await createUser('platform.db');
@@ -109,6 +128,79 @@ test('platform access comes from user_roles only, never from a membership', asyn
   await platformRoles.grantPlatformAdmin(admin);
   assert.equal(await platformRoles.hasPlatformAccess(admin), true);
   assert.equal(await platformRoles.hasPlatformAccess(member), false);
+});
+
+const { ForbiddenException } = require('@nestjs/common');
+const { Reflector } = require('@nestjs/core');
+const { RequirePermission } = require('../../dist/common/decorators/require-permission.decorator');
+const { OrganizationMembersService } = require('../../dist/modules/organizations/organization-members.service');
+const { RolesGuard } = require('../../dist/modules/rbac/roles.guard');
+const { PermissionsRepository } = require('../../dist/modules/rbac/permissions.repository');
+const { Permission } = require('../../dist/modules/rbac/entities/permission.entity');
+const { RolePermission } = require('../../dist/modules/rbac/entities/role-permission.entity');
+
+// The docs' table (.docs/ERP-Logistics-System-Outline-v1.md section 5), written out here on purpose: the seed must
+// match it, and the guard must allow exactly these and refuse everything else. The driver's four permissions are
+// "only their own" (assigned_only), which the guard refuses until ownership rules exist; platform_admin has none.
+const DOCS_MATRIX = {
+  org_admin: ['admin.manage_users', 'admin.manage_roles', 'admin.audit_logs'],
+  dispatcher: ['clients.view', 'clients.create', 'clients.edit', 'parcels.view', 'parcels.create', 'parcels.dispatch',
+    'parcels.update_status', 'parcels.mark_delivered', 'drivers.view', 'assets.view', 'assets.assign'],
+  hub_sorter: ['parcels.view', 'parcels.update_status'],
+  finance: ['clients.view', 'clients.create', 'clients.view_financials', 'parcels.view', 'parcels.override_fee',
+    'staff.view_payroll', 'drivers.view', 'drivers.view_earnings', 'billing.view', 'billing.reconcile_cod',
+    'billing.create_invoice', 'billing.adjust_balance', 'billing.export', 'admin.audit_logs'],
+  hr_manager: ['staff.view', 'staff.manage', 'staff.view_payroll', 'drivers.view', 'drivers.manage',
+    'drivers.view_compliance', 'drivers.view_earnings'],
+  fleet_lead: ['drivers.view', 'drivers.view_compliance', 'assets.view', 'assets.create', 'assets.assign',
+    'assets.log_maintenance'],
+  driver: [],
+  platform_admin: [],
+};
+
+const createPermissions = () => new PermissionsRepository(database.getRepository(RolePermission));
+
+// The real RolesGuard on a fake endpoint that requires `permission`, called as `userId` in `organizationId`.
+async function guardAllows(guard, permission, userId, organizationId) {
+  class Endpoint { handle() {} }
+  RequirePermission(permission)(Endpoint.prototype, 'handle', Object.getOwnPropertyDescriptor(Endpoint.prototype, 'handle'));
+  const request = { user: { id: userId, mustChangePassword: false }, headers: { 'x-organization-id': organizationId } };
+  const context = { getHandler: () => Endpoint.prototype.handle, getClass: () => Endpoint, switchToHttp: () => ({ getRequest: () => request }) };
+  try {
+    return await guard.canActivate(context);
+  } catch (error) {
+    if (error instanceof ForbiddenException) return false;
+    throw error;
+  }
+}
+
+test('allowed and denied: every role against every permission is exactly the docs table', async () => {
+  const guard = new RolesGuard(
+    new Reflector(), new OrganizationMembersService(createMembers()), createPermissions(),
+    new UsersRepository(database.getRepository(User)), createPlatformRoles(),
+  );
+  const company = await createCompany('matrix-db', 'Matrix Couriers');
+  const codes = (await database.getRepository(Permission).find({ order: { id: 'ASC' } })).map((permission) => permission.code);
+  const roles = await database.getRepository(Role).find({ order: { id: 'ASC' } });
+  assert.deepEqual(roles.map((role) => role.code).sort(), Object.keys(DOCS_MATRIX).sort());
+  const wrong = [];
+  for (const role of roles) {
+    const userId = await createUser(`matrix.${role.code}`);
+    await addMember(company, userId, role.code);
+    for (const code of codes) {
+      const allowed = await guardAllows(guard, code, userId, company);
+      if (allowed !== DOCS_MATRIX[role.code].includes(code)) wrong.push(`${role.code} ${code}: ${allowed ? 'allowed' : 'denied'}`);
+    }
+  }
+  assert.equal(codes.length * roles.length, 240);
+  assert.deepEqual(wrong, []);
+});
+
+test('the codes each role may use, for /me: the full-scope ones only, sorted', async () => {
+  const granted = await createPermissions().grantedCodes(Object.keys(DOCS_MATRIX));
+  for (const [role, codes] of Object.entries(DOCS_MATRIX)) assert.deepEqual(granted[role], [...codes].sort(), role);
+  assert.deepEqual(await createPermissions().grantedCodes([]), {});
+  assert.deepEqual(await createPermissions().grantedCodes(['no_such_role']), { no_such_role: [] });
 });
 
 const { JwtService } = require('@nestjs/jwt');
@@ -267,6 +359,45 @@ test('the members queries: the roles to give, the list, creating with a membersh
   // A refused account leaves no membership behind (the transaction rolls back).
   await assert.rejects(members.create(company, { username: 'ZED.DB', email: 'new.db@db.test', password: 'Correct-horse-1', roleId: dispatcher.id }), AccountError);
   assert.equal((await members.list(company)).length, 2);
+});
+
+const { MembersAuditRepository } = require('../../dist/modules/members/members-audit.repository');
+
+test('changing a role updates only that membership, and the audit row keeps the old and new role', async () => {
+  const members = new MembersRepository(database);
+  const company = await createCompany('theta-db', 'Theta Freight');
+  const other = await createCompany('iota-db', 'Iota Post');
+  const person = await createUser('role.change.db');
+  await addMember(company, person, 'dispatcher');
+  await addMember(other, person, 'dispatcher');
+  const finance = await database.getRepository(Role).findOneByOrFail({ code: 'finance' });
+  await members.setRole(company, person, finance.id);
+  assert.equal((await members.find(company, person)).role.code, 'finance');
+  assert.equal((await members.find(other, person)).role.code, 'dispatcher');
+  const entry = { organizationId: company, actorId: person, targetId: person, oldValues: { role: 'dispatcher' }, newValues: { role: 'finance' } };
+  await new MembersAuditRepository(database.getRepository(AuditLog)).record('member_role_changed', entry, META);
+  const row = await database.getRepository(AuditLog).findOneByOrFail({ module: 'members', action: 'member_role_changed', recordId: person });
+  assert.deepEqual([row.oldValues, row.newValues], [{ role: 'dispatcher' }, { role: 'finance' }]);
+});
+
+test('the roles view: company roles in seed order, permissions in the docs order with their scope, people here', async () => {
+  const company = await createCompany('kappa-db', 'Kappa Cargo');
+  await addMember(company, await createUser('kappa.one'), 'dispatcher');
+  await addMember(company, await createUser('kappa.two'), 'dispatcher', false);
+  await addMember(company, await createUser('kappa.three'), 'driver');
+  const roles = await new MembersRepository(database).roleOverview(company);
+  assert.deepEqual(roles.map((role) => role.code), ['org_admin', 'dispatcher', 'hub_sorter', 'finance', 'hr_manager', 'fleet_lead', 'driver']);
+  assert.deepEqual(roles.map((role) => role.members), [0, 2, 0, 0, 0, 0, 1]);
+  const dispatcher = roles.find((role) => role.code === 'dispatcher');
+  assert.deepEqual(dispatcher.permissions.map((permission) => permission.code), DOCS_MATRIX.dispatcher);
+  for (const role of roles.filter(({ code }) => code !== 'driver')) {
+    assert.deepEqual(role.permissions.map(({ code }) => code).sort(), [...DOCS_MATRIX[role.code]].sort(), role.code);
+    assert.ok(role.permissions.every(({ scope }) => scope === 'all'), role.code);
+  }
+  assert.deepEqual(roles.find((role) => role.code === 'driver').permissions, [
+    { code: 'parcels.view', scope: 'assigned_only' }, { code: 'parcels.update_status', scope: 'assigned_only' },
+    { code: 'parcels.mark_delivered', scope: 'assigned_only' }, { code: 'drivers.view_earnings', scope: 'assigned_only' },
+  ]);
 });
 
 const { createPlatformAdmin, PlatformAdminError } = require('../../dist/cli/platform-admin');

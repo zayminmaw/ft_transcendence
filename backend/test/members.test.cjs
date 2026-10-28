@@ -125,6 +125,64 @@ test('nobody can deactivate themselves or someone outside the company', async (t
   assert.equal((await patch(lina, 'abc').expect(404)).body.code, 'MEMBER_NOT_FOUND');
 });
 
+test('changing a role gives someone in the company another role, from their next request', async (t) => {
+  const { server, store } = await meridianApp(t);
+  const lina = await tokenFor(server, 'lina');
+  const dana = await tokenFor(server, 'dana.saleh');
+  await as(request(server).get('/api/fixture/parcels'), dana).expect(200);
+  const changed = await as(request(server).patch('/api/members/12'), lina).send({ roleCode: 'finance' }).expect(200);
+  assert.deepEqual(changed.body.role, { code: 'finance', name: 'Finance' });
+  assert.deepEqual(store.memberships.find((row) => row.userId === '12'), { organizationId: '1', userId: '12', roleId: '3', isActive: true });
+  assert.deepEqual(store.audit.at(-1), {
+    action: 'member_role_changed', organizationId: '1', actorId: '10', targetId: '12',
+    newValues: { role: 'finance' }, oldValues: { role: 'dispatcher' },
+  });
+  // Finance has billing.view only here: dana's same token loses the parcels endpoint on its next request.
+  await as(request(server).get('/api/fixture/parcels'), dana).expect(403);
+  // The current role again changes nothing and writes no audit row.
+  const rowsBefore = store.audit.length;
+  await as(request(server).patch('/api/members/12'), lina).send({ roleCode: 'finance' }).expect(200);
+  assert.equal(store.audit.length, rowsBefore);
+});
+
+test('changing a role is refused for yourself, outsiders, roles you may not give, and two changes at once', async (t) => {
+  const { server } = await meridianApp(t);
+  const lina = await tokenFor(server, 'lina');
+  const patch = (userId, body) => as(request(server).patch(`/api/members/${userId}`), lina).send(body);
+  assert.equal((await patch('10', { roleCode: 'dispatcher' }).expect(403)).body.code, 'MEMBER_SELF');
+  assert.equal((await patch('15', { roleCode: 'dispatcher' }).expect(404)).body.code, 'MEMBER_NOT_FOUND');
+  assert.equal((await patch('12', { roleCode: 'platform_admin' }).expect(403)).body.code, 'ROLE_NOT_ASSIGNABLE');
+  assert.equal((await patch('12', { roleCode: 'no_such_role' }).expect(403)).body.code, 'ROLE_NOT_ASSIGNABLE');
+  await patch('12', { roleCode: 'finance', isActive: false }).expect(400);
+  await patch('12', {}).expect(400);
+  // null is sent but is neither a boolean nor a role code.
+  await patch('12', { isActive: null }).expect(400);
+  await patch('12', { roleCode: null }).expect(400);
+  // A role belongs to one membership: noor also has a Harbor membership, and that doesn't block this one.
+  assert.equal((await patch('13', { roleCode: 'finance' }).expect(200)).body.role.code, 'finance');
+  const dana = await tokenFor(server, 'dana.saleh');
+  await as(request(server).patch('/api/members/13'), dana).send({ roleCode: 'dispatcher' }).expect(403);
+});
+
+test('the roles view: what each company role allows and how many people hold it here, for admin.manage_roles', async (t) => {
+  const { server, store } = await meridianApp(t);
+  const lina = await tokenFor(server, 'lina');
+  const roles = (await as(request(server).get('/api/members/roles'), lina).expect(200)).body;
+  assert.deepEqual(roles, [
+    { code: 'org_admin', name: 'Organization Admin', members: 1, permissions: [
+      { code: 'admin.manage_users', scope: 'all' }, { code: 'admin.manage_roles', scope: 'all' }, { code: 'admin.audit_logs', scope: 'all' },
+    ] },
+    { code: 'dispatcher', name: 'Dispatcher', members: 3, permissions: [{ code: 'parcels.view', scope: 'all' }] },
+    { code: 'finance', name: 'Finance', members: 0, permissions: [{ code: 'billing.view', scope: 'all' }] },
+  ]);
+  const dana = await tokenFor(server, 'dana.saleh');
+  await as(request(server).get('/api/members/roles'), dana).expect(403);
+  // admin.manage_users opens the members list, not the roles view.
+  store.rolePermissions.set('2', new Set(['admin.manage_users']));
+  await as(request(server).get('/api/members'), dana).expect(200);
+  await as(request(server).get('/api/members/roles'), dana).expect(403);
+});
+
 test('a reset gives a one-time password, forces a change and ends every session of that person', async (t) => {
   const { server, store, jwt } = await meridianApp(t);
   const lina = await tokenFor(server, 'lina');
