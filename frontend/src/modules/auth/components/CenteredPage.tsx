@@ -6,10 +6,13 @@ import { LanguageSwitcher } from '@global-components';
 // The picker, "no access" and "not found" pages: the logo, a title and the content, outside any workspace.
 export function CenteredPage({
 	title,
+	subtitle,
 	description,
 	children,
 }: {
 	title: string;
+	// A line right under the title, e.g. who is logged in.
+	subtitle?: string;
 	description: string;
 	children: ReactNode;
 }) {
@@ -28,6 +31,7 @@ export function CenteredPage({
 				</div>
 				<div>
 					<h1 className="workspace-title text-[2rem] md:text-[2.25rem]">{title}</h1>
+					{subtitle && <p className="mt-2 text-sm font-medium">{subtitle}</p>}
 					<p className="mt-2 text-sm text-[var(--color-slate)]">{description}</p>
 				</div>
 				{children}

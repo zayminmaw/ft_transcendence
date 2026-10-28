@@ -9,9 +9,10 @@ import { billingRoutes } from '@modules/billing';
 import { rbacRoutes } from '@modules/rbac';
 import { marketingRoutes } from '@modules/marketing';
 import { platformRoutes } from '@modules/platform';
-import { authRoutes, WorkspacePickerPage } from '@modules/auth';
+import { authRoutes, ChangePasswordPage, WorkspacePickerPage } from '@modules/auth';
 import { App } from './App';
 import { CompanyBoundary } from './CompanyBoundary';
+import { RequirePasswordChosen } from './RequirePasswordChosen';
 import { RequirePlatform } from './RequirePlatform';
 import { RequireSession } from './RequireSession';
 import { CompatibilityRedirect, NotFoundPage, OverviewPage } from './WorkspacePages';
@@ -33,27 +34,33 @@ export const router = createBrowserRouter([
 	{
 		element: <RequireSession />,
 		children: [
+			{ path: 'change-password', element: <ChangePasswordPage /> },
 			{
-				path: 'app',
+				element: <RequirePasswordChosen />,
 				children: [
-					{ index: true, element: <WorkspacePickerPage /> },
 					{
-						path: ':companySlug',
-						element: <CompanyBoundary />,
+						path: 'app',
 						children: [
+							{ index: true, element: <WorkspacePickerPage /> },
 							{
-								element: <App />,
+								path: ':companySlug',
+								element: <CompanyBoundary />,
 								children: [
-									{ index: true, element: <OverviewPage /> },
-									...workspaceRoutes,
-									{ path: '*', element: <NotFoundPage /> },
+									{
+										element: <App />,
+										children: [
+											{ index: true, element: <OverviewPage /> },
+											...workspaceRoutes,
+											{ path: '*', element: <NotFoundPage /> },
+										],
+									},
 								],
 							},
 						],
 					},
+					{ element: <RequirePlatform />, children: platformRoutes },
 				],
 			},
-			{ element: <RequirePlatform />, children: platformRoutes },
 		],
 	},
 	...workspaceRoutes.map(({ path }) => ({ path, element: <CompatibilityRedirect /> })),
