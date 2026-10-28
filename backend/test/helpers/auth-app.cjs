@@ -1,4 +1,5 @@
 require('reflect-metadata');
+const request = require('supertest');
 const { ConfigModule } = require('@nestjs/config');
 const { Reflector } = require('@nestjs/core');
 const { JwtService } = require('@nestjs/jwt');
@@ -23,8 +24,11 @@ const { UsersRepository } = require('../../dist/modules/users/users.repository')
 const { createAccount } = require('../../dist/modules/users/accounts');
 const { MembersAuditRepository } = require('../../dist/modules/members/members-audit.repository');
 const { MembersRepository } = require('../../dist/modules/members/members.repository');
+const { StorageRepository } = require('../../dist/modules/storage/storage.repository');
 
 const ORIGIN = 'http://localhost:5173';
+// The password the module tests give their fixture accounts.
+const PASSWORD = 'Correct-horse-1';
 const ENV = { JWT_SECRET: 'test-secret-with-at-least-32-characters', JWT_ISSUER: 'transcend', JWT_AUDIENCE: 'transcend-web', CORS_ORIGIN: ORIGIN };
 
 // In-memory stand-ins for the SQL repositories: same method names and return shapes. test:db checks the real SQL.
@@ -35,8 +39,11 @@ function createFakeStore() {
     memberships: [], rolePermissions: new Map(),
     // Roles for the people list and the roles you may give: { id, code, name, description }.
     roles: [],
+    // Stored file rows: { id, organizationId, uploadedByUserId, storedName, originalName, mimeType, sizeBytes, createdAt }.
+    storageFiles: [],
   };
   let nextSessionId = 1;
+  let nextFileId = 1;
   let nextUserId = 100;
   const sameText = (a, b) => a.toLowerCase() === b.toLowerCase();
   const sessionRecord = (row) => row && {
@@ -135,6 +142,24 @@ function createFakeStore() {
         store.memberships.some((row) => row.userId === userId && row.organizationId !== organizationId) || store.platformAdmins.has(userId),
     },
     membersAudit: { record: async (action, entry) => { store.audit.push({ action, ...entry }); } },
+    storageFiles: {
+      insert: async (input) => {
+        const row = { id: String(nextFileId++), createdAt: new Date(), ...input };
+        store.storageFiles.push(row);
+        return { ...row };
+      },
+      find: async (organizationId, id) => {
+        const row = store.storageFiles.find((file) => file.organizationId === organizationId && file.id === id);
+        return row && { ...row };
+      },
+      findById: async (id) => {
+        const row = store.storageFiles.find((file) => file.id === id);
+        return row && { ...row };
+      },
+      delete: async (organizationId, id) => {
+        store.storageFiles = store.storageFiles.filter((file) => !(file.organizationId === organizationId && file.id === id));
+      },
+    },
   };
   // A refresh token is "<familyId>.<secret>"; the family id names the session row.
   store.sessionFor = (refreshToken) => store.sessions.find((row) => row.familyId === refreshToken.split('.')[0]);
@@ -163,6 +188,7 @@ async function createAuthApp(t, store = createFakeStore(), { controllers = [], i
     .overrideProvider(PlatformRolesRepository).useValue(store.repositories.platformRoles)
     .overrideProvider(MembersRepository).useValue(store.repositories.companyMembers)
     .overrideProvider(MembersAuditRepository).useValue(store.repositories.membersAudit)
+    .overrideProvider(StorageRepository).useValue(store.repositories.storageFiles)
     .compile();
   const app = moduleRef.createNestApplication({ logger: false });
   configureApp(app, ORIGIN);
@@ -181,4 +207,13 @@ function refreshCookie(response) {
   return header && { header, value: decodeURIComponent(header.split(';')[0].slice('transcend_refresh='.length)) };
 }
 
-module.exports = { ORIGIN, createAuthApp, createFakeStore, refreshCookie };
+// Logs in and returns the access token. Await it before the next request: supertest closes its temporary server
+// when each request ends.
+async function tokenFor(server, login, password = PASSWORD) {
+  return (await request(server).post('/api/auth/login').set('Origin', ORIGIN).send({ login, password }).expect(200)).body.accessToken;
+}
+
+// A company request: the bearer token plus the X-Organization-Id header.
+const as = (call, token, company = '1') => call.set('Authorization', `Bearer ${token}`).set('X-Organization-Id', company);
+
+module.exports = { ORIGIN, PASSWORD, as, createAuthApp, createFakeStore, refreshCookie, tokenFor };

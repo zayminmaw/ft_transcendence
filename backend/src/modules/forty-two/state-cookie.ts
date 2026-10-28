@@ -1,5 +1,6 @@
-import { randomBytes, timingSafeEqual } from 'node:crypto';
+import { randomBytes } from 'node:crypto';
 import type { CookieOptions, Response } from 'express';
+import { safeEqual } from '../../common/safe-equal';
 
 export const STATE_COOKIE = 'transcend_42_state';
 const STATE_TTL_MS = 10 * 60_000;
@@ -25,8 +26,5 @@ export function clearStateCookie(response: Pick<Response, 'clearCookie'>): void 
 
 // The state 42 sends back must be the one this browser was given, or another site could finish a login it started.
 export function stateMatches(expected: unknown, received: unknown): boolean {
-  if (typeof expected !== 'string' || typeof received !== 'string' || !expected) return false;
-  const a = Buffer.from(expected);
-  const b = Buffer.from(received);
-  return a.length === b.length && timingSafeEqual(a, b);
+  return safeEqual(expected, received);
 }
