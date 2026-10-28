@@ -56,6 +56,8 @@ test('a name is one line of at most 64 characters, and nothing else can be chang
   await patch({ displayName: 'x'.repeat(64) }).expect(200);
   for (const body of [
     { displayName: 'x'.repeat(65) },
+    // 40 hearts are 80 characters underneath (each is ❤ plus an invisible variation selector): too long for the column.
+    { displayName: '❤️'.repeat(40) },
     { displayName: 'Noor\nHaddad' },
     { displayName: 42 },
     {},
