@@ -1,8 +1,10 @@
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Avatar } from '@global-components';
 import { formatDate } from '@utils/format';
 import { CenteredPage } from '../components/CenteredPage';
+import { ChangePasswordForm } from '../components/ChangePasswordForm';
 import { DisplayNameForm } from '../components/DisplayNameForm';
 import { LoadingScreen } from '../components/LoadingScreen';
 import { shownName, useMe, useRoleName } from '../hooks';
@@ -15,6 +17,7 @@ export function ProfilePage() {
 	const roleName = useRoleName();
 	const navigate = useNavigate();
 	const location = useLocation();
+	const [passwordChanged, setPasswordChanged] = useState(false);
 	// Back to where you came from; opened directly (no earlier page in this tab), to the workspaces.
 	const back = () => (location.key === 'default' ? navigate('/app') : navigate(-1));
 
@@ -106,6 +109,25 @@ export function ProfilePage() {
 						)}
 					</ul>
 				)}
+			</section>
+			<section
+				aria-labelledby="profile-password"
+				className="flex flex-col gap-4 rounded-box bg-base-200 p-6"
+			>
+				<div>
+					<h2 id="profile-password" className="font-semibold">
+						{t('profile.password')}
+					</h2>
+					<p className="mt-1 text-xs text-[var(--color-slate)]">
+						{t('profile.passwordIntro')}
+					</p>
+				</div>
+				{passwordChanged && (
+					<p role="status" className="alert alert-success alert-soft text-sm">
+						{t('profile.passwordChanged')}
+					</p>
+				)}
+				<ChangePasswordForm mode="profile" onChanged={() => setPasswordChanged(true)} />
 			</section>
 		</CenteredPage>
 	);
