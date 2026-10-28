@@ -19,6 +19,11 @@ export function useMe(options: { refetchOnMount?: 'always' } = {}) {
 	});
 }
 
+// The name to show for someone: the display name they chose, else their username.
+export function shownName(person: { username: string; displayName: string | null }) {
+	return person.displayName ?? person.username;
+}
+
 // The company named in the URL, when it is one of yours.
 export function useCurrentWorkspace() {
 	const { companySlug } = useParams();

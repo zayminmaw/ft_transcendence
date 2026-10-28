@@ -1,4 +1,5 @@
 export { AnalyticsCard } from './AnalyticsCard/AnalyticsCard';
+export { Avatar } from './Avatar/Avatar';
 export * from './AnalyticsCard/types.tsx';
 export { Button } from './Button/Button';
 export { Dialog } from './Dialog/Dialog';

@@ -1,6 +1,13 @@
 import { apiRequest } from '@services/api-client';
 
-export type AccountUser = { id: string; username: string; email: string };
+export type AccountUser = {
+	id: string;
+	username: string;
+	email: string;
+	// The name the person chose on their profile; null shows the username (shownName).
+	displayName: string | null;
+	createdAt: string;
+};
 export type Workspace = {
 	id: string;
 	slug: string;
