@@ -12,6 +12,7 @@ import { platformRoutes } from '@modules/platform';
 import {
 	authRoutes,
 	ChangePasswordPage,
+	ProfilePage,
 	RequirePermission,
 	WorkspacePickerPage,
 } from '@modules/auth';
@@ -51,6 +52,8 @@ export const router = createBrowserRouter([
 			{
 				element: <RequirePasswordChosen />,
 				children: [
+					// Your own account, outside any company: /app/<slug> addresses belong to companies.
+					{ path: 'profile', element: <ProfilePage /> },
 					{
 						path: 'app',
 						children: [
