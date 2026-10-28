@@ -4,7 +4,9 @@ import { Link, NavLink } from 'react-router-dom';
 
 export type NavigationGroup = {
 	label?: string;
-	items: { to: string; label: string; end?: boolean }[];
+	// hidden: left out of the sidebar (e.g. the role doesn't allow it) but still names the page in the breadcrumb.
+	// A group with nothing to show disappears.
+	items: { to: string; label: string; end?: boolean; hidden?: boolean }[];
 };
 
 export type SidebarContentProps = {
@@ -45,33 +47,37 @@ export function SidebarContent({
 				</div>
 			)}
 			<nav aria-label={t('layout.navigation', { scope })} className="flex flex-col gap-6">
-				{groups.map(({ label, items }, index) => (
-					<div key={label ?? index} role="group" aria-label={label}>
-						{label && (
-							<p
-								className={`mb-3 text-xs text-[var(--color-slate)] ${index > 0 ? 'border-t border-base-300 pt-6' : ''}`}
-							>
-								{label}
-							</p>
-						)}
-						<ul className="menu w-full gap-1 p-0">
-							{items.map(({ to, label, end }) => (
-								<li key={to}>
-									<NavLink
-										to={to}
-										end={end}
-										onClick={onNavigate}
-										className={({ isActive }) =>
-											`min-h-11 rounded-xl px-3 py-3 text-sm font-medium ${isActive ? 'bg-base-200 text-base-content' : 'text-[var(--color-slate)] hover:bg-base-200 hover:text-base-content'}`
-										}
-									>
-										{label}
-									</NavLink>
-								</li>
-							))}
-						</ul>
-					</div>
-				))}
+				{groups.map(({ label, items }, index) => {
+					const shown = items.filter((item) => !item.hidden);
+					if (shown.length === 0) return null;
+					return (
+						<div key={label ?? index} role="group" aria-label={label}>
+							{label && (
+								<p
+									className={`mb-3 text-xs text-[var(--color-slate)] ${index > 0 ? 'border-t border-base-300 pt-6' : ''}`}
+								>
+									{label}
+								</p>
+							)}
+							<ul className="menu w-full gap-1 p-0">
+								{shown.map(({ to, label, end }) => (
+									<li key={to}>
+										<NavLink
+											to={to}
+											end={end}
+											onClick={onNavigate}
+											className={({ isActive }) =>
+												`min-h-11 rounded-xl px-3 py-3 text-sm font-medium ${isActive ? 'bg-base-200 text-base-content' : 'text-[var(--color-slate)] hover:bg-base-200 hover:text-base-content'}`
+											}
+										>
+											{label}
+										</NavLink>
+									</li>
+								))}
+							</ul>
+						</div>
+					);
+				})}
 			</nav>
 			<div className="mt-auto flex flex-col gap-4">
 				<Link to="/" onClick={onNavigate} className="btn btn-ghost bg-base-200">

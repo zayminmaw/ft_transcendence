@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button, Dialog } from '@global-components';
+import { useRoleName } from '@modules/auth';
 import { formatDate } from '@utils/format';
 import type { Member } from '../api';
 import { errorCode, memberErrorKey } from '../errors';
@@ -21,6 +22,7 @@ export function ManageMemberDialog({
 	onClose: () => void;
 }) {
 	const { t, i18n } = useTranslation('rbac');
+	const roleName = useRoleName();
 	const [step, setStep] = useState<Step>('details');
 	const [temporaryPassword, setTemporaryPassword] = useState('');
 	const [copied, setCopied] = useState(false);
@@ -148,7 +150,7 @@ export function ManageMemberDialog({
 					<dt className="text-[var(--color-slate)]">{t('manage.email')}</dt>
 					<dd>{member.email}</dd>
 					<dt className="text-[var(--color-slate)]">{t('manage.role')}</dt>
-					<dd>{member.role.name}</dd>
+					<dd>{roleName(member.role)}</dd>
 					<dt className="text-[var(--color-slate)]">{t('manage.status')}</dt>
 					<dd>
 						{member.isActive

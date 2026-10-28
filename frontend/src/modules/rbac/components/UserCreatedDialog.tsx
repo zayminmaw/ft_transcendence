@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { Button, Dialog } from '@global-components';
+import { useRoleName } from '@modules/auth';
 import type { Member } from '../api';
 
 // After creating an account (Figma "Company user created"). The password never appears here.
@@ -13,6 +14,7 @@ export function UserCreatedDialog({
 	onDone: () => void;
 }) {
 	const { t } = useTranslation('rbac');
+	const roleName = useRoleName();
 	return (
 		<Dialog
 			open
@@ -20,7 +22,7 @@ export function UserCreatedDialog({
 			title={t('created.title')}
 			description={t('created.description', {
 				name: member.username,
-				role: member.role.name,
+				role: roleName(member.role),
 				company,
 			})}
 			actions={<Button onClick={onDone}>{t('created.back')}</Button>}
