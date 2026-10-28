@@ -1,0 +1,122 @@
+{
+	"page": {
+		"title": "Clients / merchants",
+		"description": "Merchant accounts, contacts, and pickup points for {{company}}.",
+		"create": "Add client",
+		"loading": "Loading clients…",
+		"loadFailed": "The client list could not be loaded."
+	},
+	"tiles": {
+		"active": "Active merchants",
+		"archived": "{{n}} archived",
+		"pinned": "Pickup points pinned",
+		"pinnedNote": "Active merchants with coordinates",
+		"total": "All merchant accounts",
+		"totalNote": "Archived accounts keep their history"
+	},
+	"table": {
+		"title": "Merchant directory",
+		"description": "Businesses that ship parcels with this company",
+		"client": "Client",
+		"contact": "Primary contact",
+		"pickup": "Default pickup",
+		"balance": "Live balance",
+		"status": "Status",
+		"statusFilter": "Status",
+		"search": "Search name, code, contact or mobile",
+		"empty": "No clients here yet.",
+		"noMatch": "No client matches your search."
+	},
+	"status": {
+		"active": "Active",
+		"archived": "Archived",
+		"all": "All"
+	},
+	"tiers": {
+		"standard": "Standard",
+		"priority": "Priority",
+		"corporate": "Corporate"
+	},
+	"tip": {
+		"title": "Merchants pay, recipients receive.",
+		"description": "A client is the business shipping parcels. Its balance changes only through ledger entries in billing, never by editing the profile."
+	},
+	"fields": {
+		"clientCode": "Client code",
+		"businessName": "Business name",
+		"tradeLicenseNo": "Commercial reg. / tax ID",
+		"contactPersonName": "Contact person",
+		"contactTitle": "Contact title",
+		"mobile1": "Mobile",
+		"mobile2": "Second mobile",
+		"email": "Billing email",
+		"billingAddress": "Billing address",
+		"defaultPickupAddress": "Default pickup address",
+		"pickupLatitude": "Pickup latitude",
+		"pickupLongitude": "Pickup longitude",
+		"rateProfileTier": "Rate profile",
+		"operationalNotes": "Operational notes"
+	},
+	"form": {
+		"newTitle": "Add client",
+		"editTitle": "Edit {{name}}",
+		"description": "Fields marked * are required.",
+		"business": "Business",
+		"contact": "Contact",
+		"addresses": "Addresses",
+		"terms": "Terms and notes",
+		"coordinatesNote": "Optional. Give both, in decimal degrees, so drivers can find the pickup point.",
+		"backToList": "Back to clients",
+		"backToClient": "Back to client",
+		"cancel": "Cancel",
+		"submit": "Add client",
+		"save": "Save changes",
+		"created": "{{name}} added",
+		"updated": "Changes saved",
+		"tipTitle": "One code per merchant.",
+		"tipDescription": "The client code appears on waybills and invoices. A new account starts with a zero balance; billing posts every change after that."
+	},
+	"details": {
+		"since": "Client since {{date}}",
+		"edit": "Edit",
+		"contact": "Contact",
+		"addresses": "Addresses",
+		"financials": "Balance",
+		"balance": "Live balance",
+		"payoutDue": "Net positive: payout due to the merchant",
+		"merchantOwes": "Net negative: the merchant owes this amount",
+		"pendingCod": "Pending COD",
+		"unbilled": "Unbilled fees",
+		"unbilledLater": "Shown once billing is available",
+		"none": "—",
+		"noPin": "No coordinates yet",
+		"noNotes": "No notes yet.",
+		"archivedTitle": "This client is archived",
+		"archivedNote": "Its history stays. New parcels can't be created for it until it is reactivated.",
+		"notFound": "Client not found",
+		"tipTitle": "History stays with the merchant.",
+		"tipDescription": "Archiving stops new parcels but keeps every parcel, ledger entry, and invoice linked to this client."
+	},
+	"archive": {
+		"archive": "Archive",
+		"reactivate": "Reactivate",
+		"confirmTitle": "Archive {{name}}?",
+		"reactivateTitle": "Reactivate {{name}}?",
+		"confirmArchive": "No new parcels can be created for this merchant. Its parcels, balance, and invoices stay as they are.",
+		"confirmReactivate": "The merchant can ship new parcels again, with the same code and terms.",
+		"archived": "{{name}} archived",
+		"reactivated": "{{name}} reactivated"
+	},
+	"errors": {
+		"required": "Required.",
+		"tooLong": "Too long.",
+		"invalidCode": "Use 2–32 letters, digits, or dashes, e.g. CL-0007.",
+		"invalidPhone": "Enter a phone number, e.g. +962 7 9555 0101.",
+		"invalidEmail": "Enter an email address, e.g. billing@example.com.",
+		"invalidCoordinate": "Enter decimal degrees, e.g. 31.95218300.",
+		"coordinatePair": "Give both latitude and longitude, or neither.",
+		"codeTaken": "This client code is already used by another client.",
+		"notFound": "This client doesn't exist in this company.",
+		"unknown": "Something went wrong. Try again."
+	}
+}

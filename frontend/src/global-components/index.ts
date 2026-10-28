@@ -4,6 +4,8 @@ export { Button } from './Button/Button';
 export { Dialog } from './Dialog/Dialog';
 export { Input } from './Input/Input';
 export { PasswordInput } from './Input/PasswordInput';
+export { Select } from './Input/Select';
+export { Textarea } from './Input/Textarea';
 export { LanguageSwitcher } from './LanguageSwitcher/LanguageSwitcher';
 export { ModulePage } from './ModulePage';
 export { SelectFilter } from './SelectFilter/SelectFilter';
