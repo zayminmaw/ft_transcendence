@@ -24,6 +24,10 @@ export class UsersRepository {
     await this.users.update({ id }, { passwordHash, mustChangePassword });
   }
 
+  async updateDisplayName(id: string, displayName: string | null): Promise<void> {
+    await this.users.update({ id }, { displayName });
+  }
+
   async touchLastLogin(id: string): Promise<void> {
     await this.users.update({ id }, { lastLoginAt: new Date() });
   }

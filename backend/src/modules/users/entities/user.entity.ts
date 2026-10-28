@@ -13,6 +13,10 @@ export class User {
   @Column({ type: 'varchar', length: 191, unique: true })
   email!: string;
 
+  // The name you choose on your profile; NULL shows your username instead.
+  @Column({ name: 'display_name', type: 'varchar', length: 64, nullable: true })
+  displayName!: string | null;
+
   @Column({ name: 'password_hash', type: 'varchar', length: 255 })
   passwordHash!: string;
 

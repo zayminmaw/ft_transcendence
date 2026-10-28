@@ -8,6 +8,7 @@ export interface Member {
   userId: string;
   username: string;
   email: string;
+  displayName: string | null;
   role: { id: number; code: string; name: string };
   isActive: boolean;
   lastLoginAt: Date | null;
@@ -40,6 +41,7 @@ interface MemberRow {
   userId: string;
   username: string;
   email: string;
+  displayName: string | null;
   roleId: number;
   roleCode: string;
   roleName: string;
@@ -136,6 +138,7 @@ export class MembersRepository {
       .select('u.id', 'userId')
       .addSelect('u.username', 'username')
       .addSelect('u.email', 'email')
+      .addSelect('u.displayName', 'displayName')
       .addSelect('r.id', 'roleId')
       .addSelect('r.code', 'roleCode')
       .addSelect('r.name', 'roleName')
@@ -150,6 +153,7 @@ export class MembersRepository {
       userId: String(row.userId),
       username: row.username,
       email: row.email,
+      displayName: row.displayName,
       role: { id: Number(row.roleId), code: row.roleCode, name: row.roleName },
       isActive: Boolean(Number(row.isActive)),
       lastLoginAt: row.lastLoginAt,

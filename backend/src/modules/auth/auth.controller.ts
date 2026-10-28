@@ -20,8 +20,9 @@ import { type IssuedSession, SessionsService } from './sessions.service';
 const INVALID_CREDENTIALS = { message: 'Unable to log in.', code: 'AUTH_INVALID_CREDENTIALS' };
 const SESSION_EXPIRED = { message: 'Your session has ended. Log in again.', code: 'AUTH_SESSION_EXPIRED' };
 
+// Who you are, as /me, login and refresh show it. displayName is null until you choose one.
 function publicUser(user: User) {
-  return { id: user.id, username: user.username, email: user.email };
+  return { id: user.id, username: user.username, email: user.email, displayName: user.displayName ?? null, createdAt: user.createdAt };
 }
 
 @Controller('auth')
