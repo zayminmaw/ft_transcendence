@@ -26,7 +26,7 @@ export type TenantList = {
 	total: number;
 	page: number;
 	pageSize: number;
-	counts: { total: number; active: number; suspended: number };
+	counts: { total: number; active: number; suspended: number; members: number };
 };
 
 export type Tenant = {
