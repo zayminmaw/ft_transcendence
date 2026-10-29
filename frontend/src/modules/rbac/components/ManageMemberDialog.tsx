@@ -1,13 +1,18 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button, Dialog } from '@global-components';
 import { useRoleName } from '@modules/auth';
 import { formatDate } from '@utils/format';
 import type { Member } from '../api';
 import { errorCode, memberErrorKey } from '../errors';
-import { useResetMemberPassword, useSetMemberActive } from '../hooks';
+import {
+	useAssignableRoles,
+	useChangeMemberRole,
+	useResetMemberPassword,
+	useSetMemberActive,
+} from '../hooks';
 
-type Step = 'details' | 'confirmActive' | 'confirmReset' | 'password';
+type Step = 'details' | 'changeRole' | 'confirmActive' | 'confirmReset' | 'password';
 
 // One person's access in this company: switch the membership off or on, or reset a forgotten password. The one-time
 // password lives only in this dialog's state; closing the dialog unmounts it and the password is gone, so while it
@@ -28,10 +33,20 @@ export function ManageMemberDialog({
 	const [copied, setCopied] = useState(false);
 	const setActive = useSetMemberActive();
 	const reset = useResetMemberPassword();
+	const changeRole = useChangeMemberRole();
+	const roles = useAssignableRoles();
+	const [chosenRole, setChosenRole] = useState(member.role.code);
+	const roleSelectId = useId();
 	// Only the refusal of what this step asks for: a mutation keeps its error until it runs again, so an earlier
 	// refusal would otherwise stay under the next step, even under a change that worked.
 	const failure =
-		step === 'confirmActive' ? setActive.error : step === 'confirmReset' ? reset.error : null;
+		step === 'changeRole'
+			? changeRole.error
+			: step === 'confirmActive'
+				? setActive.error
+				: step === 'confirmReset'
+					? reset.error
+					: null;
 	const name = member.username;
 
 	const cancel = (
@@ -57,6 +72,16 @@ export function ManageMemberDialog({
 			<button
 				type="button"
 				className="btn btn-ghost bg-base-200"
+				onClick={() => {
+					setChosenRole(member.role.code);
+					setStep('changeRole');
+				}}
+			>
+				{t('manage.changeRole')}
+			</button>
+			<button
+				type="button"
+				className="btn btn-ghost bg-base-200"
 				onClick={() => setStep('confirmReset')}
 			>
 				{t('manage.reset')}
@@ -67,7 +92,56 @@ export function ManageMemberDialog({
 		</>
 	);
 
-	if (step === 'confirmActive') {
+	if (step === 'changeRole') {
+		const chosen = roles.data?.find((role) => role.code === chosenRole);
+		description = t('manage.changeRoleIntro', { name, company });
+		body = (
+			<div className="flex flex-col gap-3">
+				<label className="text-sm font-medium" htmlFor={roleSelectId}>
+					{t('manage.role')}
+				</label>
+				<select
+					id={roleSelectId}
+					className="select w-full"
+					value={chosenRole}
+					disabled={!roles.isSuccess}
+					onChange={(event) => setChosenRole(event.target.value)}
+				>
+					{roles.data?.map((role) => (
+						<option key={role.code} value={role.code}>
+							{roleName(role)}
+						</option>
+					))}
+				</select>
+				{chosen && chosen.code !== member.role.code && (
+					<p className="text-sm text-[var(--color-slate)]">
+						{t('manage.changeRoleNote', { name, role: roleName(chosen), company })}
+					</p>
+				)}
+				{roles.isError && (
+					<p role="alert" className="text-sm text-error">
+						{t(memberErrorKey(roles.error))}
+					</p>
+				)}
+			</div>
+		);
+		actions = (
+			<>
+				{cancel}
+				<Button
+					disabled={chosenRole === member.role.code || changeRole.isPending}
+					onClick={() =>
+						changeRole.mutate(
+							{ userId: member.userId, roleCode: chosenRole },
+							{ onSuccess: () => setStep('details') },
+						)
+					}
+				>
+					{t('manage.saveRole')}
+				</Button>
+			</>
+		);
+	} else if (step === 'confirmActive') {
 		description = member.isActive
 			? t('manage.deactivateConfirm', { name, company })
 			: t('manage.reactivateConfirm', { name, company });

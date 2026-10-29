@@ -2,9 +2,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ApiError } from '@services/api-client';
 import { tenantQueryKey } from '@utils/query-keys';
 import {
+	changeMemberRole,
 	createMember,
 	listAssignableRoles,
 	listMembers,
+	listRoleOverview,
 	resetMemberPassword,
 	setMemberActive,
 } from './api';
@@ -29,6 +31,14 @@ export function useAssignableRoles() {
 	});
 }
 
+export function useRoleOverview() {
+	return useQuery({
+		queryKey: tenantQueryKey('members', 'roles'),
+		queryFn: listRoleOverview,
+		retry: retryServerErrors,
+	});
+}
+
 function useReloadMembers() {
 	const queryClient = useQueryClient();
 	return () => queryClient.invalidateQueries({ queryKey: tenantQueryKey('members') });
@@ -48,6 +58,11 @@ export function useSetMemberActive() {
 	const reload = useReloadMembers();
 	// A refusal (someone else changed this person meanwhile) reloads the list too.
 	return useMutation({ mutationFn: setMemberActive, onSettled: reload });
+}
+
+export function useChangeMemberRole() {
+	const reload = useReloadMembers();
+	return useMutation({ mutationFn: changeMemberRole, onSettled: reload });
 }
 
 export function useResetMemberPassword() {

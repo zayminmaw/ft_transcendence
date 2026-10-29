@@ -10,10 +10,13 @@ import { ApiError } from '@services/api-client';
 import { formatDate, formatNumber } from '@utils/format';
 import type { Member } from '../api';
 import { ManageMemberDialog } from '../components/ManageMemberDialog';
+import { PeopleAccessTabs } from '../components/PeopleAccessTabs';
+import { RolesOverview } from '../components/RolesOverview';
 import { useMembers } from '../hooks';
 
-// People & access: the company's members for anyone with admin.manage_users (the API refuses everyone else).
-export function PeopleAccessPage() {
+// People & access: the company's members for anyone with admin.manage_users (the API refuses everyone else). The
+// "roles" tab (its own address, admin.manage_roles) shows what each role allows instead of the list.
+export function PeopleAccessPage({ tab = 'members' }: { tab?: 'members' | 'roles' }) {
 	const { t, i18n } = useTranslation('rbac');
 	const companyPath = useCompanyPath();
 	const company = useCurrentWorkspace()?.name ?? '';
@@ -151,19 +154,32 @@ export function PeopleAccessPage() {
 			/>
 			<section className="flex flex-col gap-4">
 				<div>
-					<h2 className="font-semibold">{t('table.title')}</h2>
+					<h2 className="font-semibold">
+						{tab === 'roles' ? t('roles.title') : t('table.title')}
+					</h2>
 					<p className="mt-1 text-xs text-[var(--color-slate)]">
-						{t('table.description')}
+						{tab === 'roles'
+							? t('roles.description', { company })
+							: t('table.description')}
 					</p>
 				</div>
-				<Table
-					caption={t('table.title')}
-					columns={columns}
-					rows={rows}
-					getRowKey={(member) => member.userId}
-					search={{ value: search, onChange: setSearch, placeholder: t('table.search') }}
-					emptyMessage={needle ? t('table.noMatch') : t('table.empty')}
-				/>
+				<PeopleAccessTabs members={list.length} />
+				{tab === 'roles' ? (
+					<RolesOverview />
+				) : (
+					<Table
+						caption={t('table.title')}
+						columns={columns}
+						rows={rows}
+						getRowKey={(member) => member.userId}
+						search={{
+							value: search,
+							onChange: setSearch,
+							placeholder: t('table.search'),
+						}}
+						emptyMessage={needle ? t('table.noMatch') : t('table.empty')}
+					/>
+				)}
 			</section>
 			<TipCard title={t('tip.title')} description={t('tip.description')} />
 			{managed && (

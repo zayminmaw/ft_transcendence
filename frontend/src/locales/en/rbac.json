@@ -32,6 +32,73 @@
 		"empty": "No members yet.",
 		"noMatch": "No one matches your search."
 	},
+	"tabs": {
+		"label": "People & access views",
+		"members": "Members · {{n}}",
+		"roles": "Roles & permissions"
+	},
+	"roles": {
+		"title": "Roles & permissions",
+		"description": "What each role can do, and how many people in {{company}} have it. Roles are the same in every company.",
+		"holders": "{{n}} with this role",
+		"none": "No permissions yet.",
+		"ownOnly": "{{action}} (only their own)"
+	},
+	"modules": {
+		"clients": "Clients",
+		"parcels": "Parcels",
+		"staff": "Staff",
+		"drivers": "Drivers",
+		"assets": "Fleet & assets",
+		"billing": "Billing",
+		"admin": "Administration"
+	},
+	"permissions": {
+		"clients": {
+			"view": "view",
+			"create": "add",
+			"edit": "edit",
+			"delete": "archive",
+			"view_financials": "see balances and rates"
+		},
+		"parcels": {
+			"view": "view",
+			"create": "create",
+			"dispatch": "dispatch",
+			"update_status": "update status",
+			"mark_delivered": "confirm delivery",
+			"override_fee": "change fees and COD"
+		},
+		"staff": {
+			"view": "view",
+			"manage": "manage",
+			"view_payroll": "see payroll"
+		},
+		"drivers": {
+			"view": "view",
+			"manage": "manage",
+			"view_compliance": "see licences and checks",
+			"view_earnings": "see earnings"
+		},
+		"assets": {
+			"view": "view",
+			"create": "add",
+			"assign": "assign",
+			"log_maintenance": "log maintenance"
+		},
+		"billing": {
+			"view": "view",
+			"reconcile_cod": "approve COD handovers",
+			"create_invoice": "create invoices",
+			"adjust_balance": "adjust balances",
+			"export": "export"
+		},
+		"admin": {
+			"manage_users": "manage people",
+			"manage_roles": "manage roles",
+			"audit_logs": "see audit logs"
+		}
+	},
 	"status": {
 		"active": "Active",
 		"inactive": "Inactive",
@@ -48,6 +115,10 @@
 		"role": "Role",
 		"status": "Status",
 		"lastLogin": "Last login",
+		"changeRole": "Change role",
+		"changeRoleIntro": "Choose {{name}}'s role in {{company}}.",
+		"changeRoleNote": "{{name}}'s role in {{company}} changes to {{role}} from their next request.",
+		"saveRole": "Save role",
 		"deactivate": "Deactivate",
 		"reactivate": "Reactivate",
 		"reset": "Reset password",

@@ -32,6 +32,73 @@
 		"empty": "لا يوجد أعضاء بعد.",
 		"noMatch": "لا توجد نتائج مطابقة لبحثك."
 	},
+	"tabs": {
+		"label": "عروض الأشخاص والصلاحيات",
+		"members": "الأعضاء · {{n}}",
+		"roles": "الأدوار والصلاحيات"
+	},
+	"roles": {
+		"title": "الأدوار والصلاحيات",
+		"description": "ما يستطيع كل دور فعله، وعدد من لديهم هذا الدور في {{company}}. الأدوار نفسها في كل الشركات.",
+		"holders": "{{n}} بهذا الدور",
+		"none": "لا توجد صلاحيات بعد.",
+		"ownOnly": "{{action}} (الخاصة بهم فقط)"
+	},
+	"modules": {
+		"clients": "العملاء",
+		"parcels": "الطرود",
+		"staff": "الموظفون",
+		"drivers": "السائقون",
+		"assets": "الأسطول والأصول",
+		"billing": "الفوترة",
+		"admin": "الإدارة"
+	},
+	"permissions": {
+		"clients": {
+			"view": "عرض",
+			"create": "إضافة",
+			"edit": "تعديل",
+			"delete": "أرشفة",
+			"view_financials": "عرض الأرصدة والأسعار"
+		},
+		"parcels": {
+			"view": "عرض",
+			"create": "إنشاء",
+			"dispatch": "إرسال",
+			"update_status": "تحديث الحالة",
+			"mark_delivered": "تأكيد التسليم",
+			"override_fee": "تعديل الرسوم ومبلغ الدفع عند الاستلام"
+		},
+		"staff": {
+			"view": "عرض",
+			"manage": "إدارة",
+			"view_payroll": "عرض الرواتب"
+		},
+		"drivers": {
+			"view": "عرض",
+			"manage": "إدارة",
+			"view_compliance": "عرض الرخص والفحوصات",
+			"view_earnings": "عرض الأرباح"
+		},
+		"assets": {
+			"view": "عرض",
+			"create": "إضافة",
+			"assign": "تخصيص",
+			"log_maintenance": "تسجيل الصيانة"
+		},
+		"billing": {
+			"view": "عرض",
+			"reconcile_cod": "اعتماد تسليم مبالغ الدفع عند الاستلام",
+			"create_invoice": "إنشاء الفواتير",
+			"adjust_balance": "تعديل الأرصدة",
+			"export": "تصدير"
+		},
+		"admin": {
+			"manage_users": "إدارة الأشخاص",
+			"manage_roles": "إدارة الأدوار",
+			"audit_logs": "عرض سجل التدقيق"
+		}
+	},
 	"status": {
 		"active": "نشط",
 		"inactive": "غير نشط",
@@ -48,6 +115,10 @@
 		"role": "الدور",
 		"status": "الحالة",
 		"lastLogin": "آخر تسجيل دخول",
+		"changeRole": "تغيير الدور",
+		"changeRoleIntro": "اختر دور {{name}} في {{company}}.",
+		"changeRoleNote": "يبدأ دور {{name}} الجديد ({{role}}) في {{company}} من الطلب التالي.",
+		"saveRole": "حفظ الدور",
 		"deactivate": "إيقاف",
 		"reactivate": "إعادة التفعيل",
 		"reset": "إعادة تعيين كلمة المرور",
