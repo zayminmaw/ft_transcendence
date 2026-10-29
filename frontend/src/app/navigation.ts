@@ -43,7 +43,11 @@ export function getTenantNavigation(
 			items: [
 				...links(['billing', 'staff', 'rbac', 'organizations']),
 				// Not in MODULE_ACCESS: its label lives in the audit namespace, and the page shows its own "no access".
-				{ to: `${home}/audit`, label: t('nav', { ns: 'audit' }), hidden: !can('admin.audit_logs') },
+				{
+					to: `${home}/audit`,
+					label: t('nav', { ns: 'audit' }),
+					hidden: !can('admin.audit_logs'),
+				},
 			],
 		},
 	];
