@@ -1,5 +1,5 @@
 export { authRoutes } from './routes';
-export { useCan, useCurrentWorkspace, useLogout, useMe, useRoleName } from './hooks';
+export { shownName, useCan, useCurrentWorkspace, useLogout, useMe, useRoleName } from './hooks';
 export type { Me, Workspace } from './api';
 export { AccountFooter } from './components/AccountFooter';
 export { CenteredPage } from './components/CenteredPage';

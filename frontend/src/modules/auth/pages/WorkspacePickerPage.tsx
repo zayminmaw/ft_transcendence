@@ -3,7 +3,7 @@ import { Link, Navigate } from 'react-router-dom';
 import { Button } from '@global-components';
 import { CenteredPage } from '../components/CenteredPage';
 import { LoadingScreen } from '../components/LoadingScreen';
-import { useLogout, useMe } from '../hooks';
+import { shownName, useLogout, useMe } from '../hooks';
 
 export function WorkspacePickerPage() {
 	const { t } = useTranslation('auth');
@@ -41,7 +41,7 @@ export function WorkspacePickerPage() {
 		);
 
 	const { user, workspaces, platformAccess } = me.data;
-	const loggedInAs = t('picker.loggedInAs', { username: user.username });
+	const loggedInAs = t('picker.loggedInAs', { username: shownName(user) });
 	if (workspaces.length === 0 && !platformAccess)
 		return (
 			<CenteredPage
