@@ -47,12 +47,16 @@ export function ManageMemberDialog({
 				: step === 'confirmReset'
 					? reset.error
 					: null;
+	// While a change is on its way the dialog stays: a reset's one-time password only arrives in this dialog, and
+	// closing it mid-way would hide whether a change went through.
+	const busy = setActive.isPending || reset.isPending || changeRole.isPending;
 	const name = member.username;
 
 	const cancel = (
 		<button
 			type="button"
 			className="btn btn-ghost bg-base-200"
+			disabled={busy}
 			onClick={() => setStep('details')}
 		>
 			{t('manage.cancel')}
@@ -217,7 +221,7 @@ export function ManageMemberDialog({
 			title={t('manage.title', { name })}
 			description={description}
 			actions={actions}
-			dismissible={step !== 'password'}
+			dismissible={step !== 'password' && !busy}
 		>
 			{step === 'details' && (
 				<dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-sm">
