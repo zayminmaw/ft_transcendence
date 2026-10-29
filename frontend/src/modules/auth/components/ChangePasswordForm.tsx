@@ -8,23 +8,37 @@ import { ApiError } from '@services/api-client';
 import { meetsPasswordRule } from '@utils/password';
 import { useChangePassword } from '../hooks';
 
-// The messages are translation keys, translated when shown, so they follow the language switcher.
-const schema = z
-	.object({
-		currentPassword: z
-			.string()
-			.min(1, 'changePassword.currentRequired' satisfies ParseKeys<'auth'>),
-		newPassword: z
-			.string()
-			.refine(meetsPasswordRule, 'changePassword.rule' satisfies ParseKeys<'auth'>),
-		confirmPassword: z.string(),
-	})
-	.refine((values) => values.confirmPassword === values.newPassword, {
-		path: ['confirmPassword'],
-		message: 'changePassword.mismatch' satisfies ParseKeys<'auth'>,
-	});
+// The first-login screen asks for the temporary password; the profile page for your current one.
+type Mode = 'firstLogin' | 'profile';
+const TEXT = {
+	firstLogin: {
+		current: 'changePassword.temporary',
+		currentRequired: 'changePassword.currentRequired',
+		submit: 'changePassword.submit',
+	},
+	profile: {
+		current: 'profile.currentPassword',
+		currentRequired: 'profile.currentRequired',
+		submit: 'profile.changePassword',
+	},
+} as const satisfies Record<Mode, Record<string, ParseKeys<'auth'>>>;
 
-type Values = z.infer<typeof schema>;
+// The messages are translation keys, translated when shown, so they follow the language switcher.
+const schemaFor = (mode: Mode) =>
+	z
+		.object({
+			currentPassword: z.string().min(1, TEXT[mode].currentRequired),
+			newPassword: z
+				.string()
+				.refine(meetsPasswordRule, 'changePassword.rule' satisfies ParseKeys<'auth'>),
+			confirmPassword: z.string(),
+		})
+		.refine((values) => values.confirmPassword === values.newPassword, {
+			path: ['confirmPassword'],
+			message: 'changePassword.mismatch' satisfies ParseKeys<'auth'>,
+		});
+
+type Values = z.infer<ReturnType<typeof schemaFor>>;
 
 // Where each API code shows: under a field, or above the form.
 const FIELD_ERRORS = {
@@ -38,17 +52,18 @@ function formErrorKey(error: unknown) {
 	return code === 'AUTH_TOO_MANY_ATTEMPTS' ? 'errors.tooManyAttempts' : 'errors.unknown';
 }
 
-// The first-login screen uses it now; the profile page reuses it in auth part 2b.
-export function ChangePasswordForm({ currentLabel }: { currentLabel: string }) {
+// The first-login screen and the profile page. onChanged runs after a change that worked; the fields empty again.
+export function ChangePasswordForm({ mode, onChanged }: { mode: Mode; onChanged?: () => void }) {
 	const { t } = useTranslation('auth');
 	const change = useChangePassword();
 	const {
 		register,
 		handleSubmit,
 		setError,
+		reset,
 		formState: { errors },
 	} = useForm<Values>({
-		resolver: zodResolver(schema),
+		resolver: zodResolver(schemaFor(mode)),
 		defaultValues: { currentPassword: '', newPassword: '', confirmPassword: '' },
 	});
 
@@ -64,6 +79,10 @@ export function ChangePasswordForm({ currentLabel }: { currentLabel: string }) {
 				change.mutate(
 					{ currentPassword, newPassword },
 					{
+						onSuccess: () => {
+							reset();
+							onChanged?.();
+						},
 						onError: (error) => {
 							const known = error instanceof ApiError ? error.code : undefined;
 							if (known && known in FIELD_ERRORS) {
@@ -82,7 +101,7 @@ export function ChangePasswordForm({ currentLabel }: { currentLabel: string }) {
 				</p>
 			)}
 			<PasswordInput
-				label={currentLabel}
+				label={t(TEXT[mode].current)}
 				autoComplete="current-password"
 				error={fieldError(errors.currentPassword?.message)}
 				{...register('currentPassword')}
@@ -110,7 +129,7 @@ export function ChangePasswordForm({ currentLabel }: { currentLabel: string }) {
 				{change.isPending && (
 					<span className="loading loading-spinner loading-sm" aria-hidden="true" />
 				)}
-				{change.isPending ? t('changePassword.submitting') : t('changePassword.submit')}
+				{change.isPending ? t('changePassword.submitting') : t(TEXT[mode].submit)}
 			</Button>
 		</form>
 	);

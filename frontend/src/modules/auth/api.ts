@@ -45,3 +45,11 @@ export function changePassword(values: PasswordChange) {
 		body: JSON.stringify(values),
 	});
 }
+
+// Your own display name: null (or an empty name) shows your username. Answers with your account as /me shows it.
+export function updateProfile(displayName: string | null) {
+	return apiRequest<{ user: AccountUser }>('auth/me', {
+		method: 'PATCH',
+		body: JSON.stringify({ displayName }),
+	});
+}

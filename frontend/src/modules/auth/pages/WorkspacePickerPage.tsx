@@ -10,7 +10,10 @@ export function WorkspacePickerPage() {
 	const me = useMe({ refetchOnMount: 'always' });
 	const logout = useLogout();
 	const logOutButton = (
-		<div>
+		<div className="flex flex-wrap items-start gap-3">
+			<Link to="/profile" className="btn btn-ghost w-fit bg-base-200">
+				{t('account.profile')}
+			</Link>
 			<button
 				type="button"
 				className="btn btn-ghost w-fit bg-base-200"
