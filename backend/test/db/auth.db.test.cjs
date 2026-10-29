@@ -136,6 +136,7 @@ const { RequirePermission } = require('../../dist/common/decorators/require-perm
 const { OrganizationMembersService } = require('../../dist/modules/organizations/organization-members.service');
 const { RolesGuard } = require('../../dist/modules/rbac/roles.guard');
 const { PermissionsRepository } = require('../../dist/modules/rbac/permissions.repository');
+const { PermissionPolicyService } = require('../../dist/modules/rbac/permission-policy.service');
 const { Permission } = require('../../dist/modules/rbac/entities/permission.entity');
 const { RolePermission } = require('../../dist/modules/rbac/entities/role-permission.entity');
 
@@ -176,7 +177,7 @@ async function guardAllows(guard, permission, userId, organizationId) {
 
 test('allowed and denied: every role against every permission is exactly the docs table', async () => {
   const guard = new RolesGuard(
-    new Reflector(), new OrganizationMembersService(createMembers()), createPermissions(),
+    new Reflector(), new OrganizationMembersService(createMembers()), new PermissionPolicyService(createPermissions()),
     new UsersRepository(database.getRepository(User)), createPlatformRoles(),
   );
   const company = await createCompany('matrix-db', 'Matrix Couriers');
