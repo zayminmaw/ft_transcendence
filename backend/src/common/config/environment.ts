@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { LOG_LEVELS } from '../logging/app-logger';
 
 // Compose passes an unset variable as an empty string; treat both as "not configured".
 const optionalText = z.string().optional().transform((value) => value || undefined);
@@ -8,9 +7,6 @@ export const environmentSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().min(1).max(65535).default(3000),
   CORS_ORIGIN: z.url().default('http://localhost:5173'),
-  LOG_LEVEL: z.enum(LOG_LEVELS).default('info'),
-  // pretty is for reading logs in a local terminal; containers keep JSON for log collectors.
-  LOG_FORMAT: z.enum(['json', 'pretty']).default('json'),
   DB_HOST: z.string().min(1),
   DB_PORT: z.coerce.number().int().min(1).max(65535).default(3306),
   DB_USER: z.string().min(1),

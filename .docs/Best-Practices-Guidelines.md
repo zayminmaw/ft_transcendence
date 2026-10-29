@@ -50,11 +50,8 @@ async assignDriver(@Param('id') id: string, @Body() dto: AssignDriverDto) {
 ### Technical Logging
 
 * Technical logs (errors, latency, lifecycle) and the audit trail (who changed what) are separate. Do not use logs as an audit record.
-* Log through Nest's `Logger` (`new Logger(MyService.name)`), never `console.*`. `AppLogger` (`common/logging/app-logger.ts`) writes one JSON object per line to stdout with `ts`, `level`, `context`, `msg`, `requestId`, and `userId`.
+* Log through Nest's `Logger` (`new Logger(MyService.name)`), never `console.*`. Never log request bodies, headers, or whole entities.
 * Every request gets an `X-Request-Id`. An incoming id of 8-64 letters, digits, or dashes is kept, so traces can cross the proxy; otherwise a UUID is generated. The id is echoed in the response and is available anywhere in the request through `currentRequestId()` (`common/context/request-context.ts`).
-* Pass structured fields as an object (`logger.log({ msg: 'parcel imported', count })`). Keys that look like passwords, tokens, secrets, cookies, sessions, OTPs, or API keys are replaced with `[REDACTED]`. Still, never pass request bodies, headers, or whole entities.
-* The request log records only the method, the route pattern, the status, and the duration. It never records query strings, headers, or bodies.
-* `LOG_LEVEL` (`fatal|error|warn|info|debug|verbose`, default `info`) and `LOG_FORMAT` (`json`, or `pretty` for a local terminal) configure the output. Production omits stack traces.
 
 ### Audit Trail
 
