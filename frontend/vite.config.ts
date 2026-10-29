@@ -32,6 +32,12 @@ export default defineConfig(({ mode }) => {
 					target: env.API_PROXY_TARGET || 'http://localhost:3000',
 					changeOrigin: true,
 				},
+				// The notification socket, on the page's own origin as behind NGINX.
+				'/socket.io': {
+					target: env.API_PROXY_TARGET || 'http://localhost:3000',
+					changeOrigin: true,
+					ws: true,
+				},
 			},
 		},
 	};
