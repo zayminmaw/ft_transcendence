@@ -6,7 +6,6 @@ const { Test } = require('@nestjs/testing');
 const { JwtService } = require('@nestjs/jwt');
 const { io } = require('socket.io-client');
 const { EventsGateway } = require('../dist/modules/notifications/events.gateway');
-const { CorsIoAdapter } = require('../dist/modules/notifications/cors-io.adapter');
 const { OrganizationMembersService } = require('../dist/modules/organizations/organization-members.service');
 const { PermissionPolicyService } = require('../dist/modules/rbac/permission-policy.service');
 
@@ -21,7 +20,10 @@ test('WebSocket notifications reach only authenticated, authorized members of th
 	} };
 	// Role 4 lacks parcels.view.
 	const grants = { 3: 'all', 5: 'all' };
-	const policy = { async canAccess(roleId, permission) { return permission === 'parcels.view' && grants[roleId] === 'all'; } };
+	const policy = { async canAccess(roleId, permission) {
+		if (permission === 'broken.view') throw new Error('database unavailable');
+		return permission === 'parcels.view' && grants[roleId] === 'all';
+	} };
 
 	const module = await Test.createTestingModule({ providers: [
 		EventsGateway,
@@ -30,7 +32,6 @@ test('WebSocket notifications reach only authenticated, authorized members of th
 		{ provide: PermissionPolicyService, useValue: policy },
 	] }).compile();
 	const app = module.createNestApplication({ logger: false });
-	app.useWebSocketAdapter(new CorsIoAdapter(app, 'http://localhost:5173'));
 	await app.listen(0, '127.0.0.1');
 	const url = `http://127.0.0.1:${app.getHttpServer().address().port}`;
 	const sockets = [];
@@ -48,10 +49,13 @@ test('WebSocket notifications reach only authenticated, authorized members of th
 
 	await assert.rejects(connect({}), /Unauthorized/);
 	await assert.rejects(connect({ token: 'malformed', organizationId: '1' }), /Unauthorized/);
-	await assert.rejects(connect({ token: token('7', -1), organizationId: '1' }), /Unauthorized/);
+	// Only an expired token says so: it is the one refusal a refreshed token fixes.
+	await assert.rejects(connect({ token: token('7', -1), organizationId: '1' }), /TokenExpired/);
 	await assert.rejects(connect({ token: token('7') }), /Unauthorized/);
 	await assert.rejects(connect({ token: token('7'), organizationId: 'abc' }), /Unauthorized/);
 	await assert.rejects(connect({ token: token('7'), organizationId: '2' }), /Unauthorized/);
+	// Like HTTP, nothing but the password change until an admin-given password is replaced.
+	await assert.rejects(connect({ token: jwt.sign({ sub: '7', mustChangePassword: true }, { expiresIn: '15m' }), organizationId: '1' }), /Unauthorized/);
 
 	const orgOneViewer = await connect({ token: token('7'), organizationId: '1' });
 	const orgOneWithoutPermission = await connect({ token: token('8'), organizationId: '1' });
@@ -62,6 +66,8 @@ test('WebSocket notifications reach only authenticated, authorized members of th
 	await gateway.sendNotification({ organizationId: '1', permission: 'parcels.view' }, { action: 'CREATE', module: 'parcels', resourceId: '10' });
 	await gateway.sendNotification({ organizationId: '2', permission: 'parcels.view', userId: '9' }, { action: 'UPDATE', module: 'parcels', resourceId: '20' });
 	await gateway.sendNotification({ organizationId: '2', permission: 'billing.view' }, { action: 'UPDATE', module: 'billing', resourceId: '30' });
+	// A failed lookup is logged, never thrown at the sender, whose change is already saved.
+	await gateway.sendNotification({ organizationId: '1', permission: 'broken.view' }, { action: 'UPDATE', module: 'parcels', resourceId: '40' });
 	await assert.rejects(gateway.sendNotification({ organizationId: '', permission: 'parcels.view' }, { action: 'CREATE', module: 'parcels', resourceId: '1' }));
 	await assert.rejects(gateway.sendNotification({ organizationId: '1', permission: 'parcels.view' }, { action: 'CREATE', module: 'parcels', resourceId: 'x' }));
 	await new Promise((resolve) => setTimeout(resolve, 100));

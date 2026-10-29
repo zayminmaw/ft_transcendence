@@ -5,4 +5,3 @@ export {
 	type NotificationEvent,
 	type NotificationTarget,
 } from './events.gateway';
-export { CorsIoAdapter } from './cors-io.adapter';

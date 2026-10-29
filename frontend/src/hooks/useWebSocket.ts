@@ -19,9 +19,6 @@ export type WebSocketHandlers = {
 	onReconnect?: () => void;
 };
 
-// Unset in production: the socket uses the page's own origin, which NGINX forwards to the backend.
-const socketUrl = import.meta.env.VITE_WS_URL || undefined;
-
 export function useWebSocket({
 	onNotification = (payload) => console.info('[notification]', payload),
 	onReconnect,
@@ -37,10 +34,19 @@ export function useWebSocket({
 	useEffect(() => {
 		if (!accessToken || !activeOrganizationId) return;
 		// The server verifies both values; a new socket per session/company leaves the old company's rooms.
-		const socket = io(socketUrl, {
+		// The page's own origin: NGINX (production) and the Vite proxy (development) forward it to the backend.
+		const socket = io({
 			auth: { token: accessToken, organizationId: activeOrganizationId },
 		});
 		let active = true;
+
+		// A new access token changes accessToken, which opens a new socket.
+		const renew = () => {
+			void refreshSession().then((result) => {
+				if (result === 'ended' && sessionStore.getSnapshot().accessToken === accessToken)
+					endSession('expired');
+			});
+		};
 
 		socket.on('connect', () => {
 			if (active && connectedBefore.current) handlers.current.onReconnect?.();
@@ -55,11 +61,13 @@ export function useWebSocket({
 
 		// The server closes the socket when the access token expires. A new token reconnects it.
 		socket.on('disconnect', (reason) => {
-			if (!active || reason !== 'io server disconnect') return;
-			void refreshSession().then((result) => {
-				if (result === 'ended' && sessionStore.getSnapshot().accessToken === accessToken)
-					endSession('expired');
-			});
+			if (active && reason === 'io server disconnect') renew();
+		});
+
+		// A reconnect after a long network drop still carries the expired token. The server names only that refusal
+		// (TokenExpired); every other one would stay refused with a new token, and network errors retry by themselves.
+		socket.on('connect_error', (error) => {
+			if (active && error.message === 'TokenExpired') renew();
 		});
 
 		return () => {

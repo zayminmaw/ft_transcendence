@@ -65,7 +65,9 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection {
 					if (!this.isRejection(error)) {
 						this.logger.warn(`WebSocket handshake failed: ${error instanceof Error ? error.message : 'unknown error'}`);
 					}
-					next(new Error('Unauthorized'));
+					// Only an expired token is worth a refresh; anything else (no membership, a password to change) stays
+					// refused with a new token too, so the client must not retry it.
+					next(new Error(error instanceof Error && error.name === 'TokenExpiredError' ? 'TokenExpired' : 'Unauthorized'));
 				},
 			);
 		});
@@ -83,6 +85,8 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection {
 		socket.once('disconnect', () => clearTimeout(expiry));
 	}
 
+	// Best effort, like delivery itself: a failed delivery is logged, never thrown, so it can't fail the change that
+	// was already saved. Invalid identifiers are a programming error and still throw.
 	async sendNotification(target: NotificationTarget, event: NotificationEvent): Promise<void> {
 		const { organizationId, permission, userId } = target;
 		if (!positiveId.test(organizationId) || (userId !== undefined && !positiveId.test(userId)) || !positiveId.test(event.resourceId)) {
@@ -91,13 +95,17 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection {
 		const room = userId ? userRoom(organizationId, userId) : organizationRoom(organizationId);
 		const payload = { ...event, organizationId, timestamp: new Date().toISOString() };
 		const roleAccess = new Map<string, Promise<boolean>>();
-		for (const socket of await this.server.in(room).fetchSockets()) {
-			const { tenant } = socket.data as ClientData;
-			if (tenant.organizationId !== organizationId) continue;
-			if (!roleAccess.has(tenant.roleId)) {
-				roleAccess.set(tenant.roleId, this.policy.canAccess(tenant.roleId, permission));
+		try {
+			for (const socket of await this.server.in(room).fetchSockets()) {
+				const { tenant } = socket.data as ClientData;
+				if (tenant.organizationId !== organizationId) continue;
+				if (!roleAccess.has(tenant.roleId)) {
+					roleAccess.set(tenant.roleId, this.policy.canAccess(tenant.roleId, permission));
+				}
+				if (await roleAccess.get(tenant.roleId)) socket.emit('notification', payload);
 			}
-			if (await roleAccess.get(tenant.roleId)) socket.emit('notification', payload);
+		} catch (error) {
+			this.logger.warn(`Notification delivery failed: ${error instanceof Error ? error.message : 'unknown error'}`);
 		}
 	}
 
@@ -111,12 +119,14 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection {
 		socket.data = { user: { id: userId }, tenant, expiresAt } satisfies ClientData;
 	}
 
-	// Mirrors JwtAuthGuard's claim checks; keep both in sync until auth exposes a shared verifier.
+	// Mirrors JwtAuthGuard's claim checks, and RolesGuard's refusal of accounts that must still change an admin-given
+	// password; keep them in sync until auth exposes a shared verifier.
 	private async verifyAccessToken(token: string): Promise<{ userId: string; expiresAt: number }> {
-		const payload = await this.jwt.verifyAsync<{ sub?: unknown; exp?: unknown }>(token);
+		const payload = await this.jwt.verifyAsync<{ sub?: unknown; exp?: unknown; mustChangePassword?: unknown }>(token);
 		if (typeof payload.sub !== 'string' || !positiveId.test(payload.sub) || typeof payload.exp !== 'number') {
 			throw new HandshakeRejected('Invalid token claims');
 		}
+		if (payload.mustChangePassword === true) throw new HandshakeRejected('Change your password to continue.');
 		return { userId: payload.sub, expiresAt: payload.exp };
 	}
 
