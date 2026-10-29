@@ -1,13 +1,12 @@
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { AnalyticsCard, ModulePage, Table, TipCard } from '@global-components';
+import { AnalyticsCard, ExpiryDate, ModulePage, Table, TipCard } from '@global-components';
 import type { AnalyticsItem, TableColumn } from '@global-components';
 import { useCompanyPath } from '@hooks/useCompanyPath';
 import { useCan, useCurrentWorkspace } from '@modules/auth';
 import { formatNumber } from '@utils/format';
 import type { Driver, DriverStatusFilter } from '../api';
 import { DutyStatusBadge } from '../components/DutyStatusBadge';
-import { ExpiryDate } from '../components/ExpiryDate';
 import { DISPATCH_STATUSES } from '../constants';
 import { useDrivers } from '../hooks/useDrivers';
 

@@ -1,14 +1,13 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
-import { DetailItem, ModulePage, TipCard } from '@global-components';
+import { DetailItem, ExpiryDate, ModulePage, TipCard } from '@global-components';
 import { useCompanyPath } from '@hooks/useCompanyPath';
 import { useCan } from '@modules/auth';
 import { formatDate } from '@utils/format';
 import { DriverNotFound } from '../components/DriverNotFound';
 import { DutyStatusBadge } from '../components/DutyStatusBadge';
 import { DutyStatusDialog } from '../components/DutyStatusDialog';
-import { ExpiryDate } from '../components/ExpiryDate';
 import { LinkAccountDialog } from '../components/LinkAccountDialog';
 import { useDriverDetails } from '../hooks/useDrivers';
 

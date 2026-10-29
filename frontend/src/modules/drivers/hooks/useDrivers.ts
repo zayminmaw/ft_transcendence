@@ -74,3 +74,14 @@ export function useDriverDetails(driverId: string) {
 	});
 	return { driver: data, isDriverPending: isPending, driverError: error };
 }
+
+// The drivers still employed, for other modules to choose from (e.g. checking an asset out). Under the drivers key,
+// so onboarding or terminating a driver refreshes it.
+export function useDriverChoices() {
+	const { data, isPending, isError } = useQuery({
+		queryKey: tenantQueryKey('drivers', 'choices'),
+		// GET /api/drivers/choices once the API exists.
+		queryFn: () => sampleDriversApi.choices(),
+	});
+	return { driverChoices: data ?? [], isChoicesPending: isPending, isChoicesError: isError };
+}
