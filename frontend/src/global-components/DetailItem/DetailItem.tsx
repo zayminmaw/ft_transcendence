@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 
-// One labelled value in a client's details list (inside a <dl>), with an optional smaller note under it.
-export function ClientDetail({
+// One labelled value in a details list (inside a <dl>), with an optional smaller note under it.
+export function DetailItem({
 	label,
 	children,
 	note,

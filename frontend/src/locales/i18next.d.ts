@@ -4,6 +4,7 @@ import type audit from './en/audit.json';
 import type auth from './en/auth.json';
 import type clients from './en/clients.json';
 import type common from './en/common.json';
+import type drivers from './en/drivers.json';
 import type rbac from './en/rbac.json';
 
 declare module 'i18next' {
@@ -14,6 +15,7 @@ declare module 'i18next' {
 			auth: typeof auth;
 			clients: typeof clients;
 			common: typeof common;
+			drivers: typeof drivers;
 			rbac: typeof rbac;
 		};
 	}

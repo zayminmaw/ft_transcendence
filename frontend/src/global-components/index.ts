@@ -1,6 +1,7 @@
 export { AnalyticsCard } from './AnalyticsCard/AnalyticsCard';
 export * from './AnalyticsCard/types.tsx';
 export { Button } from './Button/Button';
+export { DetailItem } from './DetailItem/DetailItem';
 export { Dialog } from './Dialog/Dialog';
 export { Input } from './Input/Input';
 export { PasswordInput } from './Input/PasswordInput';
