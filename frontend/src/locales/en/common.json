@@ -72,5 +72,9 @@
 		"hr_manager": "HR Manager",
 		"fleet_lead": "Fleet Lead",
 		"driver": "Courier / Driver"
+	},
+	"expiry": {
+		"expired": "Expired",
+		"soon": "Expires soon"
 	}
 }

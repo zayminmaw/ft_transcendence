@@ -55,9 +55,6 @@ export const EMPLOYMENT_STATUSES = [
 // The duty statuses a person sets by hand. On pickup and out for delivery come from dispatch once parcels exist.
 export const MANUAL_DISPATCH_STATUSES: DispatchStatus[] = ['available', 'off_duty', 'suspended'];
 
-// A license or insurance expiring within this many days is flagged.
-export const EXPIRY_WARNING_DAYS = 30;
-
 // The new driver form starts empty, as an active commission-only motorcycle courier on the company fleet.
 export const DRIVER_DEFAULT_VALUES: DriverFormValues = {
 	employeeCode: '',

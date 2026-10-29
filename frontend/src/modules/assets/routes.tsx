@@ -1,14 +1,28 @@
 import type { RouteObject } from 'react-router-dom';
-import { ModulePage } from '@global-components';
+import { RequirePermission } from '@modules/auth';
+import { AssetDetailsPage } from './pages/AssetDetailsPage';
+import { AssetsPage } from './pages/AssetsPage';
+import { CreateAssetPage } from './pages/CreateAssetPage';
+import { EditAssetPage } from './pages/EditAssetPage';
 
+// Every page also needs assets.view (app/routes.tsx); adding and editing need assets.create.
 export const assetsRoutes: RouteObject[] = [
+	{ path: 'assets', element: <AssetsPage /> },
 	{
-		path: 'assets',
+		path: 'assets/new',
 		element: (
-			<ModulePage
-				title="Fleet & assets"
-				description="Track your fleet, equipment, and maintenance."
-			/>
+			<RequirePermission permission="assets.create" label="workspace.nav.assets">
+				<CreateAssetPage />
+			</RequirePermission>
+		),
+	},
+	{ path: 'assets/:assetId', element: <AssetDetailsPage /> },
+	{
+		path: 'assets/:assetId/edit',
+		element: (
+			<RequirePermission permission="assets.create" label="workspace.nav.assets">
+				<EditAssetPage />
+			</RequirePermission>
 		),
 	},
 ];

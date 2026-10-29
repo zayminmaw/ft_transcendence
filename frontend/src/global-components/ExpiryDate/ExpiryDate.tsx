@@ -1,10 +1,10 @@
 import { useTranslation } from 'react-i18next';
+import { expiryState } from '@utils/expiry';
 import { formatDate } from '@utils/format';
-import { expiryState } from '../utils/expiry';
 
-// An expiry date (license, insurance), flagged when it has passed or is close.
+// An expiry date (license, insurance, road tax), flagged when it has passed or is close.
 export function ExpiryDate({ date }: { date: string }) {
-	const { t, i18n } = useTranslation('drivers');
+	const { t, i18n } = useTranslation();
 	const state = expiryState(date);
 	return (
 		<span className="inline-flex flex-wrap items-center gap-2">

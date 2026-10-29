@@ -68,10 +68,6 @@
 		"on_leave": "On leave",
 		"terminated": "Terminated"
 	},
-	"expiry": {
-		"expired": "Expired",
-		"soon": "Expires soon"
-	},
 	"tip": {
 		"title": "Every run has a driver.",
 		"description": "Duty status shows who dispatch can assign. A license that has expired or expires soon is flagged so it is renewed before the next run."

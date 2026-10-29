@@ -81,7 +81,7 @@ export type DriverList = {
 	page: number;
 	pageSize: number;
 	// Over the whole company, whatever the search and filter. Terminated drivers are left out of the duty counts;
-	// `licensesExpiring` is active drivers whose license expires within LICENSE_WARNING_DAYS or has expired.
+	// `licensesExpiring` is active drivers whose license expires within EXPIRY_WARNING_DAYS or has expired.
 	counts: {
 		total: number;
 		available: number;
@@ -91,6 +91,9 @@ export type DriverList = {
 		licensesExpiring: number;
 	};
 };
+
+// A driver to choose from in other modules, e.g. who an asset is checked out to.
+export type DriverChoice = { id: string; name: string; employeeCode: string };
 
 // What the driver form sends. Fields a person may not see are left out and keep their value.
 export type DriverValues = Omit<

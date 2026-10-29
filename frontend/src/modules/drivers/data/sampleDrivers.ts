@@ -1,13 +1,14 @@
 import { ApiError } from '@services/api-client';
+import { expiryState } from '@utils/expiry';
 import type {
 	DispatchStatus,
 	Driver,
 	DriverAccount,
+	DriverChoice,
 	DriverList,
 	DriverListParams,
 	DriverValues,
 } from '../api';
-import { expiryState } from '../utils/expiry';
 
 // Sample couriers until /api/drivers exists. Fields mirror the `employees` and `delivery_drivers` tables.
 const sampleDrivers: Driver[] = [
@@ -301,6 +302,18 @@ export const sampleDriversApi = {
 
 	async get(id: string) {
 		return structuredClone(find(id));
+	},
+
+	// Everyone still employed, by last name.
+	async choices(): Promise<DriverChoice[]> {
+		return drivers
+			.filter((driver) => driver.employmentStatus !== 'terminated')
+			.sort((a, b) => a.lastName.localeCompare(b.lastName))
+			.map((driver) => ({
+				id: driver.id,
+				name: `${driver.firstName} ${driver.lastName}`,
+				employeeCode: driver.employeeCode,
+			}));
 	},
 
 	// A new driver starts off duty, without a login account.
