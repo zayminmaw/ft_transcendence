@@ -1,12 +1,11 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
-import { ModulePage, TipCard } from '@global-components';
+import { DetailItem, ModulePage, TipCard } from '@global-components';
 import { useCompanyPath } from '@hooks/useCompanyPath';
 import { useCan } from '@modules/auth';
 import { formatDate } from '@utils/format';
 import { ArchiveClientDialog } from '../components/ArchiveClientDialog';
-import { ClientDetail } from '../components/ClientDetail';
 import { ClientNotFound } from '../components/ClientNotFound';
 import { ClientStatusBadge } from '../components/ClientStatusBadge';
 import { useClientDetails } from '../hooks/useClients';
@@ -82,24 +81,24 @@ export function ClientDetailsPage() {
 							<ClientStatusBadge active={client.isActive} />
 						</div>
 						<dl className="mt-6 grid grid-cols-1 gap-5 md:grid-cols-2">
-							<ClientDetail label={t('fields.contactPersonName')}>
+							<DetailItem label={t('fields.contactPersonName')}>
 								{client.contactPersonName}
-							</ClientDetail>
-							<ClientDetail label={t('fields.contactTitle')}>
+							</DetailItem>
+							<DetailItem label={t('fields.contactTitle')}>
 								{client.contactTitle ?? none}
-							</ClientDetail>
-							<ClientDetail label={t('fields.mobile1')} ltr>
+							</DetailItem>
+							<DetailItem label={t('fields.mobile1')} ltr>
 								{client.mobile1}
-							</ClientDetail>
-							<ClientDetail label={t('fields.mobile2')} ltr>
+							</DetailItem>
+							<DetailItem label={t('fields.mobile2')} ltr>
 								{client.mobile2 ?? none}
-							</ClientDetail>
-							<ClientDetail label={t('fields.email')} ltr>
+							</DetailItem>
+							<DetailItem label={t('fields.email')} ltr>
 								{client.email}
-							</ClientDetail>
-							<ClientDetail label={t('fields.tradeLicenseNo')}>
+							</DetailItem>
+							<DetailItem label={t('fields.tradeLicenseNo')}>
 								{client.tradeLicenseNo ?? none}
-							</ClientDetail>
+							</DetailItem>
 						</dl>
 					</section>
 
@@ -111,7 +110,7 @@ export function ClientDetailsPage() {
 							{t('details.addresses')}
 						</h2>
 						<dl className="mt-6 grid grid-cols-1 gap-5 md:grid-cols-2">
-							<ClientDetail
+							<DetailItem
 								label={t('fields.defaultPickupAddress')}
 								note={
 									client.pickupLatitude && client.pickupLongitude ? (
@@ -130,10 +129,10 @@ export function ClientDetailsPage() {
 								}
 							>
 								{client.defaultPickupAddress}
-							</ClientDetail>
-							<ClientDetail label={t('fields.billingAddress')}>
+							</DetailItem>
+							<DetailItem label={t('fields.billingAddress')}>
 								{client.billingAddress}
-							</ClientDetail>
+							</DetailItem>
 						</dl>
 					</section>
 
@@ -155,7 +154,7 @@ export function ClientDetailsPage() {
 						<section className="rounded-box bg-base-200 p-6 md:p-8">
 							<h2 className="text-lg font-semibold">{t('details.financials')}</h2>
 							<dl className="mt-6 flex flex-col gap-5">
-								<ClientDetail
+								<DetailItem
 									label={t('details.balance')}
 									ltr
 									valueClassName="text-lg font-semibold"
@@ -168,26 +167,23 @@ export function ClientDetailsPage() {
 									}
 								>
 									{balance ?? none}
-								</ClientDetail>
-								<ClientDetail
+								</DetailItem>
+								<DetailItem
 									label={t('details.pendingCod')}
 									ltr
 									valueClassName="text-lg font-semibold"
 								>
 									{client.pendingCodBalance ?? none}
-								</ClientDetail>
-								<ClientDetail
-									label={t('details.unbilled')}
-									valueClassName="text-sm"
-								>
+								</DetailItem>
+								<DetailItem label={t('details.unbilled')} valueClassName="text-sm">
 									{t('details.unbilledLater')}
-								</ClientDetail>
-								<ClientDetail
+								</DetailItem>
+								<DetailItem
 									label={t('fields.rateProfileTier')}
 									valueClassName="text-lg font-semibold"
 								>
 									{isRateTier(tier) ? t(`tiers.${tier}`) : (tier ?? none)}
-								</ClientDetail>
+								</DetailItem>
 							</dl>
 						</section>
 					)}
