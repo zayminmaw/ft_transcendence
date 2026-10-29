@@ -1,4 +1,5 @@
 require('reflect-metadata');
+const request = require('supertest');
 const { ConfigModule } = require('@nestjs/config');
 const { Reflector } = require('@nestjs/core');
 const { JwtService } = require('@nestjs/jwt');
@@ -18,6 +19,7 @@ const { OrganizationMember } = require('../../dist/modules/organizations/entitie
 const { OrganizationMembersRepository } = require('../../dist/modules/organizations/organization-members.repository');
 const { RolesGuard } = require('../../dist/modules/rbac');
 const { UserRole } = require('../../dist/modules/rbac/entities/user-role.entity');
+const { RolePermission } = require('../../dist/modules/rbac/entities/role-permission.entity');
 const { PermissionsRepository } = require('../../dist/modules/rbac/permissions.repository');
 const { PlatformRolesRepository } = require('../../dist/modules/rbac/platform-roles.repository');
 const { User } = require('../../dist/modules/users/entities/user.entity');
@@ -25,8 +27,11 @@ const { UsersRepository } = require('../../dist/modules/users/users.repository')
 const { createAccount } = require('../../dist/modules/users/accounts');
 const { MembersAuditRepository } = require('../../dist/modules/members/members-audit.repository');
 const { MembersRepository } = require('../../dist/modules/members/members.repository');
+const { StorageRepository } = require('../../dist/modules/storage/storage.repository');
 
 const ORIGIN = 'http://localhost:5173';
+// The password the module tests give their fixture accounts.
+const PASSWORD = 'Correct-horse-1';
 const ENV = { JWT_SECRET: 'test-secret-with-at-least-32-characters', JWT_ISSUER: 'transcend', JWT_AUDIENCE: 'transcend-web', CORS_ORIGIN: ORIGIN };
 
 function auditInScope(scope, row) {
@@ -43,8 +48,11 @@ function createFakeStore() {
     memberships: [], rolePermissions: new Map(),
     // Roles for the people list and the roles you may give: { id, code, name, description }.
     roles: [],
+    // Stored file rows: { id, organizationId, uploadedByUserId, storedName, originalName, mimeType, sizeBytes, createdAt }.
+    storageFiles: [],
   };
   let nextSessionId = 1;
+  let nextFileId = 1;
   let nextUserId = 100;
   const sameText = (a, b) => a.toLowerCase() === b.toLowerCase();
   const sessionRecord = (row) => row && {
@@ -84,6 +92,11 @@ function createFakeStore() {
       updatePassword: async (id, passwordHash, mustChangePassword) => {
         Object.assign(store.users.find((user) => user.id === id), { passwordHash, mustChangePassword });
       },
+      updatePasswordIfCurrent: async (id, currentHash, passwordHash) => {
+        const user = store.users.find((row) => row.id === id && row.passwordHash === currentHash);
+        if (user) Object.assign(user, { passwordHash, mustChangePassword: false });
+        return Boolean(user);
+      },
     },
     sessions: {
       insert: async (session) => { store.sessions.push({ id: String(nextSessionId++), revokedAt: null, revokedReason: null, ...session }); },
@@ -105,7 +118,14 @@ function createFakeStore() {
       },
       findActiveWorkspaces: async (userId) => store.workspaces.get(userId) ?? [],
     },
-    permissions: { findScope: async (roleId, code) => (store.rolePermissions.get(roleId)?.has(code) ? 'all' : undefined) },
+    permissions: {
+      findScope: async (roleId, code) => (store.rolePermissions.get(roleId)?.has(code) ? 'all' : undefined),
+      // By role code, sorted, like the real query (every fake permission has full scope).
+      grantedCodes: async (roleCodes) => Object.fromEntries(roleCodes.map((code) => {
+        const role = store.roles.find((candidate) => candidate.code === code);
+        return [code, role ? [...(store.rolePermissions.get(String(role.id)) ?? [])].sort() : []];
+      })),
+    },
     platformRoles: { hasPlatformAccess: async (userId) => store.platformAdmins.has(userId) },
     companyMembers: {
       // Every company role except platform_admin, sorted by name like the real query.
@@ -113,6 +133,16 @@ function createFakeStore() {
         .filter((role) => role.code !== 'platform_admin')
         .sort((a, b) => a.name.localeCompare(b.name))
         .map(({ id, code, name, description }) => ({ id, code, name, description })),
+      // Every role except platform_admin by id, each fake permission with full scope, and this company's count.
+      roleOverview: async (organizationId) => store.roles
+        .filter((role) => role.code !== 'platform_admin')
+        .sort((a, b) => a.id - b.id)
+        .map((role) => ({
+          code: role.code,
+          name: role.name,
+          members: store.memberships.filter((row) => row.organizationId === organizationId && row.roleId === String(role.id)).length,
+          permissions: [...(store.rolePermissions.get(String(role.id)) ?? [])].map((code) => ({ code, scope: 'all' })),
+        })),
       list: async (organizationId) => memberRows(organizationId),
       find: async (organizationId, userId) => memberRows(organizationId).find((member) => member.userId === userId),
       // The real createAccount (its rules and messages), on an in-memory "manager".
@@ -133,6 +163,9 @@ function createFakeStore() {
       },
       setActive: async (organizationId, userId, isActive) => {
         Object.assign(store.memberships.find((row) => row.organizationId === organizationId && row.userId === userId), { isActive });
+      },
+      setRole: async (organizationId, userId, roleId) => {
+        Object.assign(store.memberships.find((row) => row.organizationId === organizationId && row.userId === userId), { roleId: String(roleId) });
       },
       belongsElsewhere: async (organizationId, userId) =>
         store.memberships.some((row) => row.userId === userId && row.organizationId !== organizationId) || store.platformAdmins.has(userId),
@@ -163,6 +196,24 @@ function createFakeStore() {
       isActiveMember: async (userId, organizationId) => store.memberships.some((row) => row.userId === userId
         && row.organizationId === organizationId && row.isActive),
     },
+    storageFiles: {
+      insert: async (input) => {
+        const row = { id: String(nextFileId++), createdAt: new Date(), ...input };
+        store.storageFiles.push(row);
+        return { ...row };
+      },
+      find: async (organizationId, id) => {
+        const row = store.storageFiles.find((file) => file.organizationId === organizationId && file.id === id);
+        return row && { ...row };
+      },
+      findById: async (id) => {
+        const row = store.storageFiles.find((file) => file.id === id);
+        return row && { ...row };
+      },
+      delete: async (organizationId, id) => {
+        store.storageFiles = store.storageFiles.filter((file) => !(file.organizationId === organizationId && file.id === id));
+      },
+    },
   };
   // A refresh token is "<familyId>.<secret>"; the family id names the session row.
   store.sessionFor = (refreshToken) => store.sessions.find((row) => row.familyId === refreshToken.split('.')[0]);
@@ -171,7 +222,7 @@ function createFakeStore() {
 
 // TypeORM's own repository providers need a database connection; the fakes above replace every class that uses
 // them, so these only have to exist.
-const ENTITIES = [User, OrganizationMember, UserRole, UserSession, AuditLog];
+const ENTITIES = [User, OrganizationMember, UserRole, RolePermission, UserSession, AuditLog];
 
 // A fresh app per test, so throttling counts never leak from one test into another.
 // `controllers` adds fixture endpoints (e.g. a company endpoint) next to the real auth ones; `imports` adds modules
@@ -193,6 +244,7 @@ async function createAuthApp(t, store = createFakeStore(), { controllers = [], i
     .overrideProvider(PlatformRolesRepository).useValue(store.repositories.platformRoles)
     .overrideProvider(MembersRepository).useValue(store.repositories.companyMembers)
     .overrideProvider(MembersAuditRepository).useValue(store.repositories.membersAudit)
+    .overrideProvider(StorageRepository).useValue(store.repositories.storageFiles)
     .compile();
   const app = moduleRef.createNestApplication({ logger: false });
   configureApp(app, ORIGIN);
@@ -211,4 +263,13 @@ function refreshCookie(response) {
   return header && { header, value: decodeURIComponent(header.split(';')[0].slice('transcend_refresh='.length)) };
 }
 
-module.exports = { ORIGIN, createAuthApp, createFakeStore, refreshCookie };
+// Logs in and returns the access token. Await it before the next request: supertest closes its temporary server
+// when each request ends.
+async function tokenFor(server, login, password = PASSWORD) {
+  return (await request(server).post('/api/auth/login').set('Origin', ORIGIN).send({ login, password }).expect(200)).body.accessToken;
+}
+
+// A company request: the bearer token plus the X-Organization-Id header.
+const as = (call, token, company = '1') => call.set('Authorization', `Bearer ${token}`).set('X-Organization-Id', company);
+
+module.exports = { ORIGIN, PASSWORD, as, createAuthApp, createFakeStore, refreshCookie, tokenFor };

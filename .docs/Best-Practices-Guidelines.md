@@ -89,7 +89,7 @@ The audit trail records every create, update, and delete, plus security events: 
 * Theme changes and shared component changes affect the whole frontend; coordinate their ownership with the team.
 * `DESIGN.md` at the repository root supplies the visual reference. The daisyUI theme uses white/cloud surfaces, graphite/ink text, aqua conversion controls, and a lime announcement strip. Use the documented local font fallbacks until licensed font assets are supplied; do not add a remote font dependency silently.
 * Public marketing pages live in `modules/marketing` with their own layout. The workspace is under `/app`; the original module URLs remain compatibility routes. Marketing copy must distinguish the product blueprint and previews from completed operational features.
-* The target frontend separates public marketing/legal pages, authenticated tenant portal routes, and authenticated platform administration routes. Frontend visibility is not authorization: backend policies must enforce each area's access. Privacy/terms pages, portal authentication, and the platform dashboard remain planned.
+* The target frontend separates public marketing/legal pages, authenticated tenant portal routes, and authenticated platform administration routes. Frontend visibility is not authorization: backend policies must enforce each area's access. The tenant portal shows only the links, pages and buttons the open company's role allows, from the `permissions` that `/api/auth/me` lists per workspace (`useCan`, `RequirePermission`). Privacy/terms pages, portal authentication, and the platform dashboard remain planned.
 
 ### Encapsulation & The "Index Barrier" Rule
 

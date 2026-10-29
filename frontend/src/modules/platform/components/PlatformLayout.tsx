@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { DashboardLayout } from '@global-components';
 import type { NavigationGroup } from '@global-components';
 import { AccountFooter, WorkspaceSwitcher } from '@modules/auth';
@@ -12,12 +13,18 @@ const navigation: NavigationGroup[] = [
 ];
 
 export function PlatformLayout() {
+	const { t } = useTranslation('auth');
 	return (
 		<DashboardLayout
 			scope="Platform administration"
 			homeTo="/platform/tenants"
 			groups={navigation}
-			header={<WorkspaceSwitcher current="Platform administration" />}
+			header={
+				<WorkspaceSwitcher
+					current="Platform administration"
+					role={t('switcher.platformRole')}
+				/>
+			}
 			footer={<AccountFooter />}
 		/>
 	);

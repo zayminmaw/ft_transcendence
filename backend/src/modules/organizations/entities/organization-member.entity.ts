@@ -1,4 +1,6 @@
 import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+import { Role } from '../../rbac/entities/role.entity';
+import { User } from '../../users/entities/user.entity';
 import { Organization } from './organization.entity';
 
 // Mirrors `organization_members`: one person's membership and role in one company.
@@ -25,4 +27,12 @@ export class OrganizationMember {
   @ManyToOne(() => Organization)
   @JoinColumn({ name: 'organization_id' })
   organization!: Organization;
+
+  @ManyToOne(() => Role)
+  @JoinColumn({ name: 'role_id' })
+  role!: Role;
+
+  @ManyToOne(() => User)
+  @JoinColumn({ name: 'user_id' })
+  user!: User;
 }

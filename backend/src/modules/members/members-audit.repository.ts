@@ -2,19 +2,27 @@ import { Injectable } from '@nestjs/common';
 import { type AuditAction, AuditService } from '../audit';
 import type { RequestMeta } from '../auth';
 
-export type MemberAuditAction = 'member_created' | 'member_deactivated' | 'member_reactivated' | 'password_reset';
+export type MemberAuditAction =
+  | 'member_created'
+  | 'member_deactivated'
+  | 'member_reactivated'
+  | 'member_role_changed'
+  | 'password_reset';
 
 export interface MemberAuditEntry {
   organizationId: string;
   actorId: string;
   targetId: string;
   newValues?: Record<string, unknown>;
+  oldValues?: Record<string, unknown>;
 }
 
 const ACTIONS: Record<MemberAuditAction, AuditAction> = {
   member_created: 'create',
   member_deactivated: 'status_change',
   member_reactivated: 'status_change',
+  // The old and new role go in before/after, so the trail shows the change.
+  member_role_changed: 'update',
   password_reset: 'password_reset',
 };
 
@@ -32,7 +40,7 @@ export class MembersAuditRepository {
       recordId: entry.targetId,
       organizationId: entry.organizationId,
       actorId: entry.actorId,
-      before: statusChange ? { isActive: action === 'member_reactivated' ? false : true } : undefined,
+      before: statusChange ? { isActive: action === 'member_reactivated' ? false : true } : entry.oldValues,
       after: statusChange ? { isActive: action === 'member_reactivated' } : entry.newValues,
       meta,
     });

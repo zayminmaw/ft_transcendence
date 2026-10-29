@@ -1,0 +1,109 @@
+{
+	"page": {
+		"title": "People & access",
+		"description": "Create company accounts and manage their access within {{company}}.",
+		"create": "Create user",
+		"loading": "Loading people…",
+		"noAccess": "You don't have access to People & access. Ask your company administrator.",
+		"loadFailed": "The people list could not be loaded.",
+		"retry": "Try again"
+	},
+	"tiles": {
+		"members": "Organization members",
+		"membersNote": "Active and switched off",
+		"active": "Active users",
+		"inactive": "{{n}} inactive",
+		"admins": "Tenant administrators",
+		"adminsNote": "This company only"
+	},
+	"table": {
+		"title": "Organization members",
+		"description": "Accounts with access to this company",
+		"member": "Member",
+		"role": "Role",
+		"status": "Account status",
+		"lastLogin": "Last login",
+		"action": "Action",
+		"manage": "Manage",
+		"manageNamed": "Manage {{name}}",
+		"you": "You",
+		"never": "Never",
+		"search": "Search by username or email",
+		"empty": "No members yet.",
+		"noMatch": "No one matches your search."
+	},
+	"status": {
+		"active": "Active",
+		"inactive": "Inactive",
+		"mustChange": "Must change password"
+	},
+	"tip": {
+		"title": "Access follows responsibility.",
+		"description": "Each person gets the role their job needs. Company roles never grant platform access."
+	},
+	"manage": {
+		"title": "Manage {{name}}",
+		"description": "Access to {{company}}.",
+		"email": "Email",
+		"role": "Role",
+		"status": "Status",
+		"lastLogin": "Last login",
+		"deactivate": "Deactivate",
+		"reactivate": "Reactivate",
+		"reset": "Reset password",
+		"cancel": "Cancel",
+		"close": "Close",
+		"deactivateConfirm": "{{name}} loses access to {{company}} on their next request. Their other companies aren't affected.",
+		"reactivateConfirm": "{{name}} gets access to {{company}} again, with the same role.",
+		"resetConfirm": "This logs {{name}} out everywhere and gives you a one-time password to hand over.",
+		"passwordIntro": "{{name}}'s one-time password:",
+		"passwordNote": "Shown once. Hand it over securely; they'll choose their own at the next login.",
+		"copy": "Copy",
+		"copied": "Copied",
+		"listReloaded": "The list has been reloaded."
+	},
+	"create": {
+		"back": "Back to People & access",
+		"title": "Create company user",
+		"description": "Create an account and its role within {{company}}.",
+		"username": "Username",
+		"email": "Login email",
+		"password": "Initial password",
+		"generate": "Generate",
+		"generatedNote": "Copy it before creating: it isn't shown again.",
+		"role": "Role",
+		"chooseRole": "Choose a role",
+		"roleRequired": "Choose a role.",
+		"roleNote": "Choose the role this person needs. Creating an account never grants platform access.",
+		"handover": "Hand over the password securely. It doesn't appear in the confirmation.",
+		"cancel": "Cancel",
+		"submit": "Create user",
+		"submitting": "Creating…",
+		"reviewTitle": "Review before creating",
+		"reviewCompany": "Company",
+		"reviewUser": "New user",
+		"reviewRole": "Role",
+		"reviewAccess": "Access",
+		"reviewAccessValue": "This company only",
+		"tipTitle": "The next step is login.",
+		"tipDescription": "Share the login details securely. They'll choose their own password at the first login."
+	},
+	"created": {
+		"title": "Company user created",
+		"description": "{{name}}'s account and {{role}} membership are ready within {{company}}.",
+		"identifier": "Login identifier",
+		"handover": "Share the login details securely. {{name}} signs in on the same login page and chooses their own password at the first login.",
+		"back": "Back to users"
+	},
+	"errors": {
+		"invalidUsername": "Usernames need 3-64 letters, numbers, dots, dashes or underscores.",
+		"invalidEmail": "Enter a valid email address without spaces or accented letters.",
+		"passwordRule": "Use 8-128 characters with an upper-case letter, a lower-case letter, a number and a symbol.",
+		"roleNotAssignable": "You can't give this role.",
+		"taken": "That username or email is already in use.",
+		"notAllowed": "You can't do this for this person.",
+		"notFound": "That person isn't in this company any more.",
+		"self": "You can't do this to your own account.",
+		"unknown": "Something went wrong. Try again."
+	}
+}

@@ -20,6 +20,8 @@ export const environmentSchema = z.object({
   FORTYTWO_APP_SECRET: optionalText,
   // Defaults to CORS_ORIGIN + /api/auth/42/callback; it must match a redirect URI registered on the 42 app.
   FORTYTWO_REDIRECT_URI: optionalText.pipe(z.url().optional()),
+  // Uploaded files are kept here, one folder per company (relative paths start at the backend folder).
+  STORAGE_DIR: z.string().min(1).default('storage'),
 });
 
 export type Environment = z.infer<typeof environmentSchema>;
