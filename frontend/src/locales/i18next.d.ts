@@ -2,6 +2,7 @@
 // Add one line here for each new namespace file in locales/en/.
 import type audit from './en/audit.json';
 import type auth from './en/auth.json';
+import type clients from './en/clients.json';
 import type common from './en/common.json';
 import type rbac from './en/rbac.json';
 
@@ -11,6 +12,7 @@ declare module 'i18next' {
 		resources: {
 			audit: typeof audit;
 			auth: typeof auth;
+			clients: typeof clients;
 			common: typeof common;
 			rbac: typeof rbac;
 		};
