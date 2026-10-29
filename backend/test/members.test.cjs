@@ -51,14 +51,18 @@ async function tokenFor(server, login, password = PASSWORD) {
 const as = (call, token, company = '1') => call.set('Authorization', `Bearer ${token}`).set('X-Organization-Id', company);
 
 test('the people list and the roles you may give, for admins only', async (t) => {
-  const { server } = await meridianApp(t);
+  const { server, store } = await meridianApp(t);
   const lina = await tokenFor(server, 'lina');
   const list = (await as(request(server).get('/api/members'), lina).expect(200)).body;
   assert.deepEqual(list.map((member) => member.username), ['dana.saleh', 'lina', 'noor', 'zara.platform']);
   assert.deepEqual(list[0], {
-    userId: '12', username: 'dana.saleh', email: 'dana.saleh@demo.example.test', role: { code: 'dispatcher', name: 'Dispatcher' },
+    userId: '12', username: 'dana.saleh', email: 'dana.saleh@demo.example.test', displayName: null, role: { code: 'dispatcher', name: 'Dispatcher' },
     isActive: true, lastLoginAt: null, mustChangePassword: false,
   });
+  // A display name shows in the list once the person sets one.
+  store.users.find((user) => user.username === 'noor').displayName = 'Noor Haddad';
+  const named = (await as(request(server).get('/api/members'), lina).expect(200)).body;
+  assert.deepEqual(named.map((member) => member.displayName), [null, null, 'Noor Haddad', null]);
   const codes = async (token) => (await as(request(server).get('/api/members/assignable-roles'), token).expect(200)).body.map((role) => role.code);
   // Every company role except platform_admin, sorted by name for the dropdown.
   assert.deepEqual(await codes(lina), ['dispatcher', 'finance', 'org_admin']);
@@ -74,7 +78,7 @@ test('creating a member makes an account that must change its password, in the c
   const created = await as(request(server).post('/api/members'), lina)
     .send({ username: 'new.hire', email: 'new.hire@meridian.example.test', password: 'Initial-pass-1', roleCode: 'dispatcher' }).expect(201);
   assert.deepEqual(created.body, {
-    userId: '100', username: 'new.hire', email: 'new.hire@meridian.example.test', role: { code: 'dispatcher', name: 'Dispatcher' },
+    userId: '100', username: 'new.hire', email: 'new.hire@meridian.example.test', displayName: null, role: { code: 'dispatcher', name: 'Dispatcher' },
     isActive: true, lastLoginAt: null, mustChangePassword: true,
   });
   assert.deepEqual(store.memberships.at(-1), { organizationId: '1', userId: '100', roleId: '2', isActive: true });
