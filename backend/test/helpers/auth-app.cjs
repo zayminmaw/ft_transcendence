@@ -11,6 +11,8 @@ const { TenantContextInterceptor } = require('../../dist/common/interceptors/ten
 const { AuthModule, JwtAuthGuard } = require('../../dist/modules/auth');
 const { AuthAuditRepository } = require('../../dist/modules/auth/auth-audit.repository');
 const { AuditLog } = require('../../dist/modules/audit/entities/audit-log.entity');
+const { AuditService } = require('../../dist/modules/audit/audit.service');
+const { AuditRepository } = require('../../dist/modules/audit/audit.repository');
 const { UserSession } = require('../../dist/modules/auth/entities/user-session.entity');
 const { SessionsRepository } = require('../../dist/modules/auth/sessions.repository');
 const { OrganizationMember } = require('../../dist/modules/organizations/entities/organization-member.entity');
@@ -32,10 +34,16 @@ const ORIGIN = 'http://localhost:5173';
 const PASSWORD = 'Correct-horse-1';
 const ENV = { JWT_SECRET: 'test-secret-with-at-least-32-characters', JWT_ISSUER: 'transcend', JWT_AUDIENCE: 'transcend-web', CORS_ORIGIN: ORIGIN };
 
+function auditInScope(scope, row) {
+  if (scope.kind === 'tenant') return row.organizationId === scope.organizationId;
+  if (scope.kind === 'actor') return row.userId === scope.userId;
+  return true;
+}
+
 // In-memory stand-ins for the SQL repositories: same method names and return shapes. test:db checks the real SQL.
 function createFakeStore() {
   const store = {
-    users: [], sessions: [], audit: [], workspaces: new Map(), platformAdmins: new Set(), lastLogins: [],
+    users: [], sessions: [], audit: [], auditEntries: [], auditRows: [], workspaces: new Map(), platformAdmins: new Set(), lastLogins: [],
     // Company access for the guard: memberships ({ organizationId, userId, roleId, isActive }) and each role's codes.
     memberships: [], rolePermissions: new Map(),
     // Roles for the people list and the roles you may give: { id, code, name, description }.
@@ -163,6 +171,31 @@ function createFakeStore() {
         store.memberships.some((row) => row.userId === userId && row.organizationId !== organizationId) || store.platformAdmins.has(userId),
     },
     membersAudit: { record: async (action, entry) => { store.audit.push({ action, ...entry }); } },
+    // The shared writer, for code that calls it directly (e.g. the audit read endpoints). test:db covers the SQL.
+    auditService: {
+      record: async (_manager, entry) => { store.auditEntries.push(entry); },
+      recordStandalone: async (entry) => { store.auditEntries.push(entry); },
+      subscribe: () => () => {},
+    },
+    // Stored audit rows ({ id, organizationId, userId, resourceType, recordId, category, ... }) behind the read API.
+    auditRepository: {
+      list: async (scope, query) => {
+        const ids = query.recordId?.split(',');
+        const showAccess = query.module === 'audit' || query.resourceType === 'audit_log';
+        const rows = store.auditRows.filter((row) => auditInScope(scope, row)
+          && (showAccess || row.category !== 'access')
+          && (!query.module || row.module === query.module)
+          && (!query.resourceType || row.resourceType === query.resourceType)
+          && (!ids || ids.includes(row.recordId))
+          && (!query.action || row.action === query.action)
+          && (!query.userId || row.userId === query.userId));
+        const start = (query.page - 1) * query.pageSize;
+        return { items: rows.slice(start, start + query.pageSize), total: rows.length, page: query.page, pageSize: query.pageSize };
+      },
+      find: async (scope, id) => store.auditRows.find((row) => row.id === id && auditInScope(scope, row)) ?? null,
+      isActiveMember: async (userId, organizationId) => store.memberships.some((row) => row.userId === userId
+        && row.organizationId === organizationId && row.isActive),
+    },
     storageFiles: {
       insert: async (input) => {
         const row = { id: String(nextFileId++), createdAt: new Date(), ...input };
@@ -204,6 +237,8 @@ async function createAuthApp(t, store = createFakeStore(), { controllers = [], i
     .overrideProvider(UsersRepository).useValue(store.repositories.users)
     .overrideProvider(SessionsRepository).useValue(store.repositories.sessions)
     .overrideProvider(AuthAuditRepository).useValue(store.repositories.audit)
+    .overrideProvider(AuditService).useValue(store.repositories.auditService)
+    .overrideProvider(AuditRepository).useValue(store.repositories.auditRepository)
     .overrideProvider(OrganizationMembersRepository).useValue(store.repositories.members)
     .overrideProvider(PermissionsRepository).useValue(store.repositories.permissions)
     .overrideProvider(PlatformRolesRepository).useValue(store.repositories.platformRoles)

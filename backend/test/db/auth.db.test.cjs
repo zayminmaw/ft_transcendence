@@ -206,6 +206,7 @@ test('the codes each role may use, for /me: the full-scope ones only, sorted', a
 const { JwtService } = require('@nestjs/jwt');
 const { AuthAuditRepository } = require('../../dist/modules/auth/auth-audit.repository');
 const { AuditLog } = require('../../dist/modules/audit/entities/audit-log.entity');
+const { AuditService } = require('../../dist/modules/audit/audit.service');
 const { UserSession } = require('../../dist/modules/auth/entities/user-session.entity');
 const { SessionsRepository } = require('../../dist/modules/auth/sessions.repository');
 const { SessionsService } = require('../../dist/modules/auth/sessions.service');
@@ -215,7 +216,7 @@ const DAY = 86_400_000;
 const createSessions = () => new SessionsService(
   new SessionsRepository(database.getRepository(UserSession)), new UsersRepository(database.getRepository(User)),
   new JwtService({ secret: 'test-secret-with-at-least-32-characters', signOptions: { expiresIn: '15m' } }),
-  new AuthAuditRepository(database.getRepository(AuditLog)),
+  new AuthAuditRepository(new AuditService(database.getRepository(AuditLog))),
 );
 // A refresh token is "<familyId>.<secret>"; the family id names the session row.
 const sessionRow = (refreshToken) => database.getRepository(UserSession).findOneByOrFail({ familyId: refreshToken.split('.')[0] });
@@ -375,8 +376,8 @@ test('changing a role updates only that membership, and the audit row keeps the 
   assert.equal((await members.find(company, person)).role.code, 'finance');
   assert.equal((await members.find(other, person)).role.code, 'dispatcher');
   const entry = { organizationId: company, actorId: person, targetId: person, oldValues: { role: 'dispatcher' }, newValues: { role: 'finance' } };
-  await new MembersAuditRepository(database.getRepository(AuditLog)).record('member_role_changed', entry, META);
-  const row = await database.getRepository(AuditLog).findOneByOrFail({ module: 'members', action: 'member_role_changed', recordId: person });
+  await new MembersAuditRepository(new AuditService(database.getRepository(AuditLog))).record('member_role_changed', entry, META);
+  const row = await database.getRepository(AuditLog).findOneByOrFail({ module: 'members', action: 'update', resourceType: 'member', recordId: person });
   assert.deepEqual([row.oldValues, row.newValues], [{ role: 'dispatcher' }, { role: 'finance' }]);
 });
 
