@@ -37,9 +37,15 @@ before(async () => {
   south = await create('south', 'south.admin', sami);
 
   // Not platform activity, and platform activity too old for the counts.
-  await database.getRepository(AuditLog).insert({ module: 'auth', action: 'login.success', organizationId: north.id, userId: maya.userId });
-  await database.getRepository(AuditLog).insert({ module: 'platform', action: 'tenant.update', organizationId: south.id, userId: sami.userId, newValues: { name: 'old' } });
-  await database.query('UPDATE audit_logs SET created_at = NOW() - INTERVAL 10 DAY ORDER BY id DESC LIMIT 1');
+  // audit_logs is append-only, so the old row is written old instead of being moved back afterwards.
+  const now = new Date();
+  const old = new Date(Date.now() - 10 * 86_400_000);
+  const retainUntil = new Date(Date.now() + 365 * 86_400_000);
+  await database.getRepository(AuditLog).insert({ module: 'auth', action: 'login', resourceType: 'session', organizationId: north.id, userId: maya.userId, occurredAt: now, retainUntil });
+  await database.getRepository(AuditLog).insert({
+    module: 'platform', action: 'update', resourceType: 'tenant', organizationId: south.id, userId: sami.userId, newValues: { name: 'old' },
+    occurredAt: old, createdAt: old, retainUntil,
+  });
 });
 after(() => database?.destroy());
 

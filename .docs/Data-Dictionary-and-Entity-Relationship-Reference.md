@@ -337,6 +337,21 @@ No contacts table or presence storage is implemented in the 22-table baseline. A
 
 ---
 
+### `storage_files`
+
+Added by migration `1792627200000-StorageFiles` (not in the baseline). One stored file of one company, first meant for proof-of-delivery photos and signatures. The bytes are stored on disk at `<STORAGE_DIR>/<organization_id>/<stored_name>`. The module that owns the record (e.g. parcels) serves uploads and downloads under its own permissions; the storage module's only route, `GET /api/storage/files/:id?exp=&sig=`, opens 15-minute signed links that such a module hands out.
+
+| Column | Data Type | Constraints | Description |
+| --- | --- | --- | --- |
+| `id` | `BIGINT UNSIGNED` | AUTO_INCREMENT PRIMARY KEY | File identifier |
+| `organization_id` | `BIGINT UNSIGNED` | NOT NULL; FK -> organizations.id (`ON DELETE CASCADE`), indexed | Owning company |
+| `uploaded_by_user_id` | `BIGINT UNSIGNED` | NULL; FK -> users.id (`ON DELETE SET NULL`) | Uploader |
+| `stored_name` | `CHAR(36)` | NOT NULL, UNIQUE | Random UUID file name on disk; never the client's name |
+| `original_name` | `VARCHAR(255)` | NOT NULL | File name sent by the client (display only) |
+| `mime_type` | `VARCHAR(100)` | NOT NULL | Type sent by the client (images: `image/jpeg`, `image/png` or `image/webp`) |
+| `size_bytes` | `INT UNSIGNED` | NOT NULL | Size in bytes (images: at most 10 MB) |
+| `created_at` | `TIMESTAMP` | NOT NULL DEFAULT CURRENT_TIMESTAMP | Upload time |
+
 ## 7. Financial Settlement & Balances
 
 ### `driver_cod_settlements`
@@ -635,6 +650,8 @@ These definitions are taken from the baseline. A composite unique key applies to
 | `invoices.created_by_user_id` | `users.id` | RESTRICT | `fk_inv_user` |
 | `invoice_items.invoice_id` | `invoices.id` | CASCADE | `fk_ii_invoice` |
 | `invoice_items.parcel_id` | `parcels.id` | RESTRICT | `fk_ii_parcel` |
+| `storage_files.organization_id` | `organizations.id` | CASCADE | `fk_storage_files_org` |
+| `storage_files.uploaded_by_user_id` | `users.id` | SET NULL | `fk_storage_files_user` |
 
 ## 12. Domain integrity
 

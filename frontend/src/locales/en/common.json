@@ -46,7 +46,7 @@
 			"administration": "Administration",
 			"billing": "Billing & COD",
 			"staff": "Staff",
-			"rbac": "Access control",
+			"rbac": "People & access",
 			"organizations": "Organization settings"
 		},
 		"overview": {
@@ -56,6 +56,21 @@
 		"notFound": {
 			"title": "Page not found",
 			"description": "Choose a module from the navigation to continue."
+		},
+		"noAccess": {
+			"title": "No access",
+			"description": "You don't have access to {{area}} in {{company}}. Ask your company administrator.",
+			"back": "Back to Overview"
 		}
+	},
+	"roles": {
+		"platform_admin": "Platform Admin",
+		"org_admin": "Tenant Admin",
+		"dispatcher": "Dispatcher",
+		"hub_sorter": "Hub Sorter",
+		"finance": "Finance",
+		"hr_manager": "HR Manager",
+		"fleet_lead": "Fleet Lead",
+		"driver": "Courier / Driver"
 	}
 }

@@ -6,7 +6,7 @@ import { BeforePasswordChange } from '../../common/decorators/before-password-ch
 import { Public } from '../../common/decorators/public.decorator';
 import type { AuthenticatedRequest } from '../../common/types/authenticated-request';
 import { OrganizationMembersService } from '../organizations';
-import { PlatformRolesRepository } from '../rbac';
+import { PermissionsRepository, PlatformRolesRepository } from '../rbac';
 import { type User, UsersRepository } from '../users';
 import { AuthService } from './auth.service';
 import { AuthThrottlerGuard } from './auth.throttler';
@@ -33,6 +33,7 @@ export class AuthController {
     private readonly users: UsersRepository,
     private readonly members: OrganizationMembersService,
     private readonly platformRoles: PlatformRolesRepository,
+    private readonly permissions: PermissionsRepository,
   ) {}
 
   @Public()
@@ -87,7 +88,14 @@ export class AuthController {
       this.members.listActiveWorkspaces(userId),
       this.platformRoles.hasPlatformAccess(userId),
     ]);
-    return { user: publicUser(user), workspaces, platformAccess, mustChangePassword: user.mustChangePassword === true };
+    const granted = await this.permissions.grantedCodes([...new Set(workspaces.map(({ role }) => role.code))]);
+    return {
+      user: publicUser(user),
+      // Each company with the person's role there and what that role allows, so the interface shows only that.
+      workspaces: workspaces.map((workspace) => ({ ...workspace, permissions: granted[workspace.role.code] ?? [] })),
+      platformAccess,
+      mustChangePassword: user.mustChangePassword === true,
+    };
   }
 
   @Authenticated()

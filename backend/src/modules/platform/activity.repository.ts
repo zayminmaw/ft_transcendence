@@ -8,9 +8,20 @@ import { containsPattern } from './tenant-writes';
 import type { ActivityCounts, ActivityDetails, ActivityEvent, ActivityListQuery } from './types/activity';
 
 type ActivityRow = {
-  id: string; createdAt: Date; action: string; tenantId: string | null; tenantName: string | null; actor: string | null;
-  oldValues: unknown; newValues: unknown;
+  id: string; createdAt: Date; resourceType: string | null; action: string; tenantId: string | null; tenantName: string | null;
+  actor: string | null; oldValues: unknown; newValues: unknown;
 };
+
+type ActivityGroup = keyof typeof ACTIVITY_ACTIONS;
+
+// One action group as a condition on the shared audit vocabulary; the group's own key names its parameters.
+function inGroup(group: ActivityGroup): [string, Record<string, unknown>] {
+  const [resourceType, actions] = ACTIVITY_ACTIONS[group];
+  return [
+    `(log.resourceType = :${group}Resource AND log.action IN (:...${group}Actions))`,
+    { [`${group}Resource`]: resourceType, [`${group}Actions`]: actions },
+  ];
+}
 
 // Reads the platform rows of audit_logs, which the tenant and tenant administrator repositories write.
 @Injectable()
@@ -28,11 +39,12 @@ export class ActivityRepository {
         where.where('organization.name LIKE :pattern', { pattern }).orWhere('user.username LIKE :pattern', { pattern });
       }));
     }
-    if (query.action !== 'all') filtered.andWhere('log.action IN (:...actions)', { actions: ACTIVITY_ACTIONS[query.action] });
+    if (query.action !== 'all') filtered.andWhere(...inGroup(query.action));
     const direction = query.direction === 'desc' ? 'DESC' : 'ASC';
     const page = filtered.clone()
       .select('log.id', 'id')
       .addSelect('log.createdAt', 'createdAt')
+      .addSelect('log.resourceType', 'resourceType')
       .addSelect('log.action', 'action')
       .addSelect('organization.id', 'tenantId')
       .addSelect('organization.name', 'tenantName')
@@ -51,8 +63,9 @@ export class ActivityRepository {
     const query = this.platformLogs(tenantId)
       .andWhere('log.createdAt >= NOW() - INTERVAL :days DAY', { days: ACTIVITY_COUNT_DAYS })
       .select('COUNT(*)', 'events');
-    for (const [key, actions] of Object.entries(ACTIVITY_ACTIONS)) {
-      query.addSelect(`COALESCE(SUM(log.action IN (:...${key})), 0)`, key).setParameter(key, actions);
+    for (const group of Object.keys(ACTIVITY_ACTIONS) as ActivityGroup[]) {
+      const [condition, parameters] = inGroup(group);
+      query.addSelect(`COALESCE(SUM(${condition}), 0)`, group).setParameters(parameters);
     }
     const row = await query.getRawOne<Record<keyof ActivityCounts, string>>();
     return {
@@ -72,14 +85,24 @@ export class ActivityRepository {
 }
 
 function toEvent(row: ActivityRow): ActivityEvent {
+  const before = record(row.oldValues);
+  const after = record(row.newValues);
+  const action = eventName(row.resourceType, row.action, after);
   return {
     id: row.id,
     createdAt: row.createdAt,
-    action: row.action,
+    action,
     tenant: row.tenantId && row.tenantName ? { id: row.tenantId, name: row.tenantName } : null,
     actor: row.actor,
-    details: toDetails(row.action, record(row.oldValues), record(row.newValues)),
+    details: toDetails(action, before, after),
   };
+}
+
+// The activity API keeps its own event names; the audit trail stores a resource and a shared verb instead.
+function eventName(resourceType: string | null, action: string, after: Record<string, unknown>): string {
+  if (resourceType === 'tenant_administrator') return `tenant.administrator.${action}`;
+  if (action === 'status_change') return after.isActive === true ? 'tenant.reactivate' : 'tenant.suspend';
+  return `tenant.${action}`;
 }
 
 // MariaDB stores JSON as text, so a raw select can give the string back.

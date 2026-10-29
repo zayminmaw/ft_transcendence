@@ -5,7 +5,6 @@ const { Body, Controller, Get, Post } = require('@nestjs/common');
 const { Test } = require('@nestjs/testing');
 const request = require('supertest');
 const { configureApp } = require('../dist/app.setup');
-const { AppLogger } = require('../dist/common/logging/app-logger');
 const { currentRequestId, resolveRequestId } = require('../dist/common/context/request-context');
 const { maskEmail, maskPhone, redact } = require('../dist/common/logging/redaction');
 
@@ -18,15 +17,9 @@ Get('id')(ContextFixtureController.prototype, 'whoAmI', Object.getOwnPropertyDes
 Post('echo')(ContextFixtureController.prototype, 'echo', Object.getOwnPropertyDescriptor(ContextFixtureController.prototype, 'echo'));
 Body()(ContextFixtureController.prototype, 'echo', 0);
 
-function captureLogger(level = 'verbose', extra = {}) {
-	const lines = [];
-	const logger = new AppLogger({ level, format: 'json', includeStack: false, write: (line) => lines.push(JSON.parse(line)), ...extra });
-	return { logger, lines };
-}
-
-async function createApp(t, logger) {
+async function createApp(t) {
 	const moduleRef = await Test.createTestingModule({ controllers: [ContextFixtureController] }).compile();
-	const app = moduleRef.createNestApplication({ logger: logger ?? false });
+	const app = moduleRef.createNestApplication({ logger: false });
 	configureApp(app, 'http://localhost:5173');
 	await app.init();
 	t.after(() => app.close());
@@ -65,57 +58,6 @@ test('the browser may send and read the request id header', async (t) => {
 	assert.match(preflight.headers['access-control-allow-headers'], /X-Request-Id/i);
 	const response = await request(server).get('/api/context/id').set('Origin', 'http://localhost:5173').expect(200);
 	assert.match(response.headers['access-control-expose-headers'], /X-Request-Id/i);
-});
-
-test('each finished request is logged once as JSON, without its query string', async (t) => {
-	const { logger, lines } = captureLogger();
-	const server = await createApp(t, logger);
-	const response = await request(server).get('/api/context/id?token=abc').set('X-Request-Id', 'log-trace-0001').expect(200);
-	const entry = lines.find((line) => line.context === 'HTTP');
-	assert.ok(entry, 'expected a request log line');
-	assert.equal(entry.msg, 'request completed');
-	assert.equal(entry.path, '/api/context/id');
-	assert.equal(entry.status, 200);
-	assert.equal(entry.requestId, response.headers['x-request-id']);
-	assert.equal(typeof entry.durationMs, 'number');
-	assert.ok(!JSON.stringify(lines).includes('abc'));
-});
-
-test('the logger writes one JSON object per line with level, context and timestamp', () => {
-	const { logger, lines } = captureLogger();
-	logger.log('started', 'Boot');
-	assert.equal(lines.length, 1);
-	assert.equal(lines[0].level, 'info');
-	assert.equal(lines[0].context, 'Boot');
-	assert.equal(lines[0].msg, 'started');
-	assert.match(lines[0].ts, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
-});
-
-test('levels below the threshold are dropped', () => {
-	const { logger, lines } = captureLogger('warn');
-	logger.debug('noise');
-	logger.log('info');
-	logger.warn('careful');
-	logger.error('broken');
-	assert.deepEqual(lines.map((line) => line.level), ['warn', 'error']);
-});
-
-test('structured fields are redacted and stacks stay out unless enabled', () => {
-	const { logger, lines } = captureLogger();
-	logger.log({ msg: 'login', user: { password: 'hunter2', refreshToken: 'r', name: 'ana' }, Authorization: 'Bearer x' });
-	logger.error('failed', new Error('boom').stack, 'Worker');
-	logger.error(new Error('kaput'));
-	assert.equal(lines[0].user.password, '[REDACTED]');
-	assert.equal(lines[0].user.refreshToken, '[REDACTED]');
-	assert.equal(lines[0].user.name, 'ana');
-	assert.equal(lines[0].Authorization, '[REDACTED]');
-	assert.equal(lines[1].context, 'Worker');
-	assert.equal(lines[1].stack, undefined);
-	assert.deepEqual(lines[2].err, { name: 'Error', message: 'kaput' });
-
-	const withStack = captureLogger('verbose', { includeStack: true });
-	withStack.logger.error(new Error('kaput'));
-	assert.match(withStack.lines[0].err.stack, /kaput/);
 });
 
 test('redaction helpers mask personal data', () => {

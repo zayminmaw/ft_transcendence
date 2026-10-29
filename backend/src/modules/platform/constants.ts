@@ -88,15 +88,13 @@ export const SORT_COLUMNS: Record<TenantListQuery["sort"], string> = {
 	createdAt: "organization.createdAt",
 };
 
-// The activity page's action filter and the audit actions each one shows. Only these values reach the query.
+// The activity page's action filter and the audit rows each one shows, as [resource type, actions] on the shared
+// audit vocabulary. Only these values reach the query.
 export const ACTIVITY_ACTIONS = {
-	created: ["tenant.create"],
-	details: ["tenant.update"],
-	status: ["tenant.suspend", "tenant.reactivate"],
-	administrators: [
-		"tenant.administrator.assign",
-		"tenant.administrator.revoke",
-	],
+	created: ["tenant", ["create"]],
+	details: ["tenant", ["update"]],
+	status: ["tenant", ["status_change"]],
+	administrators: ["tenant_administrator", ["assign", "revoke"]],
 } as const;
 
 export const ACTIVITY_FILTERS = [

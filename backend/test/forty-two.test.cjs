@@ -21,6 +21,7 @@ const { FortyTwoApi } = require('../dist/modules/forty-two/forty-two-api');
 const { OrganizationMember } = require('../dist/modules/organizations/entities/organization-member.entity');
 const { OrganizationMembersRepository } = require('../dist/modules/organizations/organization-members.repository');
 const { RolesGuard } = require('../dist/modules/rbac');
+const { RolePermission } = require('../dist/modules/rbac/entities/role-permission.entity');
 const { UserRole } = require('../dist/modules/rbac/entities/user-role.entity');
 const { PermissionsRepository } = require('../dist/modules/rbac/permissions.repository');
 const { PlatformRolesRepository } = require('../dist/modules/rbac/platform-roles.repository');
@@ -33,7 +34,7 @@ process.env.NODE_ENV = 'test';
 
 const BASE_ENV = { JWT_SECRET: 'test-secret-with-at-least-32-characters', JWT_ISSUER: 'transcend', JWT_AUDIENCE: 'transcend-web', CORS_ORIGIN: ORIGIN };
 const CONFIGURED = { ...BASE_ENV, FORTYTWO_APP_ID: 'u-test-client', FORTYTWO_APP_SECRET: 's-test-secret' };
-const ENTITIES = [User, OrganizationMember, UserRole, UserSession, AuditLog];
+const ENTITIES = [User, OrganizationMember, UserRole, RolePermission, UserSession, AuditLog];
 
 // A stand-in for the 42 API: answers with the given email, or throws like a refused or timed-out call.
 function fakeApi({ email = 'dana@meridian.example.test', fail = false } = {}) {
