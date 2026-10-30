@@ -114,6 +114,7 @@ test('a rolled-back change leaves no audit row and tells no listener', async () 
 test('rows can\'t be changed, and can be deleted only after their retention', async () => {
 	await audit.recordStandalone({ module: 'auth', action: 'login', resourceType: 'user', recordId: actorId, actorId });
 	const [row] = await rows({ module: 'auth', action: 'login', recordId: actorId });
+	assert.equal(row.resourceLabel, 'audit.actor');
 	await assert.rejects(database.query('UPDATE audit_logs SET action = ? WHERE id = ?', ['logout', row.id]), /append-only/);
 	await assert.rejects(database.query('DELETE FROM audit_logs WHERE id = ?', [row.id]), /retain_until/);
 

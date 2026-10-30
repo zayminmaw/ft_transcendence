@@ -72,7 +72,7 @@ test('creating a member makes an account that must change its password, in the c
     isActive: true, lastLoginAt: null, mustChangePassword: true,
   });
   assert.deepEqual(store.memberships.at(-1), { organizationId: '1', userId: '100', roleId: '2', isActive: true });
-  assert.deepEqual(store.audit.at(-1), { action: 'member_created', organizationId: '1', actorId: '10', targetId: '100', newValues: { role: 'dispatcher' } });
+  assert.deepEqual(store.audit.at(-1), { action: 'member_created', organizationId: '1', actorId: '10', targetId: '100', targetName: 'new.hire', newValues: { role: 'dispatcher' } });
   // The new person logs in with the admin-given password and must change it first.
   assert.equal((await jwt.verifyAsync(await tokenFor(server, 'new.hire', 'Initial-pass-1'))).mustChangePassword, true);
   // The company comes from the verified header, never from the body.
@@ -134,7 +134,7 @@ test('changing a role gives someone in the company another role, from their next
   assert.deepEqual(changed.body.role, { code: 'finance', name: 'Finance' });
   assert.deepEqual(store.memberships.find((row) => row.userId === '12'), { organizationId: '1', userId: '12', roleId: '3', isActive: true });
   assert.deepEqual(store.audit.at(-1), {
-    action: 'member_role_changed', organizationId: '1', actorId: '10', targetId: '12',
+    action: 'member_role_changed', organizationId: '1', actorId: '10', targetId: '12', targetName: 'dana.saleh',
     newValues: { role: 'finance' }, oldValues: { role: 'dispatcher' },
   });
   // Finance has billing.view only here: dana's same token loses the parcels endpoint on its next request.
@@ -192,7 +192,7 @@ test('a reset gives a one-time password, forces a change and ends every session 
   assert.deepEqual(passwordProblems(temporaryPassword), []);
   assert.equal(store.users.find((user) => user.id === '12').mustChangePassword, true);
   assert.deepEqual(store.sessions.filter((session) => session.userId === '12').map((session) => session.revokedReason), ['password_reset', 'password_reset']);
-  assert.deepEqual(store.audit.at(-1), { action: 'password_reset', organizationId: '1', actorId: '10', targetId: '12', newValues: undefined });
+  assert.deepEqual(store.audit.at(-1), { action: 'password_reset', organizationId: '1', actorId: '10', targetId: '12', targetName: 'dana.saleh', newValues: undefined });
   assert.doesNotMatch(JSON.stringify(store.audit), new RegExp(temporaryPassword.replace(/[^A-Za-z0-9]/g, '.')));
   await request(server).post('/api/auth/login').set('Origin', ORIGIN).send({ login: 'dana.saleh', password: PASSWORD }).expect(401);
   assert.equal((await jwt.verifyAsync(await tokenFor(server, 'dana.saleh', temporaryPassword))).mustChangePassword, true);
