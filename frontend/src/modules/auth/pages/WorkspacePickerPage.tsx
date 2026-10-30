@@ -3,14 +3,17 @@ import { Link, Navigate } from 'react-router-dom';
 import { Button } from '@global-components';
 import { CenteredPage } from '../components/CenteredPage';
 import { LoadingScreen } from '../components/LoadingScreen';
-import { useLogout, useMe } from '../hooks';
+import { shownName, useLogout, useMe } from '../hooks';
 
 export function WorkspacePickerPage() {
 	const { t } = useTranslation('auth');
 	const me = useMe({ refetchOnMount: 'always' });
 	const logout = useLogout();
 	const logOutButton = (
-		<div>
+		<div className="flex flex-wrap items-start gap-3">
+			<Link to="/profile" className="btn btn-ghost w-fit bg-base-200">
+				{t('account.profile')}
+			</Link>
 			<button
 				type="button"
 				className="btn btn-ghost w-fit bg-base-200"
@@ -41,7 +44,7 @@ export function WorkspacePickerPage() {
 		);
 
 	const { user, workspaces, platformAccess } = me.data;
-	const loggedInAs = t('picker.loggedInAs', { username: user.username });
+	const loggedInAs = t('picker.loggedInAs', { username: shownName(user) });
 	if (workspaces.length === 0 && !platformAccess)
 		return (
 			<CenteredPage

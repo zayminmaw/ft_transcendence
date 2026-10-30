@@ -5,7 +5,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { sessionStore } from '@app/store/session';
 import { useAuth } from '@hooks/useAuth';
 import { logOut } from '@services/session-refresh';
-import { changePassword, fetchMe, logIn, type Me } from './api';
+import { changePassword, fetchMe, logIn, type Me, updateProfile } from './api';
 
 // The account, its companies and platform access. The picker passes refetchOnMount: 'always', so a removed
 // membership disappears when it opens.
@@ -17,6 +17,11 @@ export function useMe(options: { refetchOnMount?: 'always' } = {}) {
 		enabled: userId !== null,
 		...options,
 	});
+}
+
+// The name to show for someone: the display name they chose, else their username.
+export function shownName(person: { username: string; displayName: string | null }) {
+	return person.displayName ?? person.username;
 }
 
 // The company named in the URL, when it is one of yours.
@@ -72,6 +77,20 @@ export function useChangePassword() {
 			queryClient.setQueryData<Me>(
 				['auth', 'me', userId],
 				(me) => me && { ...me, mustChangePassword: false },
+			);
+		},
+	});
+}
+
+// Saves your display name and puts the answer in the cached /me, so the card and the page show it at once.
+export function useUpdateProfile() {
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: updateProfile,
+		onSuccess: ({ user }) => {
+			queryClient.setQueryData<Me>(
+				['auth', 'me', sessionStore.getSnapshot().userId],
+				(me) => me && { ...me, user },
 			);
 		},
 	});

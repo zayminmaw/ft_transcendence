@@ -17,7 +17,7 @@ export function ChangePasswordPage() {
 
 	return (
 		<CenteredPage title={t('changePassword.title')} description={t('changePassword.intro')}>
-			<ChangePasswordForm currentLabel={t('changePassword.temporary')} />
+			<ChangePasswordForm mode="firstLogin" />
 			<button
 				type="button"
 				className="link link-hover w-fit text-sm"

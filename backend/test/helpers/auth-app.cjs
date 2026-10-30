@@ -69,7 +69,8 @@ function createFakeStore() {
       const user = store.users.find((candidate) => candidate.id === row.userId);
       const role = store.roles.find((candidate) => String(candidate.id) === row.roleId);
       return {
-        userId: user.id, username: user.username, email: user.email, role: { id: role.id, code: role.code, name: role.name },
+        userId: user.id, username: user.username, email: user.email, displayName: user.displayName ?? null,
+        role: { id: role.id, code: role.code, name: role.name },
         isActive: row.isActive, lastLoginAt: user.lastLoginAt ?? null, mustChangePassword: user.mustChangePassword === true,
       };
     })
@@ -89,6 +90,7 @@ function createFakeStore() {
       findById: async (id) => store.users.find((user) => user.id === id),
       isActive: async (id) => Boolean(store.users.find((user) => user.id === id)?.isActive),
       touchLastLogin: async (id) => { store.lastLogins.push(id); },
+      updateDisplayName: async (id, displayName) => { store.users.find((user) => user.id === id).displayName = displayName; },
       updatePassword: async (id, passwordHash, mustChangePassword) => {
         Object.assign(store.users.find((user) => user.id === id), { passwordHash, mustChangePassword });
       },
@@ -109,7 +111,7 @@ function createFakeStore() {
       },
       transaction: (work) => work(sessionsTransaction),
     },
-    audit: { record: async (action, userId, meta) => { store.audit.push({ action, userId, ip: meta.ip }); } },
+    audit: { record: async (action, userId, meta, values) => { store.audit.push({ action, userId, ip: meta.ip, ...values }); } },
     members: {
       findActiveMembership: async (userId, organizationId) => {
         const membership = store.memberships.find((row) => row.userId === userId && row.organizationId === organizationId && row.isActive);

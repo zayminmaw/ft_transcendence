@@ -31,7 +31,7 @@ export function CenteredPage({
 				</div>
 				<div>
 					<h1 className="workspace-title text-[2rem] md:text-[2.25rem]">{title}</h1>
-					{subtitle && <p className="mt-2 text-sm font-medium">{subtitle}</p>}
+					{subtitle && <p className="mt-2 text-sm font-medium break-words">{subtitle}</p>}
 					<p className="mt-2 text-sm text-[var(--color-slate)]">{description}</p>
 				</div>
 				{children}
