@@ -55,7 +55,8 @@ export async function recordAudit(manager: EntityManager, entry: AuditEntry): Pr
 		action: entry.action,
 		resourceType: entry.resourceType,
 		recordId: entry.recordId ?? null,
-		resourceLabel: entry.resourceLabel?.slice(0, 128) ?? null,
+		// Sign-ins and other changes to your own account are labelled with your name, so they don't read "#6".
+		resourceLabel: (entry.resourceLabel ?? (entry.recordId === actorId ? actor.name : null))?.slice(0, 128) ?? null,
 		category: resource.category,
 		severity,
 		outcome,

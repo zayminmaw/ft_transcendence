@@ -26,7 +26,7 @@ export interface AuditEntry {
 	// A key of AUDIT_RESOURCES: it decides which fields may be stored and how.
 	resourceType: string;
 	recordId?: string | null;
-	// What people call the record, e.g. "INV-2026-0017". Shown as-is, so never personal data.
+	// What people call the record, e.g. "INV-2026-0017" or a username. Shown as-is, so no other personal data.
 	resourceLabel?: string | null;
 	// Defaults to the verified tenant of the request.
 	organizationId?: string | null;

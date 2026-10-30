@@ -52,7 +52,7 @@ export class MembersService {
       if (error.problem === 'taken') throw new ConflictException({ message: error.message, code: 'MEMBER_TAKEN' });
       throw new BadRequestException({ message: error.message, code: ACCOUNT_CODES[error.problem] });
     }
-    await this.audit.record('member_created', this.entry(tenant, actorId, member.userId, { role: role.code }), meta);
+    await this.audit.record('member_created', this.entry(tenant, actorId, member, { role: role.code }), meta);
     return publicMember(member);
   }
 
@@ -62,7 +62,7 @@ export class MembersService {
     const member = await this.requireTarget(tenant, actorId, userId);
     if (member.isActive === isActive) return publicMember(member);
     await this.members.setActive(tenant.organizationId, member.userId, isActive);
-    await this.audit.record(isActive ? 'member_reactivated' : 'member_deactivated', this.entry(tenant, actorId, member.userId), meta);
+    await this.audit.record(isActive ? 'member_reactivated' : 'member_deactivated', this.entry(tenant, actorId, member), meta);
     return publicMember({ ...member, isActive });
   }
 
@@ -75,7 +75,7 @@ export class MembersService {
     if (!role) throw new ForbiddenException(ROLE_NOT_ASSIGNABLE);
     if (member.role.code === role.code) return publicMember(member);
     await this.members.setRole(tenant.organizationId, member.userId, role.id);
-    const entry = this.entry(tenant, actorId, member.userId, { role: role.code }, { role: member.role.code });
+    const entry = this.entry(tenant, actorId, member, { role: role.code }, { role: member.role.code });
     await this.audit.record('member_role_changed', entry, meta);
     return publicMember({ ...member, role: { id: role.id, code: role.code, name: role.name } });
   }
@@ -88,7 +88,7 @@ export class MembersService {
     const password = temporaryPassword();
     await this.users.updatePassword(member.userId, await hashPassword(password), true);
     await this.sessions.endAll(member.userId, 'password_reset');
-    await this.audit.record('password_reset', this.entry(tenant, actorId, member.userId), meta);
+    await this.audit.record('password_reset', this.entry(tenant, actorId, member), meta);
     return { temporaryPassword: password };
   }
 
@@ -104,10 +104,11 @@ export class MembersService {
   private entry(
     tenant: TenantContext,
     actorId: string,
-    targetId: string,
+    target: Member,
     newValues?: Record<string, unknown>,
     oldValues?: Record<string, unknown>,
   ) {
-    return { organizationId: tenant.organizationId, actorId, targetId, newValues, ...(oldValues ? { oldValues } : {}) };
+    const { userId: targetId, username: targetName } = target;
+    return { organizationId: tenant.organizationId, actorId, targetId, targetName, newValues, ...(oldValues ? { oldValues } : {}) };
   }
 }
