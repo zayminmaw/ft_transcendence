@@ -339,12 +339,12 @@ No contacts table or presence storage is implemented in the 22-table baseline. A
 
 ### `storage_files`
 
-Added by migration `1792627200000-StorageFiles` (not in the baseline). One stored file of one company, first meant for proof-of-delivery photos and signatures. The bytes are stored on disk at `<STORAGE_DIR>/<organization_id>/<stored_name>`. The module that owns the record (e.g. parcels) serves uploads and downloads under its own permissions; the storage module's only route, `GET /api/storage/files/:id?exp=&sig=`, opens 15-minute signed links that such a module hands out.
+Added by migration `1792627200000-StorageFiles` (not in the baseline). One stored file of one company, first meant for proof-of-delivery photos and signatures, or of one account (`1793232000000-StorageAccountFiles`: `organization_id` NULL, e.g. a profile picture). The bytes are stored on disk at `<STORAGE_DIR>/<organization_id>/<stored_name>`, or `<STORAGE_DIR>/accounts/<stored_name>` for an account's file. The module that owns the record (e.g. parcels) serves uploads and downloads under its own permissions; the storage module's only route, `GET /api/storage/files/:id?exp=&sig=`, opens 15-minute signed links that such a module hands out.
 
 | Column | Data Type | Constraints | Description |
 | --- | --- | --- | --- |
 | `id` | `BIGINT UNSIGNED` | AUTO_INCREMENT PRIMARY KEY | File identifier |
-| `organization_id` | `BIGINT UNSIGNED` | NOT NULL; FK -> organizations.id (`ON DELETE CASCADE`), indexed | Owning company |
+| `organization_id` | `BIGINT UNSIGNED` | NULL; FK -> organizations.id (`ON DELETE CASCADE`), indexed | Owning company; NULL for a file of an account (profile picture) |
 | `uploaded_by_user_id` | `BIGINT UNSIGNED` | NULL; FK -> users.id (`ON DELETE SET NULL`) | Uploader |
 | `stored_name` | `CHAR(36)` | NOT NULL, UNIQUE | Random UUID file name on disk; never the client's name |
 | `original_name` | `VARCHAR(255)` | NOT NULL | File name sent by the client (display only) |
