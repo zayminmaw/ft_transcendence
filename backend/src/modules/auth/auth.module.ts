@@ -11,7 +11,7 @@ import { AuthAuditRepository } from './auth-audit.repository';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { AUTH_THROTTLERS, AuthThrottlerGuard } from './auth.throttler';
-import { AuditLog } from '../audit';
+import { AuditModule } from '../audit';
 import { UserSession } from './entities/user-session.entity';
 import { SameOriginGuard } from './same-origin.guard';
 import { SessionsRepository } from './sessions.repository';
@@ -28,7 +28,8 @@ import { SessionsService } from './sessions.service';
       }),
     }),
     ThrottlerModule.forRoot({ throttlers: AUTH_THROTTLERS }),
-    TypeOrmModule.forFeature([UserSession, AuditLog]),
+    TypeOrmModule.forFeature([UserSession]),
+    AuditModule,
     UsersModule,
     OrganizationsModule,
     RbacModule,

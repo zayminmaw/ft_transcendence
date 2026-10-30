@@ -83,6 +83,11 @@ export function TenantsPage() {
 			value: formatNumber(counts?.suspended, i18n.language),
 			description: 'History retained',
 		},
+		{
+			label: 'Members',
+			value: formatNumber(counts?.members, i18n.language),
+			description: 'People with portal access',
+		},
 	];
 
 	return (

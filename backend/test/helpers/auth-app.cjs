@@ -1,4 +1,5 @@
 require('reflect-metadata');
+const request = require('supertest');
 const { ConfigModule } = require('@nestjs/config');
 const { Reflector } = require('@nestjs/core');
 const { JwtService } = require('@nestjs/jwt');
@@ -10,6 +11,8 @@ const { TenantContextInterceptor } = require('../../dist/common/interceptors/ten
 const { AuthModule, JwtAuthGuard } = require('../../dist/modules/auth');
 const { AuthAuditRepository } = require('../../dist/modules/auth/auth-audit.repository');
 const { AuditLog } = require('../../dist/modules/audit/entities/audit-log.entity');
+const { AuditService } = require('../../dist/modules/audit/audit.service');
+const { AuditRepository } = require('../../dist/modules/audit/audit.repository');
 const { UserSession } = require('../../dist/modules/auth/entities/user-session.entity');
 const { SessionsRepository } = require('../../dist/modules/auth/sessions.repository');
 const { OrganizationMember } = require('../../dist/modules/organizations/entities/organization-member.entity');
@@ -24,20 +27,32 @@ const { UsersRepository } = require('../../dist/modules/users/users.repository')
 const { createAccount } = require('../../dist/modules/users/accounts');
 const { MembersAuditRepository } = require('../../dist/modules/members/members-audit.repository');
 const { MembersRepository } = require('../../dist/modules/members/members.repository');
+const { StorageRepository } = require('../../dist/modules/storage/storage.repository');
 
 const ORIGIN = 'http://localhost:5173';
+// The password the module tests give their fixture accounts.
+const PASSWORD = 'Correct-horse-1';
 const ENV = { JWT_SECRET: 'test-secret-with-at-least-32-characters', JWT_ISSUER: 'transcend', JWT_AUDIENCE: 'transcend-web', CORS_ORIGIN: ORIGIN };
+
+function auditInScope(scope, row) {
+  if (scope.kind === 'tenant') return row.organizationId === scope.organizationId;
+  if (scope.kind === 'actor') return row.userId === scope.userId;
+  return true;
+}
 
 // In-memory stand-ins for the SQL repositories: same method names and return shapes. test:db checks the real SQL.
 function createFakeStore() {
   const store = {
-    users: [], sessions: [], audit: [], workspaces: new Map(), platformAdmins: new Set(), lastLogins: [],
+    users: [], sessions: [], audit: [], auditEntries: [], auditRows: [], workspaces: new Map(), platformAdmins: new Set(), lastLogins: [],
     // Company access for the guard: memberships ({ organizationId, userId, roleId, isActive }) and each role's codes.
     memberships: [], rolePermissions: new Map(),
     // Roles for the people list and the roles you may give: { id, code, name, description }.
     roles: [],
+    // Stored file rows: { id, organizationId, uploadedByUserId, storedName, originalName, mimeType, sizeBytes, createdAt }.
+    storageFiles: [],
   };
   let nextSessionId = 1;
+  let nextFileId = 1;
   let nextUserId = 100;
   const sameText = (a, b) => a.toLowerCase() === b.toLowerCase();
   const sessionRecord = (row) => row && {
@@ -78,6 +93,11 @@ function createFakeStore() {
       updateDisplayName: async (id, displayName) => { store.users.find((user) => user.id === id).displayName = displayName; },
       updatePassword: async (id, passwordHash, mustChangePassword) => {
         Object.assign(store.users.find((user) => user.id === id), { passwordHash, mustChangePassword });
+      },
+      updatePasswordIfCurrent: async (id, currentHash, passwordHash) => {
+        const user = store.users.find((row) => row.id === id && row.passwordHash === currentHash);
+        if (user) Object.assign(user, { passwordHash, mustChangePassword: false });
+        return Boolean(user);
       },
     },
     sessions: {
@@ -153,6 +173,49 @@ function createFakeStore() {
         store.memberships.some((row) => row.userId === userId && row.organizationId !== organizationId) || store.platformAdmins.has(userId),
     },
     membersAudit: { record: async (action, entry) => { store.audit.push({ action, ...entry }); } },
+    // The shared writer, for code that calls it directly (e.g. the audit read endpoints). test:db covers the SQL.
+    auditService: {
+      record: async (_manager, entry) => { store.auditEntries.push(entry); },
+      recordStandalone: async (entry) => { store.auditEntries.push(entry); },
+      subscribe: () => () => {},
+    },
+    // Stored audit rows ({ id, organizationId, userId, resourceType, recordId, category, ... }) behind the read API.
+    auditRepository: {
+      list: async (scope, query) => {
+        const ids = query.recordId?.split(',');
+        const showAccess = query.module === 'audit' || query.resourceType === 'audit_log';
+        const rows = store.auditRows.filter((row) => auditInScope(scope, row)
+          && (showAccess || row.category !== 'access')
+          && (!query.module || row.module === query.module)
+          && (!query.resourceType || row.resourceType === query.resourceType)
+          && (!ids || ids.includes(row.recordId))
+          && (!query.action || row.action === query.action)
+          && (!query.userId || row.userId === query.userId));
+        const start = (query.page - 1) * query.pageSize;
+        return { items: rows.slice(start, start + query.pageSize), total: rows.length, page: query.page, pageSize: query.pageSize };
+      },
+      find: async (scope, id) => store.auditRows.find((row) => row.id === id && auditInScope(scope, row)) ?? null,
+      isActiveMember: async (userId, organizationId) => store.memberships.some((row) => row.userId === userId
+        && row.organizationId === organizationId && row.isActive),
+    },
+    storageFiles: {
+      insert: async (input) => {
+        const row = { id: String(nextFileId++), createdAt: new Date(), ...input };
+        store.storageFiles.push(row);
+        return { ...row };
+      },
+      find: async (organizationId, id) => {
+        const row = store.storageFiles.find((file) => file.organizationId === organizationId && file.id === id);
+        return row && { ...row };
+      },
+      findById: async (id) => {
+        const row = store.storageFiles.find((file) => file.id === id);
+        return row && { ...row };
+      },
+      delete: async (organizationId, id) => {
+        store.storageFiles = store.storageFiles.filter((file) => !(file.organizationId === organizationId && file.id === id));
+      },
+    },
   };
   // A refresh token is "<familyId>.<secret>"; the family id names the session row.
   store.sessionFor = (refreshToken) => store.sessions.find((row) => row.familyId === refreshToken.split('.')[0]);
@@ -176,11 +239,14 @@ async function createAuthApp(t, store = createFakeStore(), { controllers = [], i
     .overrideProvider(UsersRepository).useValue(store.repositories.users)
     .overrideProvider(SessionsRepository).useValue(store.repositories.sessions)
     .overrideProvider(AuthAuditRepository).useValue(store.repositories.audit)
+    .overrideProvider(AuditService).useValue(store.repositories.auditService)
+    .overrideProvider(AuditRepository).useValue(store.repositories.auditRepository)
     .overrideProvider(OrganizationMembersRepository).useValue(store.repositories.members)
     .overrideProvider(PermissionsRepository).useValue(store.repositories.permissions)
     .overrideProvider(PlatformRolesRepository).useValue(store.repositories.platformRoles)
     .overrideProvider(MembersRepository).useValue(store.repositories.companyMembers)
     .overrideProvider(MembersAuditRepository).useValue(store.repositories.membersAudit)
+    .overrideProvider(StorageRepository).useValue(store.repositories.storageFiles)
     .compile();
   const app = moduleRef.createNestApplication({ logger: false });
   configureApp(app, ORIGIN);
@@ -199,4 +265,13 @@ function refreshCookie(response) {
   return header && { header, value: decodeURIComponent(header.split(';')[0].slice('transcend_refresh='.length)) };
 }
 
-module.exports = { ORIGIN, createAuthApp, createFakeStore, refreshCookie };
+// Logs in and returns the access token. Await it before the next request: supertest closes its temporary server
+// when each request ends.
+async function tokenFor(server, login, password = PASSWORD) {
+  return (await request(server).post('/api/auth/login').set('Origin', ORIGIN).send({ login, password }).expect(200)).body.accessToken;
+}
+
+// A company request: the bearer token plus the X-Organization-Id header.
+const as = (call, token, company = '1') => call.set('Authorization', `Bearer ${token}`).set('X-Organization-Id', company);
+
+module.exports = { ORIGIN, PASSWORD, as, createAuthApp, createFakeStore, refreshCookie, tokenFor };

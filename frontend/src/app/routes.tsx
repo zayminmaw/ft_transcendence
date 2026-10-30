@@ -7,6 +7,7 @@ import { assetsRoutes } from '@modules/assets';
 import { parcelsRoutes } from '@modules/parcels';
 import { billingRoutes } from '@modules/billing';
 import { rbacRoutes } from '@modules/rbac';
+import { auditRoutes } from '@modules/audit';
 import { marketingRoutes } from '@modules/marketing';
 import { platformRoutes } from '@modules/platform';
 import {
@@ -40,6 +41,8 @@ const workspaceRoutes = [
 	...allowed('parcels', parcelsRoutes),
 	...allowed('billing', billingRoutes),
 	...allowed('rbac', rbacRoutes),
+	// The audit page checks admin.audit_logs itself (see AuditLogPage).
+	...auditRoutes,
 ];
 
 export const router = createBrowserRouter([

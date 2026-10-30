@@ -21,6 +21,7 @@ import { ParcelsModule } from './modules/parcels';
 import { BillingModule } from './modules/billing';
 import { NotificationsModule } from './modules/notifications';
 import { PlatformModule } from './modules/platform';
+import { StorageModule } from './modules/storage';
 
 @Module({
   imports: [
@@ -37,7 +38,7 @@ import { PlatformModule } from './modules/platform';
     }),
     AuthModule, FortyTwoModule, RbacModule, OrganizationsModule, MembersModule, ClientsModule, StaffModule,
     DriversModule, AssetsModule, ParcelsModule, BillingModule,
-    NotificationsModule, PlatformModule,
+    NotificationsModule, PlatformModule, StorageModule,
   ],
   controllers: [HealthController],
   providers: [

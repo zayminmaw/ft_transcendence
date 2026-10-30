@@ -5,10 +5,9 @@ const request = require('supertest');
 const { RequirePermission } = require('../dist/common/decorators/require-permission.decorator');
 const { MembersModule } = require('../dist/modules/members');
 const { hashPassword, passwordProblems } = require('../dist/modules/users/password');
-const { ORIGIN, createAuthApp, createFakeStore } = require('./helpers/auth-app.cjs');
+const { ORIGIN, PASSWORD, as, createAuthApp, createFakeStore, tokenFor } = require('./helpers/auth-app.cjs');
 
 process.env.NODE_ENV = 'test';
-const PASSWORD = 'Correct-horse-1';
 
 // A company endpoint, to show that a deactivated member loses access at once.
 class CompanyFixtureController {
@@ -44,11 +43,6 @@ async function meridianApp(t) {
   store.platformAdmins.add('14');
   return { store, ...(await createAuthApp(t, store, { controllers: [CompanyFixtureController], imports: [MembersModule] })) };
 }
-
-async function tokenFor(server, login, password = PASSWORD) {
-  return (await request(server).post('/api/auth/login').set('Origin', ORIGIN).send({ login, password }).expect(200)).body.accessToken;
-}
-const as = (call, token, company = '1') => call.set('Authorization', `Bearer ${token}`).set('X-Organization-Id', company);
 
 test('the people list and the roles you may give, for admins only', async (t) => {
   const { server, store } = await meridianApp(t);

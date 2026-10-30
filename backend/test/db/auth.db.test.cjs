@@ -61,6 +61,21 @@ test('a display name is saved as typed, in any script, and null clears it', asyn
   assert.equal((await users.findById(id)).displayName, null);
 });
 
+test('a changed password is saved only while the checked hash is still the stored one', async () => {
+  const users = new UsersRepository(database.getRepository(User));
+  const id = await createUser('password.race.db');
+  const stored = async () => {
+    const { passwordHash, mustChangePassword } = await users.findById(id);
+    return { passwordHash, mustChangePassword };
+  };
+  // An admin reset landed after the change checked the old password.
+  await users.updatePassword(id, 'reset-hash', true);
+  assert.equal(await users.updatePasswordIfCurrent(id, 'placeholder-hash', 'changed-hash'), false);
+  assert.deepEqual(await stored(), { passwordHash: 'reset-hash', mustChangePassword: true });
+  assert.equal(await users.updatePasswordIfCurrent(id, 'reset-hash', 'changed-hash'), true);
+  assert.deepEqual(await stored(), { passwordHash: 'changed-hash', mustChangePassword: false });
+});
+
 const { Organization } = require('../../dist/modules/organizations/entities/organization.entity');
 const { OrganizationMember } = require('../../dist/modules/organizations/entities/organization-member.entity');
 const { OrganizationMembersRepository } = require('../../dist/modules/organizations/organization-members.repository');
@@ -133,6 +148,7 @@ const { RequirePermission } = require('../../dist/common/decorators/require-perm
 const { OrganizationMembersService } = require('../../dist/modules/organizations/organization-members.service');
 const { RolesGuard } = require('../../dist/modules/rbac/roles.guard');
 const { PermissionsRepository } = require('../../dist/modules/rbac/permissions.repository');
+const { PermissionPolicyService } = require('../../dist/modules/rbac/permission-policy.service');
 const { Permission } = require('../../dist/modules/rbac/entities/permission.entity');
 const { RolePermission } = require('../../dist/modules/rbac/entities/role-permission.entity');
 
@@ -173,7 +189,7 @@ async function guardAllows(guard, permission, userId, organizationId) {
 
 test('allowed and denied: every role against every permission is exactly the docs table', async () => {
   const guard = new RolesGuard(
-    new Reflector(), new OrganizationMembersService(createMembers()), createPermissions(),
+    new Reflector(), new OrganizationMembersService(createMembers()), new PermissionPolicyService(createPermissions()),
     new UsersRepository(database.getRepository(User)), createPlatformRoles(),
   );
   const company = await createCompany('matrix-db', 'Matrix Couriers');
@@ -203,6 +219,7 @@ test('the codes each role may use, for /me: the full-scope ones only, sorted', a
 const { JwtService } = require('@nestjs/jwt');
 const { AuthAuditRepository } = require('../../dist/modules/auth/auth-audit.repository');
 const { AuditLog } = require('../../dist/modules/audit/entities/audit-log.entity');
+const { AuditService } = require('../../dist/modules/audit/audit.service');
 const { UserSession } = require('../../dist/modules/auth/entities/user-session.entity');
 const { SessionsRepository } = require('../../dist/modules/auth/sessions.repository');
 const { SessionsService } = require('../../dist/modules/auth/sessions.service');
@@ -212,7 +229,7 @@ const DAY = 86_400_000;
 const createSessions = () => new SessionsService(
   new SessionsRepository(database.getRepository(UserSession)), new UsersRepository(database.getRepository(User)),
   new JwtService({ secret: 'test-secret-with-at-least-32-characters', signOptions: { expiresIn: '15m' } }),
-  new AuthAuditRepository(database.getRepository(AuditLog)),
+  new AuthAuditRepository(new AuditService(database.getRepository(AuditLog))),
 );
 // A refresh token is "<familyId>.<secret>"; the family id names the session row.
 const sessionRow = (refreshToken) => database.getRepository(UserSession).findOneByOrFail({ familyId: refreshToken.split('.')[0] });
@@ -374,8 +391,8 @@ test('changing a role updates only that membership, and the audit row keeps the 
   assert.equal((await members.find(company, person)).role.code, 'finance');
   assert.equal((await members.find(other, person)).role.code, 'dispatcher');
   const entry = { organizationId: company, actorId: person, targetId: person, oldValues: { role: 'dispatcher' }, newValues: { role: 'finance' } };
-  await new MembersAuditRepository(database.getRepository(AuditLog)).record('member_role_changed', entry, META);
-  const row = await database.getRepository(AuditLog).findOneByOrFail({ module: 'members', action: 'member_role_changed', recordId: person });
+  await new MembersAuditRepository(new AuditService(database.getRepository(AuditLog))).record('member_role_changed', entry, META);
+  const row = await database.getRepository(AuditLog).findOneByOrFail({ module: 'members', action: 'update', resourceType: 'member', recordId: person });
   assert.deepEqual([row.oldValues, row.newValues], [{ role: 'dispatcher' }, { role: 'finance' }]);
 });
 

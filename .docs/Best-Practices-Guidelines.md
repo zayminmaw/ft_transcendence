@@ -47,6 +47,37 @@ async assignDriver(@Param('id') id: string, @Body() dto: AssignDriverDto) {
 * Throw native NestJS `HttpException` instances (`NotFoundException`, `ConflictException`, `BadRequestException`).
 * Never leak raw database error strings to the client. A global `HttpExceptionFilter` intercepts SQL errors (e.g., MariaDB error code `1062` duplicate entry) and outputs clean, actionable JSON payloads.
 
+### Technical Logging
+
+* Technical logs (errors, latency, lifecycle) and the audit trail (who changed what) are separate. Do not use logs as an audit record.
+* Log through Nest's `Logger` (`new Logger(MyService.name)`), never `console.*`. Never log request bodies, headers, or whole entities.
+* Every request gets an `X-Request-Id`. An incoming id of 8-64 letters, digits, or dashes is kept, so traces can cross the proxy; otherwise a UUID is generated. The id is echoed in the response and is available anywhere in the request through `currentRequestId()` (`common/context/request-context.ts`).
+
+### Audit Trail
+
+The audit trail records every create, update, and delete, plus security events: who did it, when, from where, and what changed. It lives in `audit_logs`, which is append-only. Triggers reject every update, and reject any delete before the row's `retain_until`.
+
+* **Write through `AuditService` only** (`modules/audit`). Import `AuditModule`. The service fills in the actor (id, plus the username and role at that moment), the IP address, the user agent, `requestId`, the source, and the retention.
+
+  Record a change inside the same transaction, so the change and its row are saved together or not at all:
+
+  ```ts
+  await this.audit.record(manager, {
+  	module: 'billing', action: 'status_change',
+  	resourceType: 'invoice', recordId: invoice.id, resourceLabel: invoice.number,
+  	organizationId: tenant.organizationId, before, after,
+  });
+  ```
+
+  Use `audit.recordStandalone({...})` only when there is no business transaction (failed logins, reads, denials). Plain functions that already hold a transaction manager can call `recordAudit(manager, {...})`.
+* **Use a shared verb as the action**: `create`, `update`, `delete`, `status_change`, `transfer`, `assign`, or `revoke`. Name the entity in `resourceType`. If none fits, add a verb to `AUDIT_ACTIONS` rather than inventing a one-off name.
+* **Declare what may be stored.** Add your resource to `AUDIT_RESOURCES` (`modules/audit/audit-resources.ts`), listing only the fields people need in the history. Values are stored as they are, because a company sees all of its own data. Each field's rule says how it is shown to platform administrators: `plain`, or for personal data (people's emails, phones, national ids) `maskEmail`, `maskPhone`, or `redact`. Unlisted fields are dropped. Keys that look like passwords, tokens, secrets, cookies, or sessions can never be listed or stored.
+* **Pass entity snapshots** as `before` and `after`, never DTOs or request bodies. An `update` stores only the fields that changed. Other actions keep the whole allowlisted snapshot, for context.
+* **Keep `resourceLabel` and `params` free of personal data.** They are shown as they are, and the frontend translates the sentence from the action, the resource, and `params`. Store no English descriptions.
+* **Reading the trail** (`GET /api/audit-logs`) needs `admin.audit_logs` and is scoped to the company. The same endpoint serves one record's history (`?resourceType=invoice&recordId=17`). `GET /api/audit-logs/mine` lists your own actions. `GET /api/platform/audit-logs` is for platform administrators, and it hides the values of company business data. Every read is audited, and so is every refused attempt.
+* **For alerts and notifications**, subscribe with `audit.subscribe(listener)`. Listeners hear only about committed rows.
+* **Frontend:** put `<InspectChangesButton resourceType="invoice" recordId={invoice.id} title={invoice.number} />` (from `@modules/audit`) next to a record. It shows only to people with `admin.audit_logs`, and opens that record's history. The company log is at `/app/<company>/audit`. When you add a resource, also add its name and field labels under `resources` and `fields` in `locales/<lang>/audit.json`.
+
 ---
 
 ## 2. React Vite Frontend Guidelines

@@ -77,6 +77,24 @@ test('the current password must be right, and the new one must pass the rule and
   assert.equal(store.users[0].mustChangePassword, true);
 });
 
+test('an admin reset that lands while a change is checking the old password wins', async (t) => {
+  const { server, store } = await newHireApp(t);
+  const { accessToken } = (await login(server).expect(200)).body;
+  const resetHash = await hashPassword('Reset-by-admin-3');
+  // The change has read the old hash; the reset is saved before the change writes.
+  const findById = store.repositories.users.findById;
+  store.repositories.users.findById = async (id) => {
+    const user = { ...(await findById(id)) };
+    Object.assign(store.users[0], { passwordHash: resetHash, mustChangePassword: true });
+    return user;
+  };
+  const refused = await changePassword(server, accessToken, { currentPassword: TEMPORARY, newPassword: CHOSEN }).expect(400);
+  assert.equal(refused.body.code, 'AUTH_WRONG_PASSWORD');
+  assert.equal(store.users[0].passwordHash, resetHash);
+  assert.equal(store.users[0].mustChangePassword, true);
+  assert.deepEqual(store.audit.map((entry) => entry.action), ['login']);
+});
+
 test('password changes are limited to 5 a minute per account', async (t) => {
   const { server } = await newHireApp(t);
   const { accessToken } = (await login(server).expect(200)).body;

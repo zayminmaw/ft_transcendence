@@ -8,6 +8,7 @@ const { JwtService } = require('@nestjs/jwt');
 const request = require('supertest');
 const { JwtAuthGuard } = require('../dist/modules/auth/jwt-auth.guard');
 const { RolesGuard } = require('../dist/modules/rbac/roles.guard');
+const { PermissionPolicyService } = require('../dist/modules/rbac/permission-policy.service');
 const { Public } = require('../dist/common/decorators/public.decorator');
 const { RequirePermission } = require('../dist/common/decorators/require-permission.decorator');
 const { TenantContextInterceptor } = require('../dist/common/interceptors/tenant-context.interceptor');
@@ -40,7 +41,7 @@ test('HTTP authorization enforces authentication, membership, permissions, and e
     return { organizationId, roleId: '3' };
   } };
   const permissions = { async findScope(roleId, permission) { assert.equal(roleId, '3'); assert.equal(permission, 'parcels.view'); return scope; } };
-  app.useGlobalGuards(new JwtAuthGuard(reflector, jwt), new RolesGuard(reflector, members, permissions));
+  app.useGlobalGuards(new JwtAuthGuard(reflector, jwt), new RolesGuard(reflector, members, new PermissionPolicyService(permissions)));
   app.useGlobalInterceptors(new TenantContextInterceptor(reflector));
   app.useGlobalFilters(new HttpExceptionFilter());
   await app.init();

@@ -1,5 +1,5 @@
 import type { EntityManager } from 'typeorm';
-import { AuditLog } from '../audit';
+import { type AuditAction, recordAudit } from '../audit';
 import { Organization, OrganizationMember } from '../organizations';
 import { Role } from '../rbac';
 import { User } from '../users';
@@ -69,13 +69,31 @@ export async function changeTenantStatus(
   return saved;
 }
 
-// Written in the same transaction as the change, so a change is never saved without its audit row.
+// Platform actions on the shared audit trail: [resource, verb].
+const PLATFORM_ACTIONS: Record<string, [string, AuditAction]> = {
+  'tenant.create': ['tenant', 'create'],
+  'tenant.update': ['tenant', 'update'],
+  'tenant.suspend': ['tenant', 'status_change'],
+  'tenant.reactivate': ['tenant', 'status_change'],
+  'tenant.administrator.assign': ['tenant_administrator', 'assign'],
+  'tenant.administrator.revoke': ['tenant_administrator', 'revoke'],
+};
+
+// Written in the same transaction as the change, so a change is never saved without its audit row. Contact details
+// are masked and the address is never stored (see AUDIT_RESOURCES).
 export async function auditPlatformChange(
-  manager: EntityManager, actor: PlatformActor, organizationId: string, action: string,
+  manager: EntityManager, actor: PlatformActor, organizationId: string, action: keyof typeof PLATFORM_ACTIONS,
   oldValues: object | undefined, newValues: object,
 ) {
-  await manager.insert(AuditLog, {
-    module: 'platform', action, organizationId, recordId: organizationId, userId: actor.userId,
-    ipAddress: actor.ip, userAgent: actor.userAgent, oldValues, newValues,
+  const [resourceType, verb] = PLATFORM_ACTIONS[action];
+  // The company's name labels the entry, so the history says "Meridian Courier", not "#1". A rename carries it.
+  const renamed = (newValues as { name?: unknown }).name;
+  const name = typeof renamed === 'string'
+    ? renamed
+    : (await manager.findOne(Organization, { where: { id: organizationId }, select: { id: true, name: true } }))?.name;
+  await recordAudit(manager, {
+    module: 'platform', action: verb, resourceType, recordId: organizationId, organizationId,
+    resourceLabel: name,
+    actorId: actor.userId, meta: actor, before: oldValues, after: newValues,
   });
 }

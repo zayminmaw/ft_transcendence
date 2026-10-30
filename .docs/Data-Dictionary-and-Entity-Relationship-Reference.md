@@ -338,6 +338,21 @@ No contacts table or presence storage is implemented in the 22-table baseline. A
 
 ---
 
+### `storage_files`
+
+Added by migration `1792627200000-StorageFiles` (not in the baseline). One stored file of one company, first meant for proof-of-delivery photos and signatures. The bytes are stored on disk at `<STORAGE_DIR>/<organization_id>/<stored_name>`. The module that owns the record (e.g. parcels) serves uploads and downloads under its own permissions; the storage module's only route, `GET /api/storage/files/:id?exp=&sig=`, opens 15-minute signed links that such a module hands out.
+
+| Column | Data Type | Constraints | Description |
+| --- | --- | --- | --- |
+| `id` | `BIGINT UNSIGNED` | AUTO_INCREMENT PRIMARY KEY | File identifier |
+| `organization_id` | `BIGINT UNSIGNED` | NOT NULL; FK -> organizations.id (`ON DELETE CASCADE`), indexed | Owning company |
+| `uploaded_by_user_id` | `BIGINT UNSIGNED` | NULL; FK -> users.id (`ON DELETE SET NULL`) | Uploader |
+| `stored_name` | `CHAR(36)` | NOT NULL, UNIQUE | Random UUID file name on disk; never the client's name |
+| `original_name` | `VARCHAR(255)` | NOT NULL | File name sent by the client (display only) |
+| `mime_type` | `VARCHAR(100)` | NOT NULL | Type sent by the client (images: `image/jpeg`, `image/png` or `image/webp`) |
+| `size_bytes` | `INT UNSIGNED` | NOT NULL | Size in bytes (images: at most 10 MB) |
+| `created_at` | `TIMESTAMP` | NOT NULL DEFAULT CURRENT_TIMESTAMP | Upload time |
+
 ## 7. Financial Settlement & Balances
 
 ### `driver_cod_settlements`
@@ -425,18 +440,33 @@ No contacts table or presence storage is implemented in the 22-table baseline. A
 
 ### `audit_logs`
 
+The one append-only audit trail, changed by `1792627200000-AuditTrail`. Write it only through `AuditService` (see Best Practices, "Audit Trail"). Triggers reject every `UPDATE` and any `DELETE` before `retain_until`. There are no foreign keys, so the history keeps its ids after a user or company row is deleted.
+
 | Column | Data Type | Constraints | Description |
 | --- | --- | --- | --- |
 | `id` | `BIGINT UNSIGNED` | AUTO_INCREMENT PRIMARY KEY | Record identifier |
-| `organization_id` | `BIGINT UNSIGNED` | NULL; FK -> organizations.id | Owning or related organization |
-| `user_id` | `BIGINT UNSIGNED` | NULL; FK -> users.id | Acting user, if available |
-| `module` | `VARCHAR(64)` | NOT NULL | Domain that generated the audit event |
-| `action` | `VARCHAR(64)` | NOT NULL | Action performed |
+| `organization_id` | `BIGINT UNSIGNED` | NULL | Company the event belongs to; NULL for account or platform-wide events |
+| `user_id` | `BIGINT UNSIGNED` | NULL | Acting user (for a login, the account it is about) |
+| `actor_type` | `ENUM('user','system','cli')` | NOT NULL DEFAULT 'user' | Kind of actor |
+| `actor_name` | `VARCHAR(64)` | NULL | Username at the time (never the email) |
+| `actor_role` | `VARCHAR(64)` | NULL | Role code at the time: the company role of the request, else the platform role |
+| `module` | `VARCHAR(64)` | NOT NULL | Module that wrote the event |
+| `action` | `VARCHAR(64)` | NOT NULL | Verb from the shared vocabulary (`create`, `update`, `delete`, `status_change`, `assign`, `login`, `read`, ...) |
+| `resource_type` | `VARCHAR(64)` | NULL | Affected entity type; a key of `AUDIT_RESOURCES` |
 | `record_id` | `VARCHAR(64)` | NULL | Affected record reference |
+| `resource_label` | `VARCHAR(128)` | NULL | What people call the record, e.g. an invoice number |
+| `category` | `ENUM('data','security','platform','access')` | NOT NULL DEFAULT 'data' | Business data, security, platform management or audit access |
+| `severity` | `ENUM('info','notice','warning','critical')` | NOT NULL DEFAULT 'info' | For alert routing |
+| `outcome` | `ENUM('success','failure','denied')` | NOT NULL DEFAULT 'success' | Result of the attempt |
+| `source` | `ENUM('web','api','cli','system')` | NOT NULL DEFAULT 'web' | Interface the action came from |
 | `ip_address` | `VARCHAR(45)` | NULL | Originating IP address |
 | `user_agent` | `VARCHAR(255)` | NULL | Originating client user agent |
-| `old_values` | `JSON` | NULL | Previous values as JSON |
-| `new_values` | `JSON` | NULL | New values as JSON |
+| `request_id` | `VARCHAR(64)` | NULL | `X-Request-Id`, matching the technical log lines of the same request |
+| `old_values` | `JSON` | NULL | Allowlisted values before the action, as they were; personal data is masked when platform administrators read it |
+| `new_values` | `JSON` | NULL | Allowlisted values after the action; an update stores only the fields that changed |
+| `metadata` | `JSON` | NULL | Short words for the translated description |
+| `occurred_at` | `DATETIME(3)` | NOT NULL | When the action happened (UTC) |
+| `retain_until` | `DATETIME` | NOT NULL | End of retention: security/critical 365 days, data/platform 180, access 90 |
 | `created_at` | `TIMESTAMP` | NOT NULL DEFAULT CURRENT_TIMESTAMP | Record creation timestamp |
 
 ## 10. Explicit indexes and composite keys
@@ -574,8 +604,12 @@ These definitions are taken from the baseline. A composite unique key applies to
 
 - `INDEX idx_al_module (module)`
 - `INDEX idx_al_created (created_at)`
-- `INDEX idx_audit_logs_organization_id (organization_id)`
-- `INDEX idx_audit_logs_user_id (user_id)`
+- `INDEX idx_al_org_occurred (organization_id, occurred_at)`
+- `INDEX idx_al_user_occurred (user_id, occurred_at)`
+- `INDEX idx_al_resource (resource_type, record_id, occurred_at)`
+- `INDEX idx_al_action (action)`
+- `INDEX idx_al_request (request_id)`
+- `INDEX idx_al_retain (retain_until)`
 
 ## 11. Foreign-key relationship reference
 
@@ -617,8 +651,8 @@ These definitions are taken from the baseline. A composite unique key applies to
 | `invoices.created_by_user_id` | `users.id` | RESTRICT | `fk_inv_user` |
 | `invoice_items.invoice_id` | `invoices.id` | CASCADE | `fk_ii_invoice` |
 | `invoice_items.parcel_id` | `parcels.id` | RESTRICT | `fk_ii_parcel` |
-| `audit_logs.organization_id` | `organizations.id` | SET NULL | `fk_al_org` |
-| `audit_logs.user_id` | `users.id` | SET NULL | `fk_al_user` |
+| `storage_files.organization_id` | `organizations.id` | CASCADE | `fk_storage_files_org` |
+| `storage_files.uploaded_by_user_id` | `users.id` | SET NULL | `fk_storage_files_user` |
 
 ## 12. Domain integrity
 

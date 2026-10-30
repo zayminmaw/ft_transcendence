@@ -26,6 +26,7 @@ export interface TenantCounts {
   total: number;
   active: number;
   suspended: number;
+  members: number;
 }
 
 export interface TenantAdministrator {

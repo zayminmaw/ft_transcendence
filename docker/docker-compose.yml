@@ -15,6 +15,7 @@ x-backend-environment: &backend-environment
   FORTYTWO_APP_ID: ${FORTYTWO_APP_ID:-}
   FORTYTWO_APP_SECRET: ${FORTYTWO_APP_SECRET:-}
   FORTYTWO_REDIRECT_URI: ${FORTYTWO_REDIRECT_URI:-}
+  STORAGE_DIR: /app/storage
 
 services:
   mariadb:
@@ -57,6 +58,8 @@ services:
     environment: *backend-environment
     ports:
       - "127.0.0.1:${BACKEND_PORT:-3000}:3000"
+    volumes:
+      - uploads_data:/app/storage
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -90,6 +93,7 @@ services:
 
 volumes:
   mariadb_data:
+  uploads_data:
 
 networks:
   transcend_net:

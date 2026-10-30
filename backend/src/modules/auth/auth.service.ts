@@ -53,7 +53,11 @@ export class AuthService implements OnModuleInit {
       throw new BadRequestException({ message: PASSWORD_RULE_MESSAGE, code: 'PASSWORD_RULE' });
     }
     if (passwords.newPassword === passwords.currentPassword) throw new BadRequestException(PASSWORD_UNCHANGED);
-    await this.users.updatePassword(userId, await hashPassword(passwords.newPassword), false);
+    const newHash = await hashPassword(passwords.newPassword);
+    // A reset or another change saved since the check means the password checked here is no longer the current one.
+    if (!(await this.users.updatePasswordIfCurrent(userId, user.passwordHash, newHash))) {
+      throw new BadRequestException(WRONG_PASSWORD);
+    }
     await this.sessions.endOthers(userId, refreshToken, 'password_change');
     await this.audit.record('password_changed', userId, meta);
   }

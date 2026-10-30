@@ -54,9 +54,22 @@ export class TenantsRepository {
     };
   }
 
+  // Members are people who can use the portal: active in an active company, counted once across companies.
   async counts(): Promise<TenantCounts> {
-    const [total, active] = await Promise.all([this.organizations.count(), this.organizations.countBy({ isActive: true })]);
-    return { total, active, suspended: total - active };
+    const [total, active, members] = await Promise.all([
+      this.organizations.count(),
+      this.organizations.countBy({ isActive: true }),
+      this.database.createQueryBuilder()
+        .select('COUNT(DISTINCT user.id)', 'members')
+        .from(OrganizationMember, 'member')
+        .innerJoin(User, 'user', 'user.id = member.userId')
+        .innerJoin(Organization, 'organization', 'organization.id = member.organizationId')
+        .where('member.isActive = TRUE')
+        .andWhere('user.isActive = TRUE')
+        .andWhere('organization.isActive = TRUE')
+        .getRawOne<{ members: string }>(),
+    ]);
+    return { total, active, suspended: total - active, members: Number(members?.members ?? 0) };
   }
 
   async findById(id: string): Promise<Organization | undefined> {
