@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { type EntityManager, Repository } from 'typeorm';
 import { User } from './entities/user.entity';
 
 @Injectable()
@@ -24,8 +24,12 @@ export class UsersRepository {
     await this.users.update({ id }, { passwordHash, mustChangePassword });
   }
 
-  async updateDisplayName(id: string, displayName: string | null): Promise<void> {
-    await this.users.update({ id }, { displayName });
+  // One transaction with `alsoSave` (the change's audit row): if either fails, neither is saved.
+  async updateDisplayName(id: string, displayName: string | null, alsoSave: (manager: EntityManager) => Promise<void>): Promise<void> {
+    await this.users.manager.transaction(async (manager) => {
+      await manager.update(User, { id }, { displayName });
+      await alsoSave(manager);
+    });
   }
 
   // Your own change: saved only while the stored hash is still the one that was checked, so a reset or another change

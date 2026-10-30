@@ -69,11 +69,11 @@ export class AuthService implements OnModuleInit {
     const wanted = displayName || null;
     const current = user.displayName ?? null;
     if (wanted === current) return user;
-    await this.users.updateDisplayName(userId, wanted);
-    await this.audit.record('profile_updated', userId, meta, {
-      oldValues: { displayName: current },
-      newValues: { displayName: wanted },
-    });
+    const values = { oldValues: { displayName: current }, newValues: { displayName: wanted } };
+    // Saved together with its audit row, so a failed audit can't leave a change that a retry would never record.
+    await this.users.updateDisplayName(userId, wanted, (manager) =>
+      this.audit.record('profile_updated', userId, meta, values, manager),
+    );
     return { ...user, displayName: wanted };
   }
 }
