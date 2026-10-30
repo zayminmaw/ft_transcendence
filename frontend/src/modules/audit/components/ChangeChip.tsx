@@ -15,7 +15,9 @@ export function ChangeChip({ field, change }: { field: string; change: AuditChan
 					<span className="me-1 text-[10px] uppercase text-[var(--color-slate)]">
 						{t('before')}
 					</span>
-					<bdi className="font-mono">{displayValue(t, change.before, language)}</bdi>
+					<bdi className="font-mono">
+						{displayValue(t, change.before, language, field)}
+					</bdi>
 				</span>
 				<span aria-hidden="true" className="text-[var(--color-slate)]">
 					→
@@ -24,7 +26,9 @@ export function ChangeChip({ field, change }: { field: string; change: AuditChan
 					<span className="me-1 text-[10px] uppercase text-[var(--color-slate)]">
 						{t('after')}
 					</span>
-					<bdi className="font-mono">{displayValue(t, change.after, language)}</bdi>
+					<bdi className="font-mono">
+						{displayValue(t, change.after, language, field)}
+					</bdi>
 				</span>
 			</span>
 		</span>

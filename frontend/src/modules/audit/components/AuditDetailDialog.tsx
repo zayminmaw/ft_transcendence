@@ -105,7 +105,12 @@ export function AuditDetailDialog({
 														{fieldLabel(t, field)}:
 													</span>{' '}
 													<bdi className="font-mono">
-														{displayValue(t, change.after, language)}
+														{displayValue(
+															t,
+															change.after,
+															language,
+															field,
+														)}
 													</bdi>
 												</span>
 											)}
