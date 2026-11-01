@@ -4,11 +4,11 @@ import { clientsRoutes } from '@modules/clients';
 import { staffRoutes } from '@modules/staff';
 import { driversRoutes } from '@modules/drivers';
 import { assetsRoutes } from '@modules/assets';
-import { parcelsRoutes } from '@modules/parcels';
+import { parcelsRoutes, parcelTrackingRoutes } from '@modules/parcels';
 import { billingRoutes } from '@modules/billing';
 import { rbacRoutes } from '@modules/rbac';
 import { auditRoutes } from '@modules/audit';
-import { marketingRoutes } from '@modules/marketing';
+import { MarketingLayout, marketingRoutes } from '@modules/marketing';
 import { platformRoutes } from '@modules/platform';
 import {
 	authRoutes,
@@ -47,6 +47,7 @@ const workspaceRoutes = [
 
 export const router = createBrowserRouter([
 	...marketingRoutes,
+	{ element: <MarketingLayout />, children: parcelTrackingRoutes },
 	...authRoutes,
 	{
 		element: <RequireSession />,
