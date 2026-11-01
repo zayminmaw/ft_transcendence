@@ -1,24 +1,28 @@
 import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, NavLink, useLocation } from 'react-router-dom';
-import { useMe } from '../hooks';
+import { Avatar } from '@global-components';
+import { shownName, useMe } from '../hooks';
 
 // The open company (NavLink's aria-current) is marked light grey like the sidebar's current page, instead of
 // daisyUI's dark default.
 const MENU_COLORS =
 	'[--menu-active-bg:var(--color-base-200)] [--menu-active-fg:var(--color-base-content)]';
 
-// The card at the top of the sidebar: the open workspace, who is logged in and as what ("noor · Dispatcher"), and a
+// The card at the top of the sidebar: the open workspace, who is logged in and as what ("Noor Haddad · Dispatcher"), and a
 // menu to move to another workspace. It sits at the top so a long menu never pushes the name out of sight (#19).
 export function WorkspaceSwitcher({ current, role }: { current: string; role?: string }) {
 	const { t } = useTranslation('auth');
 	const { pathname } = useLocation();
 	const me = useMe().data;
 	const workspaces = me?.workspaces ?? [];
-	const username = me?.user.username ?? '';
+	const name = me ? shownName(me.user) : '';
 	const who = (
-		<span className="mt-1 truncate text-xs text-[var(--color-slate)]" title={me?.user.email}>
-			{role ? `${username} · ${role}` : username}
+		<span className="mt-2 flex min-w-0 items-center gap-2">
+			{me && <Avatar name={name} seed={me.user.username} />}
+			<span className="truncate text-xs text-[var(--color-slate)]" title={me?.user.email}>
+				{role ? `${name} · ${role}` : name}
+			</span>
 		</span>
 	);
 	// One company and no platform access: the picker would only open it again, so there is no menu.

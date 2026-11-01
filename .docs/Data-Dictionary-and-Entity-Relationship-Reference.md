@@ -26,6 +26,7 @@ Usernames and emails are globally unique in the current baseline. A collision mu
 | `id` | `BIGINT UNSIGNED` | `PK`, `AUTO_INCREMENT` | Unique user identifier |
 | `username` | `VARCHAR(64)` | `NOT NULL`, `UNIQUE` | Unique login username |
 | `email` | `VARCHAR(191)` | `NOT NULL`, `UNIQUE` | Login and recovery email |
+| `display_name` | `VARCHAR(64)` | `NULL` | The name the person chooses on their profile; `NULL` shows the username |
 | `password_hash` | `VARCHAR(255)` | `NOT NULL` | Argon2id password hash |
 | `is_active` | `BOOLEAN` | `NOT NULL`, `DEFAULT TRUE` | Account active status flag |
 | `must_change_password` | `BOOLEAN` | `NOT NULL`, `DEFAULT FALSE` | The person must replace an admin-given or admin-reset password at the next login |

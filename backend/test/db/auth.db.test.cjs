@@ -26,6 +26,8 @@ test('the migrations add the sessions table and the documented roles and permiss
   assert.equal(await sessionColumns('rotated_at'), 1);
   assert.equal(await count(`SELECT COUNT(*) AS total FROM information_schema.columns
     WHERE table_schema = DATABASE() AND table_name = 'users' AND column_name = 'must_change_password'`), 1);
+  assert.equal(await count(`SELECT COUNT(*) AS total FROM information_schema.columns
+    WHERE table_schema = DATABASE() AND table_name = 'users' AND column_name = 'display_name' AND is_nullable = 'YES'`), 1);
 });
 
 const { User } = require('../../dist/modules/users/entities/user.entity');
@@ -47,6 +49,16 @@ test('users are found by email or username in any case, and inactive users are r
   assert.equal(await users.isActive(id), false);
   assert.equal((await users.findById(id)).isActive, false);
   assert.equal(await users.isActive('999999'), false);
+});
+
+test('a display name is saved as typed, in any script, and null clears it', async () => {
+  const users = new UsersRepository(database.getRepository(User));
+  const id = await createUser('display.name.db');
+  assert.equal((await users.findById(id)).displayName, null);
+  await users.updateDisplayName(id, 'นภา ใจดี');
+  assert.equal((await users.findById(id)).displayName, 'นภา ใจดี');
+  await users.updateDisplayName(id, null);
+  assert.equal((await users.findById(id)).displayName, null);
 });
 
 test('a changed password is saved only while the checked hash is still the stored one', async () => {
@@ -344,12 +356,14 @@ test('the members queries: the roles to give, the list, creating with a membersh
   const dispatcher = await database.getRepository(Role).findOneByOrFail({ code: 'dispatcher' });
   const created = await members.create(company, { username: 'zed.db', email: 'zed.db@db.test', password: 'Correct-horse-1', roleId: dispatcher.id });
   assert.deepEqual(created, {
-    userId: created.userId, username: 'zed.db', email: 'zed.db@db.test', role: { id: dispatcher.id, code: 'dispatcher', name: dispatcher.name },
+    userId: created.userId, username: 'zed.db', email: 'zed.db@db.test', displayName: null, role: { id: dispatcher.id, code: 'dispatcher', name: dispatcher.name },
     isActive: true, lastLoginAt: null, mustChangePassword: true,
   });
   const amy = await createUser('amy.db');
   await addMember(company, amy, 'finance');
   assert.deepEqual((await members.list(company)).map((member) => member.username), ['amy.db', 'zed.db']);
+  await new UsersRepository(database.getRepository(User)).updateDisplayName(amy, 'Amy Chen');
+  assert.deepEqual((await members.list(company)).map((member) => member.displayName), ['Amy Chen', null]);
   assert.equal(await members.find(other, created.userId), undefined);
   await members.setActive(company, created.userId, false);
   assert.equal((await members.find(company, created.userId)).isActive, false);

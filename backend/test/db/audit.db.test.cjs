@@ -25,8 +25,17 @@ after(() => database?.destroy());
 const rows = (where) => database.getRepository(AuditLog).find({ where, order: { id: 'ASC' } });
 const DAY = 86_400_000;
 
+// Undoes the newest migrations down to and including the audit trail's, so a migration added later can't break this test.
+async function undoThroughAuditTrail() {
+	let undone;
+	do {
+		[{ name: undone }] = await database.query('SELECT name FROM migrations ORDER BY id DESC LIMIT 1');
+		await database.undoLastMigration();
+	} while (undone !== 'AuditTrail1792627200000');
+}
+
 test('the migration brings legacy rows to the shared vocabulary and names their actors', async () => {
-	await database.undoLastMigration();
+	await undoThroughAuditTrail();
 	const legacy = [
 		['auth', 'login_failed', null, null],
 		['members', 'member_deactivated', null, null],

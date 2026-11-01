@@ -1,6 +1,13 @@
 import { apiRequest } from '@services/api-client';
 
-export type AccountUser = { id: string; username: string; email: string };
+export type AccountUser = {
+	id: string;
+	username: string;
+	email: string;
+	// The name the person chose on their profile; null shows the username (shownName).
+	displayName: string | null;
+	createdAt: string;
+};
 export type Workspace = {
 	id: string;
 	slug: string;
@@ -36,5 +43,13 @@ export function changePassword(values: PasswordChange) {
 	return apiRequest<{ accessToken: string }>('auth/password', {
 		method: 'POST',
 		body: JSON.stringify(values),
+	});
+}
+
+// Your own display name: null (or an empty name) shows your username. Answers with your account as /me shows it.
+export function updateProfile(displayName: string | null) {
+	return apiRequest<{ user: AccountUser }>('auth/me', {
+		method: 'PATCH',
+		body: JSON.stringify({ displayName }),
 	});
 }

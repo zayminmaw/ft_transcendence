@@ -5,6 +5,8 @@ export type Member = {
 	userId: string;
 	username: string;
 	email: string;
+	// The name the person chose on their profile; null shows the username.
+	displayName: string | null;
 	role: { code: string; name: string };
 	isActive: boolean;
 	lastLoginAt: string | null;

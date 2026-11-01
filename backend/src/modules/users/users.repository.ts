@@ -24,6 +24,10 @@ export class UsersRepository {
     await this.users.update({ id }, { passwordHash, mustChangePassword });
   }
 
+  async updateDisplayName(id: string, displayName: string | null): Promise<void> {
+    await this.users.update({ id }, { displayName });
+  }
+
   // Your own change: saved only while the stored hash is still the one that was checked, so a reset or another change
   // saved in between wins. false when nothing was saved.
   async updatePasswordIfCurrent(id: string, currentHash: string, passwordHash: string): Promise<boolean> {

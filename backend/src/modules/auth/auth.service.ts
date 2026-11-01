@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, type OnModuleInit } from '@nestjs/common';
+import { BadRequestException, Injectable, type OnModuleInit, UnauthorizedException } from '@nestjs/common';
 import { randomBytes } from 'node:crypto';
 import { hashPassword, PASSWORD_RULE_MESSAGE, passwordProblems, type User, UsersRepository, verifyPassword } from '../users';
 import { AuthAuditRepository } from './auth-audit.repository';
@@ -7,6 +7,7 @@ import { SessionsService } from './sessions.service';
 
 const WRONG_PASSWORD = { message: 'Your current password is wrong.', code: 'AUTH_WRONG_PASSWORD' };
 const PASSWORD_UNCHANGED = { message: 'Choose a password different from your current one.', code: 'PASSWORD_UNCHANGED' };
+const SESSION_EXPIRED = { message: 'Your session has ended. Log in again.', code: 'AUTH_SESSION_EXPIRED' };
 
 @Injectable()
 export class AuthService implements OnModuleInit {
@@ -59,5 +60,20 @@ export class AuthService implements OnModuleInit {
     }
     await this.sessions.endOthers(userId, refreshToken, 'password_change');
     await this.audit.record('password_changed', userId, meta);
+  }
+
+  // Your display name: "" or null clears it, so your username shows. Audited only when it actually changes.
+  async updateProfile(userId: string, displayName: string | null, meta: RequestMeta): Promise<User> {
+    const user = await this.users.findById(userId);
+    if (!user) throw new UnauthorizedException(SESSION_EXPIRED);
+    const wanted = displayName || null;
+    const current = user.displayName ?? null;
+    if (wanted === current) return user;
+    await this.users.updateDisplayName(userId, wanted);
+    await this.audit.record('profile_updated', userId, meta, {
+      oldValues: { displayName: current },
+      newValues: { displayName: wanted },
+    });
+    return { ...user, displayName: wanted };
   }
 }

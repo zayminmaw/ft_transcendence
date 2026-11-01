@@ -9,12 +9,14 @@ process.env.NODE_ENV = 'test';
 
 const PASSWORD = 'Correct-horse-1';
 let passwordHash;
+// What the API says about dana's account: no display name yet, so the username shows.
+const DANA = { id: '2', username: 'dana.saleh', email: 'dana@meridian.example.test', displayName: null, createdAt: '2026-10-01T08:00:00.000Z' };
 
 async function storeWithUsers() {
   passwordHash ??= await hashPassword(PASSWORD);
   const store = createFakeStore();
   store.users.push(
-    { id: '2', username: 'dana.saleh', email: 'dana@meridian.example.test', passwordHash, isActive: true },
+    { id: '2', username: 'dana.saleh', email: 'dana@meridian.example.test', passwordHash, isActive: true, displayName: null, createdAt: new Date(DANA.createdAt) },
     { id: '3', username: 'ex.member', email: 'ex@meridian.example.test', passwordHash, isActive: false },
   );
   store.workspaces.set('2', [{ id: '1', slug: 'meridian-courier', name: 'Meridian Courier', role: { code: 'dispatcher', name: 'Dispatcher' } }]);
@@ -33,7 +35,7 @@ const refresh = (server, cookie) => {
 test('login accepts an email or a username in any case and sets the refresh cookie', async (t) => {
   const { server, store, jwt } = await createAuthApp(t, await storeWithUsers());
   const byEmail = await login(server, 'DANA@Meridian.example.test').expect(200);
-  assert.deepEqual(byEmail.body.user, { id: '2', username: 'dana.saleh', email: 'dana@meridian.example.test' });
+  assert.deepEqual(byEmail.body.user, DANA);
   assert.equal((await jwt.verifyAsync(byEmail.body.accessToken)).sub, '2');
   assert.equal(byEmail.headers['cache-control'], 'no-store');
   const cookie = refreshCookie(byEmail);
@@ -71,7 +73,7 @@ test('refresh swaps the cookie and returns a new access token', async (t) => {
   const second = refreshCookie(response).value;
   assert.notEqual(second, first);
   assert.equal((await jwt.verifyAsync(response.body.accessToken)).sub, '2');
-  assert.deepEqual(response.body.user, { id: '2', username: 'dana.saleh', email: 'dana@meridian.example.test' });
+  assert.deepEqual(response.body.user, DANA);
   assert.equal(store.sessions.length, 1);
   assert.equal(store.sessionFor(second).id, '1');
 });
@@ -162,7 +164,7 @@ test('me works without a company and returns the user, workspaces with what the 
   const { accessToken } = (await login(server, 'dana.saleh').expect(200)).body;
   const me = await request(server).get('/api/auth/me').set('Authorization', `Bearer ${accessToken}`).expect(200);
   assert.deepEqual(me.body, {
-    user: { id: '2', username: 'dana.saleh', email: 'dana@meridian.example.test' },
+    user: DANA,
     workspaces: [{
       id: '1', slug: 'meridian-courier', name: 'Meridian Courier', role: { code: 'dispatcher', name: 'Dispatcher' },
       permissions: ['clients.view', 'parcels.view'],

@@ -5,7 +5,7 @@ import { AnalyticsCard, Button, ModulePage, Table, TipCard } from '@global-compo
 import type { TableColumn } from '@global-components';
 import { useAuth } from '@hooks/useAuth';
 import { useCompanyPath } from '@hooks/useCompanyPath';
-import { useCurrentWorkspace, useRoleName } from '@modules/auth';
+import { shownName, useCurrentWorkspace, useRoleName } from '@modules/auth';
 import { ApiError } from '@services/api-client';
 import { formatDate, formatNumber } from '@utils/format';
 import type { Member } from '../api';
@@ -77,9 +77,10 @@ export function PeopleAccessPage({ tab = 'members' }: { tab?: 'members' | 'roles
 	const count = (value: number) => formatNumber(value, i18n.language);
 	const needle = search.trim().toLowerCase();
 	const rows = needle
-		? list.filter(
-				({ username, email }) =>
-					username.toLowerCase().includes(needle) || email.toLowerCase().includes(needle),
+		? list.filter(({ username, email, displayName }) =>
+				[username, email, displayName ?? ''].some((text) =>
+					text.toLowerCase().includes(needle),
+				),
 			)
 		: list;
 	const managed = list.find((member) => member.userId === managedId);
@@ -90,7 +91,10 @@ export function PeopleAccessPage({ tab = 'members' }: { tab?: 'members' | 'roles
 			header: t('table.member'),
 			cell: (member) => (
 				<div>
-					<p className="font-medium">{member.username}</p>
+					<p className="font-medium">{shownName(member)}</p>
+					{member.displayName && (
+						<p className="text-xs text-[var(--color-slate)]">{member.username}</p>
+					)}
 					<p className="text-xs text-[var(--color-slate)]">{member.email}</p>
 				</div>
 			),

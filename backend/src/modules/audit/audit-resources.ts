@@ -18,7 +18,8 @@ export interface AuditResource {
 // Each module adds its resources here when it starts auditing, marking personal data (people's emails, phones,
 // national ids, ...) so the platform never sees it.
 export const AUDIT_RESOURCES: Record<string, AuditResource> = {
-	user: { category: 'security', fields: {} },
+	// A person's own account: what they change on their profile.
+	user: { category: 'security', fields: { displayName: 'plain' } },
 	session: { category: 'security', fields: {} },
 	member: {
 		category: 'data',

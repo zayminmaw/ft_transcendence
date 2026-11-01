@@ -14,8 +14,8 @@ const NOT_ALLOWED = { message: "You can't do this for this person.", code: 'MEMB
 const ACCOUNT_CODES = { username: 'INVALID_USERNAME', email: 'INVALID_EMAIL', password: 'PASSWORD_RULE' } as const;
 
 export function publicMember(member: Member) {
-  const { userId, username, email, role, isActive, lastLoginAt, mustChangePassword } = member;
-  return { userId, username, email, role: { code: role.code, name: role.name }, isActive, lastLoginAt, mustChangePassword };
+  const { userId, username, email, displayName, role, isActive, lastLoginAt, mustChangePassword } = member;
+  return { userId, username, email, displayName, role: { code: role.code, name: role.name }, isActive, lastLoginAt, mustChangePassword };
 }
 
 // "People & access": company admins (admin.manage_users) run their own people. The company always comes from the
