@@ -51,6 +51,20 @@ test('"" and null clear the name so the username shows; saving the same name aga
   assert.deepEqual(profileAudit(store).map((entry) => entry.newValues.displayName), ['Noor Haddad', null, 'นภา ใจดี', null]);
 });
 
+test('the name and its audit row are saved together: a failed audit keeps the old name, and a retry saves both', async (t) => {
+  const { store, patch, me } = await noorApp(t);
+  const record = store.repositories.audit.record;
+  store.repositories.audit.record = async () => { throw new Error('audit trail unavailable'); };
+  await patch({ displayName: 'Noor Haddad' }).expect(500);
+  assert.equal((await me()).user.displayName, null);
+  assert.deepEqual(profileAudit(store), []);
+
+  store.repositories.audit.record = record;
+  await patch({ displayName: 'Noor Haddad' }).expect(200);
+  assert.equal((await me()).user.displayName, 'Noor Haddad');
+  assert.equal(profileAudit(store).length, 1);
+});
+
 test('a name is one line of at most 64 characters, and nothing else can be changed here', async (t) => {
   const { store, patch } = await noorApp(t);
   await patch({ displayName: 'x'.repeat(64) }).expect(200);

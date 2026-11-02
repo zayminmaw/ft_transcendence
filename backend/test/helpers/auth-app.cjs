@@ -90,7 +90,18 @@ function createFakeStore() {
       findById: async (id) => store.users.find((user) => user.id === id),
       isActive: async (id) => Boolean(store.users.find((user) => user.id === id)?.isActive),
       touchLastLogin: async (id) => { store.lastLogins.push(id); },
-      updateDisplayName: async (id, displayName) => { store.users.find((user) => user.id === id).displayName = displayName; },
+      // Like the real transaction: when what is saved with it fails, the old name stays.
+      updateDisplayName: async (id, displayName, alsoSave) => {
+        const user = store.users.find((candidate) => candidate.id === id);
+        const before = user.displayName;
+        user.displayName = displayName;
+        try {
+          await alsoSave({});
+        } catch (error) {
+          user.displayName = before;
+          throw error;
+        }
+      },
       updatePassword: async (id, passwordHash, mustChangePassword) => {
         Object.assign(store.users.find((user) => user.id === id), { passwordHash, mustChangePassword });
       },

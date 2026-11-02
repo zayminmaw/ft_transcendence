@@ -54,11 +54,34 @@ test('users are found by email or username in any case, and inactive users are r
 test('a display name is saved as typed, in any script, and null clears it', async () => {
   const users = new UsersRepository(database.getRepository(User));
   const id = await createUser('display.name.db');
+  const nothingElse = async () => {};
   assert.equal((await users.findById(id)).displayName, null);
-  await users.updateDisplayName(id, 'นภา ใจดี');
+  await users.updateDisplayName(id, 'นภา ใจดี', nothingElse);
   assert.equal((await users.findById(id)).displayName, 'นภา ใจดี');
-  await users.updateDisplayName(id, null);
+  await users.updateDisplayName(id, null, nothingElse);
   assert.equal((await users.findById(id)).displayName, null);
+});
+
+const { recordAudit } = require('../../dist/modules/audit/audit-writer');
+
+test('a display name and its audit row are saved in one transaction: both or neither', async () => {
+  const users = new UsersRepository(database.getRepository(User));
+  const id = await createUser('atomic.name.db');
+  const audit = (manager) => recordAudit(manager, {
+    module: 'auth', action: 'update', resourceType: 'user', recordId: id, actorId: id, after: { displayName: 'Omar' },
+  });
+  const auditRows = () => database.getRepository(AuditLog).countBy({ module: 'auth', recordId: id });
+
+  await assert.rejects(users.updateDisplayName(id, 'Omar', async (manager) => {
+    await audit(manager);
+    throw new Error('audit trail unavailable');
+  }), /audit trail unavailable/);
+  assert.equal((await users.findById(id)).displayName, null);
+  assert.equal(await auditRows(), 0);
+
+  await users.updateDisplayName(id, 'Omar', audit);
+  assert.equal((await users.findById(id)).displayName, 'Omar');
+  assert.equal(await auditRows(), 1);
 });
 
 test('a changed password is saved only while the checked hash is still the stored one', async () => {
@@ -362,7 +385,7 @@ test('the members queries: the roles to give, the list, creating with a membersh
   const amy = await createUser('amy.db');
   await addMember(company, amy, 'finance');
   assert.deepEqual((await members.list(company)).map((member) => member.username), ['amy.db', 'zed.db']);
-  await new UsersRepository(database.getRepository(User)).updateDisplayName(amy, 'Amy Chen');
+  await new UsersRepository(database.getRepository(User)).updateDisplayName(amy, 'Amy Chen', async () => {});
   assert.deepEqual((await members.list(company)).map((member) => member.displayName), ['Amy Chen', null]);
   assert.equal(await members.find(other, created.userId), undefined);
   await members.setActive(company, created.userId, false);

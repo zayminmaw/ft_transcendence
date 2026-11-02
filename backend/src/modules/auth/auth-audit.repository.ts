@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { AuditService } from '../audit';
+import type { EntityManager } from 'typeorm';
+import { type AuditEntry, AuditService } from '../audit';
 import type { RequestMeta } from './request-meta';
 
 export type AuthAuditAction = 'login' | 'login_failed' | 'logout' | 'session_reuse' | 'password_changed' | 'profile_updated';
@@ -15,9 +16,16 @@ export interface AuthAuditValues {
 export class AuthAuditRepository {
   constructor(private readonly audit: AuditService) {}
 
-  // Never stores passwords, tokens, or the login name typed for an unknown account.
-  async record(action: AuthAuditAction, userId: string | null, meta: RequestMeta, values: AuthAuditValues = {}): Promise<void> {
-    await this.audit.recordStandalone({
+  // Never stores passwords, tokens, or the login name typed for an unknown account. Given the transaction of the change
+  // it records (`manager`), the row is saved with that change or not at all.
+  async record(
+    action: AuthAuditAction,
+    userId: string | null,
+    meta: RequestMeta,
+    values: AuthAuditValues = {},
+    manager?: EntityManager,
+  ): Promise<void> {
+    const entry: AuditEntry = {
       module: 'auth',
       // In the trail, a profile change is an update of the account.
       action: action === 'profile_updated' ? 'update' : action,
@@ -28,6 +36,7 @@ export class AuthAuditRepository {
       before: values.oldValues,
       after: values.newValues,
       meta,
-    });
+    };
+    await (manager ? this.audit.record(manager, entry) : this.audit.recordStandalone(entry));
   }
 }
