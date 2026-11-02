@@ -73,6 +73,9 @@ test('a name is one line of at most 64 characters, and nothing else can be chang
     // 40 hearts are 80 characters underneath (each is ❤ plus an invisible variation selector): too long for the column.
     { displayName: '❤️'.repeat(40) },
     { displayName: 'Noor\nHaddad' },
+    // Unicode's line and paragraph separators break a line too, though they aren't control characters.
+    { displayName: 'Noor\u2028Haddad' },
+    { displayName: 'Noor\u2029Haddad' },
     { displayName: 42 },
     {},
     { displayName: 'Noor', username: 'someone.else' },
