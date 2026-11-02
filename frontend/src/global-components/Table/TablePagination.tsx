@@ -20,11 +20,12 @@ function getPageItems(page: number, pageCount: number): (number | 'ellipsis')[] 
 	];
 }
 
+// Mirrored in right-to-left languages, where the buttons swap sides, so each one points outward.
 function Chevron({ direction }: { direction: 'left' | 'right' }) {
 	return (
 		<svg
 			aria-hidden="true"
-			className="h-[1em]"
+			className="h-[1em] rtl:-scale-x-100"
 			viewBox="0 0 24 24"
 			fill="none"
 			stroke="currentColor"
