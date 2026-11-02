@@ -5,6 +5,7 @@ const navigation = [
 	{ to: '/product', label: 'Product' },
 	{ to: '/solutions', label: 'Solutions' },
 	{ to: '/contact', label: 'Plan your rollout' },
+	{ to: '/track', label: 'Track a parcel' },
 ];
 const legalLinks = [
 	{ to: '/privacy', label: 'Privacy Policy' },
@@ -22,7 +23,8 @@ const titles: Record<string, string> = {
 export function MarketingLayout() {
 	const { pathname } = useLocation();
 	useEffect(() => {
-		document.title = titles[pathname] ?? 'Page not found — Transcend';
+		// Other pages in this layout, such as the tracking and not-found pages, set their own title.
+		if (titles[pathname]) document.title = titles[pathname];
 		window.scrollTo({ top: 0, behavior: 'instant' });
 	}, [pathname]);
 

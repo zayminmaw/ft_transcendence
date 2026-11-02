@@ -67,6 +67,7 @@ Frontend domain folders contain components, pages, hooks, types, routes.tsx, and
 | /product | Product blueprint and workflow preview |
 | /solutions | Team responsibilities and use cases |
 | /contact | Browser-local rollout brief form and text download |
+| /track, /track/:trackingNumber | Public parcel tracking (sample data until the tracking endpoint exists) |
 | /app | Workspace preview |
 | /app/organizations, /app/clients, etc. | Mirrored business module pages |
 | /organizations, /clients, etc. | Original workspace routes retained for compatibility |

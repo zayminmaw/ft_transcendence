@@ -76,9 +76,14 @@ export function DispatchPage() {
 				title="Dispatch & parcels"
 				description="Assign ready parcels and resolve delivery exceptions."
 				actions={
-					<Link to="assign" className="btn btn-primary w-full md:w-auto md:px-12">
-						Assign driver
-					</Link>
+					<div className="flex w-full flex-col gap-2 sm:flex-row md:w-auto">
+						<Link to="new" className="btn border-0 bg-base-200 md:px-8">
+							New parcel
+						</Link>
+						<Link to="assign" className="btn btn-primary md:px-12">
+							Assign driver
+						</Link>
+					</div>
 				}
 			/>
 			<AnalyticsCard items={dispatchStats} />

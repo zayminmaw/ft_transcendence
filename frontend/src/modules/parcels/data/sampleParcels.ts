@@ -44,8 +44,21 @@ export type Parcel = {
 	deliveryFee: string;
 	attempts: number;
 	failedReason?: string;
+	pod?: { deliveredAt: string; latitude: string; longitude: string };
 	events: ParcelEvent[];
 };
+
+export const merchants = ['Paper & Co.', 'Field Goods', 'North Store', 'Studio Supply'];
+
+export const zones = ['Central', 'East', 'West'];
+
+// Stored in `parcels.failed_reason_code`.
+export const failureReasons = [
+	{ value: 'recipient_unavailable', label: 'Recipient unavailable' },
+	{ value: 'address_not_found', label: 'Address not found' },
+	{ value: 'refused', label: 'Refused by recipient' },
+	{ value: 'cod_not_ready', label: 'COD not ready' },
+];
 
 export type Driver = {
 	id: string;
@@ -89,6 +102,41 @@ export const driverStatusLabels: Record<Driver['status'], string> = {
 };
 
 export const parcels: Parcel[] = [
+	{
+		id: '10478',
+		tracking: 'TRC-10478',
+		recipient: 'Omar T.',
+		recipientPhone: '+962 7 9555 0108',
+		address: '12 Garden Street, Amman',
+		zone: 'East',
+		merchant: 'Studio Supply',
+		status: 'pickup_scheduled',
+		weightKg: '0.90',
+		fragile: false,
+		codAmount: '25.00',
+		deliveryFee: '7.00',
+		attempts: 0,
+		events: [{ status: 'pickup_scheduled', time: '13 Oct 2026, 13:30', actor: 'Rami Saleh' }],
+	},
+	{
+		id: '10477',
+		tracking: 'TRC-10477',
+		recipient: 'Nour B.',
+		recipientPhone: '+962 7 9555 0107',
+		address: '30 Queen Rania Street, Amman',
+		zone: 'Central',
+		merchant: 'Field Goods',
+		status: 'picked_up',
+		weightKg: '2.40',
+		fragile: true,
+		codAmount: '95.00',
+		deliveryFee: '9.00',
+		attempts: 0,
+		events: [
+			{ status: 'pickup_scheduled', time: '13 Oct 2026, 09:15', actor: 'Rami Saleh' },
+			{ status: 'picked_up', time: '13 Oct 2026, 12:45', actor: 'Samer Kassab' },
+		],
+	},
 	{
 		id: '10476',
 		tracking: 'TRC-10476',
@@ -210,6 +258,11 @@ export const parcels: Parcel[] = [
 		codAmount: '35.00',
 		deliveryFee: '7.00',
 		attempts: 0,
+		pod: {
+			deliveredAt: '13 Oct 2026, 10:05',
+			latitude: '31.95218300',
+			longitude: '35.92614700',
+		},
 		events: [
 			{ status: 'in_hub_sorted', time: '13 Oct 2026, 07:55', actor: 'Samer Kassab' },
 			{
