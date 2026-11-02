@@ -1,13 +1,14 @@
 import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn } from 'typeorm';
 
-// Mirrors `storage_files`: one stored file of one company. The bytes are at <STORAGE_DIR>/<organizationId>/<storedName>.
+// Mirrors `storage_files`: one stored file of one company, or of one account (organizationId null, e.g. a profile
+// picture). The bytes are at <STORAGE_DIR>/<organizationId or "accounts">/<storedName>.
 @Entity('storage_files')
 export class StorageFile {
   @PrimaryGeneratedColumn({ type: 'bigint', unsigned: true })
   id!: string;
 
-  @Column({ name: 'organization_id', type: 'bigint', unsigned: true })
-  organizationId!: string;
+  @Column({ name: 'organization_id', type: 'bigint', unsigned: true, nullable: true })
+  organizationId!: string | null;
 
   @Column({ name: 'uploaded_by_user_id', type: 'bigint', unsigned: true, nullable: true })
   uploadedByUserId!: string | null;

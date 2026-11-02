@@ -6,6 +6,7 @@ const { join } = require('node:path');
 const { Controller, Delete, Get, HttpCode, Inject, Module, Param, Post, Req, UploadedFile, UseInterceptors } = require('@nestjs/common');
 const { FileInterceptor } = require('@nestjs/platform-express');
 const request = require('supertest');
+const { Authenticated } = require('../dist/common/decorators/authenticated.decorator');
 const { RequirePermission } = require('../dist/common/decorators/require-permission.decorator');
 const { StorageModule, StorageService, documentUploadOptions, imageUploadOptions } = require('../dist/modules/storage');
 const { hashPassword } = require('../dist/modules/users/password');
@@ -53,8 +54,29 @@ for (const name of ['find', 'content', 'link', 'remove']) {
   Param('id')(PhotosFixtureController.prototype, name, 0);
   Req()(PhotosFixtureController.prototype, name, 1);
 }
+// Stands in for a module that keeps files of an account rather than a company (e.g. auth's profile pictures): no
+// company header, so the person's own account is all it checks.
+class AccountFilesFixtureController {
+  constructor(storageService) { this.storage = storageService; }
+  upload(file, request) { return this.storage.saveAccountFile(request.user.id, file); }
+  async link(id) { return { url: await this.storage.accountFileUrl(id) }; }
+  async remove(id) { await this.storage.deleteAccountFile(id); }
+}
+Inject(StorageService)(AccountFilesFixtureController, undefined, 0);
+Controller('fixture/account-files')(AccountFilesFixtureController);
+const accountRoute = (name, ...decorators) => {
+  const descriptor = Object.getOwnPropertyDescriptor(AccountFilesFixtureController.prototype, name);
+  for (const decorate of [Authenticated(), ...decorators]) decorate(AccountFilesFixtureController.prototype, name, descriptor);
+};
+accountRoute('upload', Post(), UseInterceptors(FileInterceptor('file', imageUploadOptions)));
+UploadedFile()(AccountFilesFixtureController.prototype, 'upload', 0);
+Req()(AccountFilesFixtureController.prototype, 'upload', 1);
+accountRoute('link', Get(':id/link'));
+accountRoute('remove', Delete(':id'), HttpCode(204));
+for (const name of ['link', 'remove']) Param('id')(AccountFilesFixtureController.prototype, name, 0);
+
 class PhotosFixtureModule {}
-Module({ imports: [StorageModule], controllers: [PhotosFixtureController] })(PhotosFixtureModule);
+Module({ imports: [StorageModule], controllers: [PhotosFixtureController, AccountFilesFixtureController] })(PhotosFixtureModule);
 
 // Meridian (company 1): dana can upload, otto can only read. Karim belongs to Harbor (company 2).
 async function storageApp(t) {
@@ -182,4 +204,33 @@ test('a tampered, borrowed or incomplete signed link is refused', async (t) => {
   // A link is only handed out within the file's own company.
   const karim = await tokenFor(server, 'karim');
   await as(request(server).get(`/api/fixture/photos/${first}/link`), karim, '2').expect(404);
+});
+
+test('an account file belongs to no company: stored apart, opened by signed link, and out of every company\'s reach', async (t) => {
+  const { server, store } = await storageApp(t);
+  const dana = await tokenFor(server, 'dana');
+  const bearer = (call) => call.set('Authorization', `Bearer ${dana}`);
+  const picture = (await bearer(request(server).post('/api/fixture/account-files'))
+    .attach('file', PNG, { filename: 'me.png', contentType: 'image/png' }).expect(201)).body;
+
+  // On disk under <STORAGE_DIR>/accounts/<uuid>: no company folder.
+  const row = store.storageFiles.find((file) => file.id === picture.id);
+  assert.equal(row.organizationId, null);
+  assert.equal(row.uploadedByUserId, '20');
+  assert.deepEqual(await readFile(join(storage, 'accounts', row.storedName)), PNG);
+
+  const { url } = (await bearer(request(server).get(`/api/fixture/account-files/${picture.id}/link`)).expect(200)).body;
+  assert.deepEqual((await request(server).get(url).buffer(true).parse(binary).expect(200)).body, PNG);
+
+  // A company call never reaches an account file, and an account call never reaches a company file.
+  await as(request(server).get(`/api/fixture/photos/${picture.id}`), dana).expect(404);
+  await as(request(server).get(`/api/fixture/photos/${picture.id}/link`), dana).expect(404);
+  await as(request(server).delete(`/api/fixture/photos/${picture.id}`), dana).expect(404);
+  const photo = (await upload(server, dana).expect(201)).body;
+  await bearer(request(server).get(`/api/fixture/account-files/${photo.id}/link`)).expect(404);
+  await bearer(request(server).delete(`/api/fixture/account-files/${photo.id}`)).expect(404);
+
+  await bearer(request(server).delete(`/api/fixture/account-files/${picture.id}`)).expect(204);
+  assert.deepEqual(store.storageFiles.map((file) => file.id), [photo.id]);
+  assert.deepEqual(await readdir(join(storage, 'accounts')), []);
 });

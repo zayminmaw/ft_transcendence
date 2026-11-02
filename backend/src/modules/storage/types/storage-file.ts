@@ -1,7 +1,8 @@
 // One `storage_files` row, as the repository returns it.
 export interface FileRecord {
   id: string;
-  organizationId: string;
+  // null: the file belongs to an account, not a company (e.g. a profile picture).
+  organizationId: string | null;
   uploadedByUserId: string | null;
   storedName: string;
   originalName: string;

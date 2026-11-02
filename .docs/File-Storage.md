@@ -9,6 +9,7 @@ How to save, serve and delete uploaded files (parcel photos, documents, avatars,
 - Files live under `STORAGE_DIR/<organizationId>/<random UUID>`. In Docker that is `/app/storage`, on the `uploads_data` volume; locally it defaults to `backend/storage`.
 - The client's filename is only kept as `originalName` for display and download; it is never part of the path.
 - Every method except the signed-link route takes the `organizationId`, so one company can never reach another company's file.
+- A file can also belong to an account instead of a company (a profile picture): see section 6.
 
 ## 1. Import the module
 
@@ -107,6 +108,21 @@ async photo(@Param('parcelId') parcelId: string, @Req() request: AuthenticatedRe
 | `delete(organizationId, id)` | Removes the file from disk, then its row. Clear your own reference to it first (or in the same flow). |
 
 Every method throws `404 File not found.` when the id does not exist or belongs to another company.
+
+## 6. Files of an account, not a company
+
+Some files belong to a person's account, which is the same in every company (and some accounts, like platform
+administrators, have no company). Auth's profile pictures are the first. They have their own methods, which never
+reach a company's file, and company methods never reach them:
+
+| Method | Use |
+| --- | --- |
+| `saveAccountFile(userId, file)` | Saves under `STORAGE_DIR/accounts/<random UUID>`, with no company (`organization_id` NULL). |
+| `accountFileUrl(id)` | A signed link, exactly like `signedUrl`. |
+| `deleteAccountFile(id)` | Removes the file from disk, then its row. |
+
+The module that owns the account file checks who may use it, as always: auth only touches the picture saved on the
+signed-in person's own `users` row.
 
 ## Rules
 
