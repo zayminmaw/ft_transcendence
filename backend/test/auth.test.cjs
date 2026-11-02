@@ -10,7 +10,7 @@ process.env.NODE_ENV = 'test';
 const PASSWORD = 'Correct-horse-1';
 let passwordHash;
 // What the API says about dana's account: no display name yet, so the username shows.
-const DANA = { id: '2', username: 'dana.saleh', email: 'dana@meridian.example.test', displayName: null, createdAt: '2026-10-01T08:00:00.000Z' };
+const DANA = { id: '2', username: 'dana.saleh', email: 'dana@meridian.example.test', displayName: null, avatarUrl: null, createdAt: '2026-10-01T08:00:00.000Z' };
 
 async function storeWithUsers() {
   passwordHash ??= await hashPassword(PASSWORD);

@@ -19,7 +19,7 @@ export interface AuditResource {
 // national ids, ...) so the platform never sees it.
 export const AUDIT_RESOURCES: Record<string, AuditResource> = {
 	// A person's own account: what they change on their profile.
-	user: { category: 'security', fields: { displayName: 'plain' } },
+	user: { category: 'security', fields: { displayName: 'plain', avatarFileId: 'plain' } },
 	session: { category: 'security', fields: {} },
 	member: {
 		category: 'data',

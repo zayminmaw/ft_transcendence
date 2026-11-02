@@ -31,7 +31,10 @@ test('you set your display name: trimmed, saved, in the answer and /me, and audi
   const { store, patch, me } = await noorApp(t);
   const answer = await patch({ displayName: '  Noor Haddad  ' }).expect(200);
   assert.deepEqual(answer.body, {
-    user: { id: '9', username: 'noor', email: 'noor@demo.example.test', displayName: 'Noor Haddad', createdAt: '2026-10-01T08:00:00.000Z' },
+    user: {
+      id: '9', username: 'noor', email: 'noor@demo.example.test', displayName: 'Noor Haddad', avatarUrl: null,
+      createdAt: '2026-10-01T08:00:00.000Z',
+    },
   });
   assert.equal((await me()).user.displayName, 'Noor Haddad');
   assert.equal(store.users[0].displayName, 'Noor Haddad');
