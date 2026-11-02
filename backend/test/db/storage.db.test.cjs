@@ -56,3 +56,19 @@ test('removing a company removes its file rows; removing the uploader keeps the 
   await database.getRepository(Organization).delete({ id: south });
   assert.equal(await files.find(south, kept.id), undefined);
 });
+
+test('an account file has no company: only account lookups reach it, and company lookups never do', async () => {
+  const picture = await files.insert(newFile(null, '66666666-6666-4666-8666-666666666666'));
+  assert.equal(picture.organizationId, null);
+  assert.deepEqual(await files.find(null, picture.id), picture);
+  assert.equal(await files.find(north, picture.id), undefined);
+  const photo = await files.insert(newFile(north, '77777777-7777-4777-8777-777777777777'));
+  assert.equal(await files.find(null, photo.id), undefined);
+
+  await files.delete(null, photo.id);
+  await files.delete(north, picture.id);
+  assert.ok(await files.find(north, photo.id));
+  assert.ok(await files.find(null, picture.id));
+  await files.delete(null, picture.id);
+  assert.equal(await files.find(null, picture.id), undefined);
+});
