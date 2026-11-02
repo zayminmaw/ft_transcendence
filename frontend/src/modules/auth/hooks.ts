@@ -82,16 +82,15 @@ export function useChangePassword() {
 	});
 }
 
-// Saves your display name and puts the answer in the cached /me, so the card and the page show it at once.
+// Saves your display name and puts the answer in the cached /me, so the card and the page show it at once. Only in
+// the /me of the account the answer is about: if it logged out before the answer came, its /me is gone and nothing
+// changes, even when someone else has logged in since.
 export function useUpdateProfile() {
 	const queryClient = useQueryClient();
 	return useMutation({
 		mutationFn: updateProfile,
 		onSuccess: ({ user }) => {
-			queryClient.setQueryData<Me>(
-				['auth', 'me', sessionStore.getSnapshot().userId],
-				(me) => me && { ...me, user },
-			);
+			queryClient.setQueryData<Me>(['auth', 'me', user.id], (me) => me && { ...me, user });
 		},
 	});
 }
