@@ -14,7 +14,8 @@ const schema = z.object({
 		.string()
 		.trim()
 		.max(64, 'profile.tooLong' satisfies ParseKeys<'auth'>)
-		.regex(/^\P{Cc}*$/u, 'profile.oneLine' satisfies ParseKeys<'auth'>),
+		// No control characters, and no U+2028/U+2029 (line and paragraph separators, which aren't control characters).
+		.regex(/^[^\p{Cc}\u2028\u2029]*$/u, 'profile.oneLine' satisfies ParseKeys<'auth'>),
 });
 type Values = z.infer<typeof schema>;
 
