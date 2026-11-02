@@ -52,9 +52,15 @@ export function describeEntry(t: TFunction<'audit'>, entry: AuditEntry): string 
 	return sentence.replace(/\s+/g, ' ').trim();
 }
 
-export function displayValue(t: TFunction<'audit'>, value: unknown, language: string): string {
+export function displayValue(
+	t: TFunction<'audit'>,
+	value: unknown,
+	language: string,
+	field?: string,
+): string {
 	if (value === null || value === undefined || value === '') return t('values.empty');
 	if (value === REDACTED) return t('values.hidden');
+	if (field === 'role' && typeof value === 'string') return lookup(t, 'roles', value);
 	if (typeof value === 'boolean') return value ? t('values.yes') : t('values.no');
 	if (typeof value === 'number') return formatNumber(value, language);
 	if (typeof value === 'string' && ISO_TIME.test(value)) {
