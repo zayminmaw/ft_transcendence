@@ -1,14 +1,55 @@
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
+import type { ComponentType } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { Dialog, ModulePage, TipCard, useToast } from '@global-components';
+import { DetailItem, ModulePage, TipCard } from '@global-components';
 import { useCompanyPath } from '@hooks/useCompanyPath';
+import {
+	MarkInHubDialog,
+	MarkPickedUpDialog,
+	RecordFailureDialog,
+	ReturnToSenderDialog,
+} from '../components/ParcelDialogs';
+import type { ParcelDialogProps } from '../components/ParcelDialogs';
 import { findDriver, parcelStatusLabels, parcels } from '../data/sampleParcels';
+import type { ParcelStatus } from '../data/sampleParcels';
+
+// Only this page needs the barcode libraries; imported directly, every page would download them, public ones included.
+const WaybillCodes = lazy(() =>
+	import('../components/WaybillCodes').then((module) => ({ default: module.WaybillCodes })),
+);
+
+const primaryAction = 'btn btn-primary md:px-8';
+const secondaryAction = 'btn border-0 bg-base-200';
+
+// The action each status offers through a dialog. Links to other pages sit next to it in the header.
+const dialogActions: Partial<
+	Record<
+		ParcelStatus,
+		{ label: string; className: string; Dialog: ComponentType<ParcelDialogProps> }
+	>
+> = {
+	pickup_scheduled: {
+		label: 'Mark picked up',
+		className: primaryAction,
+		Dialog: MarkPickedUpDialog,
+	},
+	picked_up: { label: 'Mark in hub', className: primaryAction, Dialog: MarkInHubDialog },
+	out_for_delivery: {
+		label: 'Record failure',
+		className: secondaryAction,
+		Dialog: RecordFailureDialog,
+	},
+	failed_attempt: {
+		label: 'Return to sender',
+		className: secondaryAction,
+		Dialog: ReturnToSenderDialog,
+	},
+};
 
 export function ParcelDetailsPage() {
 	const { parcelId } = useParams();
 	const companyPath = useCompanyPath();
-	const { toast } = useToast();
-	const [returnOpen, setReturnOpen] = useState(false);
+	const [actionOpen, setActionOpen] = useState(false);
 	const parcel = parcels.find((item) => item.id === parcelId);
 
 	if (!parcel) {
@@ -23,6 +64,7 @@ export function ParcelDetailsPage() {
 	const driver = findDriver(parcel.driverId);
 	const failed = parcel.status === 'failed_attempt';
 	const assignable = parcel.status === 'in_hub_sorted' && !driver;
+	const action = dialogActions[parcel.status];
 
 	const details = [
 		{ label: 'Recipient', value: parcel.recipient },
@@ -48,23 +90,33 @@ export function ParcelDetailsPage() {
 				title={parcel.tracking}
 				description={`${parcel.recipient} · ${parcel.merchant} · ${parcelStatusLabels[parcel.status]}`}
 				actions={
-					(failed || assignable) && (
+					(action || assignable) && (
 						<div className="flex flex-col gap-2 sm:flex-row">
-							{failed && (
+							{action && (
 								<button
 									type="button"
-									className="btn border-0 bg-base-200"
-									onClick={() => setReturnOpen(true)}
+									className={action.className}
+									onClick={() => setActionOpen(true)}
 								>
-									Return to sender
+									{action.label}
 								</button>
 							)}
-							<Link
-								to={companyPath(`parcels/assign?parcel=${parcel.id}`)}
-								className="btn btn-primary md:px-8"
-							>
-								{failed ? 'Reassign for reattempt' : 'Assign driver'}
-							</Link>
+							{(failed || assignable) && (
+								<Link
+									to={companyPath(`parcels/assign?parcel=${parcel.id}`)}
+									className={primaryAction}
+								>
+									{failed ? 'Reassign for reattempt' : 'Assign driver'}
+								</Link>
+							)}
+							{parcel.status === 'out_for_delivery' && (
+								<Link
+									to={companyPath(`parcels/${parcel.id}/deliver`)}
+									className={primaryAction}
+								>
+									Record delivery
+								</Link>
+							)}
 						</div>
 					)
 				}
@@ -105,6 +157,35 @@ export function ParcelDetailsPage() {
 						</dl>
 					</section>
 
+					{parcel.pod && (
+						<section
+							aria-labelledby="parcel-pod-title"
+							className="rounded-box border border-base-300 p-4 md:p-8"
+						>
+							<h2 id="parcel-pod-title" className="text-lg font-semibold">
+								Proof of delivery
+							</h2>
+							<dl className="mt-6 grid grid-cols-1 gap-5 md:grid-cols-2">
+								<DetailItem label="Delivered at">
+									{parcel.pod.deliveredAt}
+								</DetailItem>
+								<DetailItem label="Location" ltr>
+									{parcel.pod.latitude}, {parcel.pod.longitude}
+								</DetailItem>
+							</dl>
+							<div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
+								{['Signature', 'Doorstep photo'].map((label) => (
+									<div
+										key={label}
+										className="grid h-32 place-items-center rounded-box bg-base-200 text-sm text-[var(--color-slate)]"
+									>
+										{label}
+									</div>
+								))}
+							</div>
+						</section>
+					)}
+
 					<section
 						aria-labelledby="parcel-history-title"
 						className="rounded-box border border-base-300 p-4 md:p-8"
@@ -143,6 +224,9 @@ export function ParcelDetailsPage() {
 				</div>
 
 				<aside className="flex flex-col gap-6">
+					<Suspense fallback={null}>
+						<WaybillCodes tracking={parcel.tracking} />
+					</Suspense>
 					<section className="rounded-box bg-base-200 p-6 md:p-8">
 						<h2 className="text-lg font-semibold">Ownership</h2>
 						<dl className="mt-6 flex flex-col gap-5">
@@ -170,47 +254,13 @@ export function ParcelDetailsPage() {
 				</aside>
 			</div>
 
-			<Dialog
-				open={returnOpen}
-				onClose={() => setReturnOpen(false)}
-				title={`Return ${parcel.tracking} to sender?`}
-				description={`The parcel goes back to ${parcel.merchant}. COD is not collected and the return is recorded in the delivery history.`}
-				onSubmit={(e) => {
-					e.preventDefault();
-					setReturnOpen(false);
-					toast({ variant: 'success', title: 'Parcel marked for return' });
-				}}
-				actions={
-					<>
-						<button
-							type="button"
-							className="btn border-0 bg-base-200"
-							onClick={() => setReturnOpen(false)}
-						>
-							Cancel
-						</button>
-						<button type="submit" className="btn btn-neutral">
-							Return to sender
-						</button>
-					</>
-				}
-			>
-				<div>
-					<label htmlFor="return-reason" className="mb-2 block text-sm font-medium">
-						Reason *
-					</label>
-					<textarea
-						id="return-reason"
-						className="textarea w-full"
-						rows={3}
-						required
-						defaultValue={parcel.failedReason}
-					/>
-					<p className="mt-1 text-xs text-[var(--color-slate)]">
-						Recorded on the parcel with your account.
-					</p>
-				</div>
-			</Dialog>
+			{action && (
+				<action.Dialog
+					parcel={parcel}
+					open={actionOpen}
+					onClose={() => setActionOpen(false)}
+				/>
+			)}
 		</div>
 	);
 }

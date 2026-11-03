@@ -13,6 +13,7 @@ export interface MemberAuditEntry {
   organizationId: string;
   actorId: string;
   targetId: string;
+  targetName: string;
   newValues?: Record<string, unknown>;
   oldValues?: Record<string, unknown>;
 }
@@ -38,6 +39,7 @@ export class MembersAuditRepository {
       action: ACTIONS[action],
       resourceType: 'member',
       recordId: entry.targetId,
+      resourceLabel: entry.targetName,
       organizationId: entry.organizationId,
       actorId: entry.actorId,
       before: statusChange ? { isActive: action === 'member_reactivated' ? false : true } : entry.oldValues,

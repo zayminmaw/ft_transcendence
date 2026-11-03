@@ -9,6 +9,7 @@ import {
 	useMe,
 } from '@modules/auth';
 import { setActiveOrganization, useActiveOrganization } from '@hooks/useActiveOrganization';
+import { useLiveUpdates } from '@hooks/useLiveUpdates';
 
 // /app/:companySlug: opens the company named in the URL. Its pages render only once every request carries that
 // company, and a slug that isn't yours looks the same as one that doesn't exist.
@@ -17,6 +18,7 @@ export function CompanyBoundary() {
 	const me = useMe();
 	const workspace = useCurrentWorkspace();
 	const { activeOrganizationId } = useActiveOrganization();
+	useLiveUpdates();
 
 	useEffect(() => {
 		if (workspace && workspace.id !== activeOrganizationId)
