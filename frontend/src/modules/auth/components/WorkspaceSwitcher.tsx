@@ -19,7 +19,7 @@ export function WorkspaceSwitcher({ current, role }: { current: string; role?: s
 	const name = me ? shownName(me.user) : '';
 	const who = (
 		<span className="mt-2 flex min-w-0 items-center gap-2">
-			{me && <Avatar name={name} seed={me.user.username} />}
+			{me && <Avatar name={name} seed={me.user.username} src={me.user.avatarUrl} />}
 			<span className="truncate text-xs text-[var(--color-slate)]" title={me?.user.email}>
 				{role ? `${name} · ${role}` : name}
 			</span>

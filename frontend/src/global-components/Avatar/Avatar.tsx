@@ -1,5 +1,7 @@
-// Someone's picture. Until avatars can be uploaded it is their initials on a colour picked from their username, so it
-// stays the same everywhere and never changes. aria-hidden: the name is always written next to it.
+import { useState } from 'react';
+
+// Someone's picture: the one they uploaded, else their initials on a colour picked from their username, so it stays the
+// same everywhere and never changes. aria-hidden: the name is always written next to it.
 const COLORS = [
 	'bg-primary text-primary-content',
 	'bg-accent text-accent-content',
@@ -14,12 +16,27 @@ const SIZES = { sm: 'size-6 text-[0.625rem]', lg: 'size-20 text-2xl' };
 export function Avatar({
 	name,
 	seed,
+	src = null,
 	size = 'sm',
 }: {
 	name: string;
 	seed: string;
+	// A signed link to the uploaded picture; null shows the initials.
+	src?: string | null;
 	size?: keyof typeof SIZES;
 }) {
+	// A link that stops working (it expired, or the picture was removed) shows the initials until a new link comes.
+	const [failed, setFailed] = useState<string | null>(null);
+	if (src && src !== failed)
+		return (
+			<img
+				src={src}
+				alt=""
+				aria-hidden="true"
+				className={`shrink-0 rounded-full object-cover ${SIZES[size]}`}
+				onError={() => setFailed(src)}
+			/>
+		);
 	return (
 		<span
 			aria-hidden="true"

@@ -6,6 +6,8 @@ export type AccountUser = {
 	email: string;
 	// The name the person chose on their profile; null shows the username (shownName).
 	displayName: string | null;
+	// A signed link to the person's picture, valid 10 to 15 minutes (/me hands out a fresh one); null shows initials.
+	avatarUrl: string | null;
 	createdAt: string;
 };
 export type Workspace = {
@@ -52,4 +54,16 @@ export function updateProfile(displayName: string | null) {
 		method: 'PATCH',
 		body: JSON.stringify({ displayName }),
 	});
+}
+
+// Your picture: one JPEG, PNG or WebP of at most 2 MB, replacing the one before. Answers like updateProfile.
+export function uploadAvatar(file: File) {
+	const body = new FormData();
+	body.append('file', file);
+	return apiRequest<{ user: AccountUser }>('auth/me/avatar', { method: 'PUT', body });
+}
+
+// Back to your initials.
+export function removeAvatar() {
+	return apiRequest<{ user: AccountUser }>('auth/me/avatar', { method: 'DELETE' });
 }
