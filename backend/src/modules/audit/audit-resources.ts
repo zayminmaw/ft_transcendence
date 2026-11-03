@@ -12,6 +12,8 @@ export interface FieldRules {
 export interface AuditResource {
 	category: AuditCategory;
 	fields: FieldRules;
+	// Who is told live about committed changes (notifications module); omit to tell no one.
+	viewPermission?: string;
 }
 
 // The allowlist. A field that is not listed is never stored, so a new column cannot leak into the trail by accident.
@@ -24,6 +26,7 @@ export const AUDIT_RESOURCES: Record<string, AuditResource> = {
 	member: {
 		category: 'data',
 		fields: { role: 'plain', isActive: 'plain' },
+		viewPermission: 'admin.manage_users',
 	},
 	tenant: {
 		category: 'platform',

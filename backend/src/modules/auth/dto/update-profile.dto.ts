@@ -5,10 +5,11 @@ import { Trim } from '../../../common/decorators/trim.decorator';
 export class UpdateProfileDto {
   // One line, at most 64 characters after trimming. null or "" clears it, and your username shows instead.
   // The regex counts characters as the database column does; @MaxLength would let an emoji's hidden variation
-  // selector go uncounted, and a name too long for the column would fail as a 500.
+  // selector go uncounted, and a name too long for the column would fail as a 500. One line means no control
+  // characters and no U+2028/U+2029, Unicode's line and paragraph separators, which aren't control characters.
   @Trim()
   @ValidateIf((_, value) => value !== null)
   @IsString()
-  @Matches(/^\P{Cc}{0,64}$/u, { message: 'displayName must be one line of at most 64 characters' })
+  @Matches(/^[^\p{Cc}\u2028\u2029]{0,64}$/u, { message: 'displayName must be one line of at most 64 characters' })
   displayName!: string | null;
 }

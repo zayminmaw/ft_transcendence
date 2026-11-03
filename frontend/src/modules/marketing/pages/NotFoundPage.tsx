@@ -1,7 +1,12 @@
+import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { PageIntro } from '../components/PageIntro';
 
 export function NotFoundPage() {
+	useEffect(() => {
+		document.title = 'Page not found — Transcend';
+	}, []);
+
 	return (
 		<>
 			<PageIntro

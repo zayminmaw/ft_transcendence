@@ -1,1 +1,1 @@
-export { parcelsRoutes } from './routes';
+export { parcelsRoutes, parcelTrackingRoutes } from './routes';
