@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Avatar } from '@global-components';
+import { Avatar, ImageViewer } from '@global-components';
 import { formatDate } from '@utils/format';
 import { CenteredPage } from '../components/CenteredPage';
 import { AvatarForm } from '../components/AvatarForm';
@@ -40,7 +40,13 @@ export function ProfilePage() {
 				{t('profile.back')}
 			</button>
 			<section className="flex items-center gap-4 rounded-box bg-base-200 p-6">
-				<Avatar name={name} seed={user.username} src={user.avatarUrl} size="lg" />
+				{user.avatarUrl ? (
+					<ImageViewer src={user.avatarUrl} label={t('profile.pictureView')}>
+						<Avatar name={name} seed={user.username} src={user.avatarUrl} size="lg" />
+					</ImageViewer>
+				) : (
+					<Avatar name={name} seed={user.username} size="lg" />
+				)}
 				<div className="flex min-w-0 flex-col gap-3">
 					<div className="min-w-0">
 						<h2 className="truncate text-xl font-semibold">{name}</h2>
