@@ -5,7 +5,16 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { sessionStore } from '@app/store/session';
 import { useAuth } from '@hooks/useAuth';
 import { logOut } from '@services/session-refresh';
-import { changePassword, fetchMe, logIn, type Me, updateProfile } from './api';
+import {
+	type AccountUser,
+	changePassword,
+	fetchMe,
+	logIn,
+	type Me,
+	removeAvatar,
+	updateProfile,
+	uploadAvatar,
+} from './api';
 
 // The account, its companies and platform access. The picker passes refetchOnMount: 'always', so a removed
 // membership disappears when it opens.
@@ -82,17 +91,38 @@ export function useChangePassword() {
 	});
 }
 
-// Saves your display name and puts the answer in the cached /me, so the card and the page show it at once. Only in
-// the /me of the account the answer is about: if it logged out before the answer came, its /me is gone and nothing
-// changes, even when someone else has logged in since.
+// Saves your display name and puts the answer in the cached /me, so the card and the page show it at once.
 export function useUpdateProfile() {
-	const queryClient = useQueryClient();
+	const setUser = useSetMeUser();
 	return useMutation({
 		mutationFn: updateProfile,
-		onSuccess: ({ user }) => {
-			queryClient.setQueryData<Me>(['auth', 'me', user.id], (me) => me && { ...me, user });
-		},
+		onSuccess: ({ user }) => setUser(user),
 	});
+}
+
+// Your picture, the same way: the card and the page show the new one at once.
+export function useUploadAvatar() {
+	const setUser = useSetMeUser();
+	return useMutation({
+		mutationFn: uploadAvatar,
+		onSuccess: ({ user }) => setUser(user),
+	});
+}
+
+export function useRemoveAvatar() {
+	const setUser = useSetMeUser();
+	return useMutation({
+		mutationFn: removeAvatar,
+		onSuccess: ({ user }) => setUser(user),
+	});
+}
+
+// Puts an answer's account in the cached /me of the account it is about. If that account logged out before the answer
+// came, its /me is gone and nothing changes, even when someone else has logged in since.
+function useSetMeUser() {
+	const queryClient = useQueryClient();
+	return (user: AccountUser) =>
+		queryClient.setQueryData<Me>(['auth', 'me', user.id], (me) => me && { ...me, user });
 }
 
 // Ending the session sends the guards back to /login.

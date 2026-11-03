@@ -5,6 +5,7 @@ export { Button } from './Button/Button';
 export { DetailItem } from './DetailItem/DetailItem';
 export { Dialog } from './Dialog/Dialog';
 export { ExpiryDate } from './ExpiryDate/ExpiryDate';
+export { ImageViewer } from './ImageViewer/ImageViewer';
 export { Input } from './Input/Input';
 export { PasswordInput } from './Input/PasswordInput';
 export { Select } from './Input/Select';

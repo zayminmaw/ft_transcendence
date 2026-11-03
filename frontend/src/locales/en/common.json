@@ -5,6 +5,10 @@
 	"password": {
 		"show": "Show password"
 	},
+	"imageViewer": {
+		"close": "Close",
+		"failed": "This picture can't be shown right now. Reload the page and try again."
+	},
 	"layout": {
 		"skipToContent": "Skip to content",
 		"openNavigation": "Open navigation",
