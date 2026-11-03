@@ -6,6 +6,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import type { Environment } from '../../common/config/environment';
 import { OrganizationsModule } from '../organizations';
 import { RbacModule } from '../rbac';
+import { StorageModule } from '../storage';
 import { UsersModule } from '../users';
 import { AuthAuditRepository } from './auth-audit.repository';
 import { AuthController } from './auth.controller';
@@ -33,6 +34,7 @@ import { SessionsService } from './sessions.service';
     UsersModule,
     OrganizationsModule,
     RbacModule,
+    StorageModule,
   ],
   controllers: [AuthController],
   providers: [AuthService, SessionsService, SessionsRepository, AuthAuditRepository, AuthThrottlerGuard, SameOriginGuard],

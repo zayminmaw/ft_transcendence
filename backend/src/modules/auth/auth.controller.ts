@@ -1,4 +1,21 @@
-import { Body, Controller, Get, HttpCode, Patch, Post, Req, Res, UnauthorizedException, UseGuards } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  Patch,
+  Post,
+  Put,
+  Req,
+  Res,
+  UnauthorizedException,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { SkipThrottle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { Authenticated } from '../../common/decorators/authenticated.decorator';
@@ -7,6 +24,7 @@ import { Public } from '../../common/decorators/public.decorator';
 import type { AuthenticatedRequest } from '../../common/types/authenticated-request';
 import { OrganizationMembersService } from '../organizations';
 import { PermissionsRepository, PlatformRolesRepository } from '../rbac';
+import { imageUploadOptions, StorageService, type UploadedFileInput } from '../storage';
 import { type User, UsersRepository } from '../users';
 import { AuthService } from './auth.service';
 import { AuthThrottlerGuard } from './auth.throttler';
@@ -20,11 +38,10 @@ import { type IssuedSession, SessionsService } from './sessions.service';
 
 const INVALID_CREDENTIALS = { message: 'Unable to log in.', code: 'AUTH_INVALID_CREDENTIALS' };
 const SESSION_EXPIRED = { message: 'Your session has ended. Log in again.', code: 'AUTH_SESSION_EXPIRED' };
+const NO_PICTURE = { message: 'Choose a picture to upload.', code: 'AVATAR_MISSING' };
 
-// Who you are, as /me, login and refresh show it. displayName is null until you choose one.
-function publicUser(user: User) {
-  return { id: user.id, username: user.username, email: user.email, displayName: user.displayName ?? null, createdAt: user.createdAt };
-}
+// A profile picture: one JPEG, PNG or WebP image (storage's rule) of at most 2 MB.
+const avatarUploadOptions = { ...imageUploadOptions, limits: { ...imageUploadOptions.limits, fileSize: 2 * 1024 * 1024 } };
 
 @Controller('auth')
 @UseGuards(AuthThrottlerGuard)
@@ -36,6 +53,7 @@ export class AuthController {
     private readonly members: OrganizationMembersService,
     private readonly platformRoles: PlatformRolesRepository,
     private readonly permissions: PermissionsRepository,
+    private readonly storage: StorageService,
   ) {}
 
   @Public()
@@ -92,7 +110,7 @@ export class AuthController {
     ]);
     const granted = await this.permissions.grantedCodes([...new Set(workspaces.map(({ role }) => role.code))]);
     return {
-      user: publicUser(user),
+      user: await this.publicUser(user),
       // Each company with the person's role there and what that role allows, so the interface shows only that.
       workspaces: workspaces.map((workspace) => ({ ...workspace, permissions: granted[workspace.role.code] ?? [] })),
       platformAccess,
@@ -106,7 +124,27 @@ export class AuthController {
   @SkipThrottle({ login: true, loginIp: true, refresh: true, password: true })
   async updateMe(@Body() body: UpdateProfileDto, @Req() request: AuthenticatedRequest) {
     const user = await this.auth.updateProfile(request.user!.id, body.displayName, requestMeta(request));
-    return { user: publicUser(user) };
+    return { user: await this.publicUser(user) };
+  }
+
+  // Your picture, the same in every company: multipart/form-data with the image in "file". Like PATCH /me, not before
+  // you choose your own password.
+  @Authenticated()
+  @Put('me/avatar')
+  @SkipThrottle({ login: true, loginIp: true, refresh: true, password: true })
+  @UseInterceptors(FileInterceptor('file', avatarUploadOptions))
+  async setAvatar(@UploadedFile() file: UploadedFileInput | undefined, @Req() request: AuthenticatedRequest) {
+    if (!file) throw new BadRequestException(NO_PICTURE);
+    const user = await this.auth.setAvatar(request.user!.id, file, requestMeta(request));
+    return { user: await this.publicUser(user) };
+  }
+
+  @Authenticated()
+  @Delete('me/avatar')
+  @SkipThrottle({ login: true, loginIp: true, refresh: true, password: true })
+  async removeAvatar(@Req() request: AuthenticatedRequest) {
+    const user = await this.auth.removeAvatar(request.user!.id, requestMeta(request));
+    return { user: await this.publicUser(user) };
   }
 
   @Authenticated()
@@ -121,8 +159,27 @@ export class AuthController {
     return { accessToken: await this.sessions.issueAccessToken(userId) };
   }
 
-  private respondWithSession(response: Response, session: IssuedSession, user: User) {
+  private async respondWithSession(response: Response, session: IssuedSession, user: User) {
     setRefreshCookie(response, session);
-    return { accessToken: session.accessToken, user: publicUser(user) };
+    return { accessToken: session.accessToken, user: await this.publicUser(user) };
+  }
+
+  // Who you are, as /me, login and refresh show it. displayName is null until you choose one; avatarUrl is a signed
+  // link to your picture (valid 10 to 15 minutes, so /me hands out a fresh one), null for your initials.
+  private async publicUser(user: User) {
+    return {
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      displayName: user.displayName ?? null,
+      avatarUrl: await this.avatarUrl(user),
+      createdAt: user.createdAt,
+    };
+  }
+
+  // A picture that can't be found shows the initials: it must never stop you from logging in or loading /me.
+  private async avatarUrl(user: User): Promise<string | null> {
+    if (!user.avatarFileId) return null;
+    return this.storage.accountFileUrl(user.avatarFileId).catch(() => null);
   }
 }
