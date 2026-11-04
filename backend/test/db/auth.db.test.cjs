@@ -9,9 +9,9 @@ after(() => database?.destroy());
 const count = async (sql, params = []) => Number((await database.query(sql, params))[0].total);
 
 test('the migrations add the sessions table and the documented roles and permissions', async () => {
-  assert.equal(await count('SELECT COUNT(*) AS total FROM permissions'), 30);
+  assert.equal(await count('SELECT COUNT(*) AS total FROM permissions'), 31);
   assert.equal(await count('SELECT COUNT(*) AS total FROM roles'), 8);
-  assert.equal(await count('SELECT COUNT(*) AS total FROM role_permissions'), 47);
+  assert.equal(await count('SELECT COUNT(*) AS total FROM role_permissions'), 54);
   assert.equal(await count(`SELECT COUNT(*) AS total FROM role_permissions rp JOIN roles r ON r.id = rp.role_id
     WHERE r.code = 'driver' AND rp.scope = 'assigned_only'`), 4);
   assert.equal(await count(`SELECT COUNT(*) AS total FROM role_permissions rp JOIN roles r ON r.id = rp.role_id
@@ -179,18 +179,20 @@ const { RolePermission } = require('../../dist/modules/rbac/entities/role-permis
 // match it, and the guard must allow exactly these and refuse everything else. The driver's four permissions are
 // "only their own" (assigned_only), which the guard refuses until ownership rules exist; platform_admin has none.
 const DOCS_MATRIX = {
-  org_admin: ['admin.manage_users', 'admin.manage_roles', 'admin.audit_logs'],
+  org_admin: ['admin.manage_users', 'admin.manage_roles', 'admin.audit_logs', 'contacts.manage_own'],
   dispatcher: ['clients.view', 'clients.create', 'clients.edit', 'parcels.view', 'parcels.create', 'parcels.dispatch',
-    'parcels.update_status', 'parcels.mark_delivered', 'drivers.view', 'assets.view', 'assets.assign'],
-  hub_sorter: ['parcels.view', 'parcels.update_status'],
+    'parcels.update_status', 'parcels.mark_delivered', 'drivers.view', 'assets.view', 'assets.assign', 'contacts.manage_own'],
+  hub_sorter: ['parcels.view', 'parcels.update_status', 'contacts.manage_own'],
   finance: ['clients.view', 'clients.create', 'clients.view_financials', 'parcels.view', 'parcels.override_fee',
     'staff.view_payroll', 'drivers.view', 'drivers.view_earnings', 'billing.view', 'billing.reconcile_cod',
-    'billing.create_invoice', 'billing.adjust_balance', 'billing.export', 'admin.audit_logs'],
+    'billing.create_invoice', 'billing.adjust_balance', 'billing.export', 'admin.audit_logs', 'contacts.manage_own'],
   hr_manager: ['staff.view', 'staff.manage', 'staff.view_payroll', 'drivers.view', 'drivers.manage',
-    'drivers.view_compliance', 'drivers.view_earnings'],
+    'drivers.view_compliance', 'drivers.view_earnings', 'contacts.manage_own'],
   fleet_lead: ['drivers.view', 'drivers.view_compliance', 'assets.view', 'assets.create', 'assets.assign',
-    'assets.log_maintenance'],
-  driver: [],
+    'assets.log_maintenance', 'contacts.manage_own'],
+  // Only their own run sheet and earnings, which the guard refuses until ownership rules exist; their contacts are not
+  // tied to an assignment, so contacts.manage_own is the one permission of theirs the guard allows.
+  driver: ['contacts.manage_own'],
   platform_admin: [],
 };
 
@@ -228,7 +230,7 @@ test('allowed and denied: every role against every permission is exactly the doc
       if (allowed !== DOCS_MATRIX[role.code].includes(code)) wrong.push(`${role.code} ${code}: ${allowed ? 'allowed' : 'denied'}`);
     }
   }
-  assert.equal(codes.length * roles.length, 240);
+  assert.equal(codes.length * roles.length, 248);
   assert.deepEqual(wrong, []);
 });
 
@@ -436,6 +438,7 @@ test('the roles view: company roles in seed order, permissions in the docs order
   assert.deepEqual(roles.find((role) => role.code === 'driver').permissions, [
     { code: 'parcels.view', scope: 'assigned_only' }, { code: 'parcels.update_status', scope: 'assigned_only' },
     { code: 'parcels.mark_delivered', scope: 'assigned_only' }, { code: 'drivers.view_earnings', scope: 'assigned_only' },
+    { code: 'contacts.manage_own', scope: 'all' },
   ]);
 });
 
