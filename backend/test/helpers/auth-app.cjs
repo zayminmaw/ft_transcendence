@@ -28,6 +28,8 @@ const { createAccount } = require('../../dist/modules/users/accounts');
 const { MembersAuditRepository } = require('../../dist/modules/members/members-audit.repository');
 const { MembersRepository } = require('../../dist/modules/members/members.repository');
 const { StorageRepository } = require('../../dist/modules/storage/storage.repository');
+const { Contact } = require('../../dist/modules/contacts/entities/contact.entity');
+const { ContactsRepository } = require('../../dist/modules/contacts/contacts.repository');
 
 const ORIGIN = 'http://localhost:5173';
 // The password the module tests give their fixture accounts.
@@ -50,6 +52,8 @@ function createFakeStore() {
     roles: [],
     // Stored file rows: { id, organizationId, uploadedByUserId, storedName, originalName, mimeType, sizeBytes, createdAt }.
     storageFiles: [],
+    // Saved contacts: { organizationId, ownerUserId, contactUserId }.
+    contacts: [],
   };
   let nextSessionId = 1;
   let nextFileId = 1;
@@ -75,6 +79,19 @@ function createFakeStore() {
       };
     })
     .sort((a, b) => a.username.localeCompare(b.username));
+  // The same shape ContactsRepository returns for one member of a company.
+  const contactRow = (membership) => {
+    const user = store.users.find((candidate) => candidate.id === membership.userId);
+    const role = store.roles.find((candidate) => String(candidate.id) === membership.roleId);
+    return {
+      userId: user.id, username: user.username, displayName: user.displayName ?? null, role: { code: role.code, name: role.name },
+      accountActive: user.isActive !== false, memberActive: membership.isActive,
+    };
+  };
+  const byRoleThenName = (a, b) => a.role.name.localeCompare(b.role.name) || a.username.localeCompare(b.username);
+  const memberOf = (organizationId, userId) => store.memberships.find((row) => row.organizationId === organizationId && row.userId === userId);
+  const sameContact = (organizationId, ownerUserId, contactUserId) => (row) => row.organizationId === organizationId
+    && row.ownerUserId === ownerUserId && row.contactUserId === contactUserId;
   const revoke = async (id, reason, at) => {
     const row = store.sessions.find((session) => session.id === id && !session.revokedAt);
     if (row) Object.assign(row, { revokedAt: at, revokedReason: reason });
@@ -209,6 +226,50 @@ function createFakeStore() {
       isActiveMember: async (userId, organizationId) => store.memberships.some((row) => row.userId === userId
         && row.organizationId === organizationId && row.isActive),
     },
+    contacts: {
+      list: async (organizationId, ownerUserId) => store.contacts
+        .filter((row) => row.organizationId === organizationId && row.ownerUserId === ownerUserId)
+        .map((row) => contactRow(memberOf(organizationId, row.contactUserId))).sort(byRoleThenName),
+      candidates: async (organizationId, ownerUserId) => store.memberships
+        .filter((row) => row.organizationId === organizationId && row.isActive && row.userId !== ownerUserId)
+        .map(contactRow)
+        .filter((row) => row.accountActive && !store.contacts.some(sameContact(organizationId, ownerUserId, row.userId)))
+        .sort(byRoleThenName),
+      findMember: async (organizationId, userId) => {
+        const membership = memberOf(organizationId, userId);
+        return membership ? contactRow(membership) : null;
+      },
+      // Like the real transaction: when what is saved with it fails, the contact is not kept.
+      add: async (organizationId, ownerUserId, contactUserId, alsoSave) => {
+        if (!memberOf(organizationId, ownerUserId) || !memberOf(organizationId, contactUserId)) return false;
+        if (store.contacts.some(sameContact(organizationId, ownerUserId, contactUserId))) return false;
+        const row = { organizationId, ownerUserId, contactUserId };
+        store.contacts.push(row);
+        try {
+          await alsoSave({});
+        } catch (error) {
+          store.contacts.splice(store.contacts.indexOf(row), 1);
+          throw error;
+        }
+        return true;
+      },
+      remove: async (organizationId, ownerUserId, contactUserId, alsoSave) => {
+        const row = store.contacts.find(sameContact(organizationId, ownerUserId, contactUserId));
+        if (!row) return false;
+        store.contacts.splice(store.contacts.indexOf(row), 1);
+        try {
+          await alsoSave({});
+        } catch (error) {
+          store.contacts.push(row);
+          throw error;
+        }
+        return true;
+      },
+      viewersOf: async (organizationId, contactUserId) => store.contacts
+        .filter((row) => row.organizationId === organizationId && row.contactUserId === contactUserId)
+        .filter((row) => memberOf(organizationId, row.ownerUserId)?.isActive && store.users.find((user) => user.id === row.ownerUserId)?.isActive !== false)
+        .map((row) => row.ownerUserId),
+    },
     storageFiles: {
       insert: async (input) => {
         const row = { id: String(nextFileId++), createdAt: new Date(), ...input };
@@ -235,7 +296,7 @@ function createFakeStore() {
 
 // TypeORM's own repository providers need a database connection; the fakes above replace every class that uses
 // them, so these only have to exist.
-const ENTITIES = [User, OrganizationMember, UserRole, RolePermission, UserSession, AuditLog];
+const ENTITIES = [User, OrganizationMember, UserRole, RolePermission, UserSession, AuditLog, Contact];
 
 // A fresh app per test, so throttling counts never leak from one test into another.
 // `controllers` adds fixture endpoints (e.g. a company endpoint) next to the real auth ones; `imports` adds modules
@@ -258,6 +319,7 @@ async function createAuthApp(t, store = createFakeStore(), { controllers = [], i
     .overrideProvider(MembersRepository).useValue(store.repositories.companyMembers)
     .overrideProvider(MembersAuditRepository).useValue(store.repositories.membersAudit)
     .overrideProvider(StorageRepository).useValue(store.repositories.storageFiles)
+    .overrideProvider(ContactsRepository).useValue(store.repositories.contacts)
     .compile();
   const app = moduleRef.createNestApplication({ logger: false });
   configureApp(app, ORIGIN);
