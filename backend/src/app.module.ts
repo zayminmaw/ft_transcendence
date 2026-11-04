@@ -13,6 +13,7 @@ import { FortyTwoModule } from './modules/forty-two';
 import { OrganizationsModule } from './modules/organizations';
 import { RbacModule, RolesGuard } from './modules/rbac';
 import { MembersModule } from './modules/members';
+import { ContactsModule } from './modules/contacts';
 import { ClientsModule } from './modules/clients';
 import { StaffModule } from './modules/staff';
 import { DriversModule } from './modules/drivers';
@@ -36,7 +37,7 @@ import { StorageModule } from './modules/storage';
         DB_NAME: config.get('DB_NAME', { infer: true }),
       }),
     }),
-    AuthModule, FortyTwoModule, RbacModule, OrganizationsModule, MembersModule, ClientsModule, StaffModule,
+    AuthModule, FortyTwoModule, RbacModule, OrganizationsModule, MembersModule, ContactsModule, ClientsModule, StaffModule,
     DriversModule, AssetsModule, ParcelsModule, BillingModule,
     NotificationsModule, PlatformModule, StorageModule,
   ],
