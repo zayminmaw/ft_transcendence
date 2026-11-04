@@ -17,6 +17,10 @@ export class User {
   @Column({ name: 'display_name', type: 'varchar', length: 64, nullable: true })
   displayName!: string | null;
 
+  // Your profile picture, an account file in storage_files; NULL shows your initials instead.
+  @Column({ name: 'avatar_file_id', type: 'bigint', unsigned: true, nullable: true })
+  avatarFileId!: string | null;
+
   @Column({ name: 'password_hash', type: 'varchar', length: 255 })
   passwordHash!: string;
 

@@ -1,5 +1,6 @@
-import { BadRequestException, Injectable, type OnModuleInit, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, type OnModuleInit, UnauthorizedException } from '@nestjs/common';
 import { randomBytes } from 'node:crypto';
+import { StorageService, type UploadedFileInput } from '../storage';
 import { hashPassword, PASSWORD_RULE_MESSAGE, passwordProblems, type User, UsersRepository, verifyPassword } from '../users';
 import { AuthAuditRepository } from './auth-audit.repository';
 import type { RequestMeta } from './request-meta';
@@ -12,11 +13,13 @@ const SESSION_EXPIRED = { message: 'Your session has ended. Log in again.', code
 @Injectable()
 export class AuthService implements OnModuleInit {
   private dummyHash = '';
+  private readonly logger = new Logger(AuthService.name);
 
   constructor(
     private readonly users: UsersRepository,
     private readonly audit: AuthAuditRepository,
     private readonly sessions: SessionsService,
+    private readonly storage: StorageService,
   ) {}
 
   // An unknown login is checked against this hash, so it takes as long as a wrong password.
@@ -75,5 +78,50 @@ export class AuthService implements OnModuleInit {
       this.audit.record('profile_updated', userId, meta, values, manager),
     );
     return { ...user, displayName: wanted };
+  }
+
+  // Your picture, replacing the one before. Saved as a file of your account, not of a company.
+  async setAvatar(userId: string, file: UploadedFileInput, meta: RequestMeta): Promise<User> {
+    const user = await this.users.findById(userId);
+    if (!user) throw new UnauthorizedException(SESSION_EXPIRED);
+    const saved = await this.storage.saveAccountFile(userId, file);
+    try {
+      return await this.swapAvatar(user, saved.id, meta);
+    } catch (error) {
+      // Neither the picture nor its audit row was saved, so nothing points at the new file.
+      await this.removeFile(saved.id);
+      throw error;
+    }
+  }
+
+  // Back to your initials. Without a picture there is nothing to do.
+  async removeAvatar(userId: string, meta: RequestMeta): Promise<User> {
+    const user = await this.users.findById(userId);
+    if (!user) throw new UnauthorizedException(SESSION_EXPIRED);
+    if (!user.avatarFileId) return user;
+    return this.swapAvatar(user, null, meta);
+  }
+
+  // Of two changes at once the first saved wins: the other removes its own new file and answers with what was saved.
+  // Saved together with its audit row; the old picture's file goes only once the account no longer points at it.
+  private async swapAvatar(user: User, avatarFileId: string | null, meta: RequestMeta): Promise<User> {
+    const previous = user.avatarFileId ?? null;
+    const values = { oldValues: { avatarFileId: previous }, newValues: { avatarFileId } };
+    const saved = await this.users.updateAvatarIfCurrent(user.id, previous, avatarFileId, (manager) =>
+      this.audit.record('profile_updated', user.id, meta, values, manager),
+    );
+    if (!saved) {
+      if (avatarFileId) await this.removeFile(avatarFileId);
+      return (await this.users.findById(user.id)) ?? user;
+    }
+    if (previous) await this.removeFile(previous);
+    return { ...user, avatarFileId };
+  }
+
+  // The picture is already decided, so a file left on disk must not turn the answer into an error.
+  private async removeFile(id: string): Promise<void> {
+    await this.storage.deleteAccountFile(id).catch((error: unknown) => {
+      this.logger.warn(`Could not delete account file ${id}: ${error instanceof Error ? error.message : 'unknown error'}`);
+    });
   }
 }

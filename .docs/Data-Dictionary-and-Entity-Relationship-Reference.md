@@ -27,6 +27,7 @@ Usernames and emails are globally unique in the current baseline. A collision mu
 | `username` | `VARCHAR(64)` | `NOT NULL`, `UNIQUE` | Unique login username |
 | `email` | `VARCHAR(191)` | `NOT NULL`, `UNIQUE` | Login and recovery email |
 | `display_name` | `VARCHAR(64)` | `NULL` | The name the person chooses on their profile; `NULL` shows the username |
+| `avatar_file_id` | `BIGINT UNSIGNED` | `NULL`, `FK` -> storage_files.id (`ON DELETE SET NULL`) | The person's profile picture, a file of the account (`storage_files.organization_id` NULL); `NULL` shows their initials |
 | `password_hash` | `VARCHAR(255)` | `NOT NULL` | Argon2id password hash |
 | `is_active` | `BOOLEAN` | `NOT NULL`, `DEFAULT TRUE` | Account active status flag |
 | `must_change_password` | `BOOLEAN` | `NOT NULL`, `DEFAULT FALSE` | The person must replace an admin-given or admin-reset password at the next login |
@@ -670,6 +671,7 @@ These definitions are taken from the baseline. A composite unique key applies to
 | `storage_files.uploaded_by_user_id` | `users.id` | SET NULL | `fk_storage_files_user` |
 | `contacts.(owner_member_id, organization_id)` | `organization_members.(id, organization_id)` | CASCADE | `fk_contacts_owner` |
 | `contacts.(contact_member_id, organization_id)` | `organization_members.(id, organization_id)` | CASCADE | `fk_contacts_contact` |
+| `users.avatar_file_id` | `storage_files.id` | SET NULL | `fk_users_avatar_file` |
 
 ## 12. Domain integrity
 

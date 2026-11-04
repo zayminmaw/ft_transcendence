@@ -32,6 +32,7 @@ test('the migrations add the sessions table and the documented roles and permiss
 
 const { User } = require('../../dist/modules/users/entities/user.entity');
 const { UsersRepository } = require('../../dist/modules/users/users.repository');
+const { StorageRepository } = require('../../dist/modules/storage/storage.repository');
 
 // A user with a placeholder hash; login itself is covered by the HTTP tests.
 async function createUser(username, email = `${username}@db.test`) {
@@ -82,6 +83,39 @@ test('a display name and its audit row are saved in one transaction: both or nei
   await users.updateDisplayName(id, 'Omar', audit);
   assert.equal((await users.findById(id)).displayName, 'Omar');
   assert.equal(await auditRows(), 1);
+});
+
+test('a picture is saved with its audit row only while the account still has the one that was read, and goes when its file row does', async () => {
+  const users = new UsersRepository(database.getRepository(User));
+  const files = new StorageRepository(database);
+  const id = await createUser('avatar.db');
+  const picture = async (storedName) => (await files.insert({
+    organizationId: null, uploadedByUserId: id, storedName, originalName: 'me.png', mimeType: 'image/png', sizeBytes: 10,
+  })).id;
+  const audit = (avatarFileId) => (manager) => recordAudit(manager, {
+    module: 'auth', action: 'update', resourceType: 'user', recordId: id, actorId: id, after: { avatarFileId },
+  });
+  const auditRows = () => database.getRepository(AuditLog).countBy({ module: 'auth', recordId: id });
+  const first = await picture('88888888-8888-4888-8888-888888888888');
+  const second = await picture('99999999-9999-4999-8999-999999999999');
+  assert.equal((await users.findById(id)).avatarFileId, null);
+
+  await assert.rejects(users.updateAvatarIfCurrent(id, null, first, async (manager) => {
+    await audit(first)(manager);
+    throw new Error('audit trail unavailable');
+  }), /audit trail unavailable/);
+  assert.equal((await users.findById(id)).avatarFileId, null);
+  assert.equal(await auditRows(), 0);
+
+  assert.equal(await users.updateAvatarIfCurrent(id, null, first, audit(first)), true);
+  // Another change read the account before the first picture was saved: neither its picture nor its row is saved.
+  assert.equal(await users.updateAvatarIfCurrent(id, null, second, audit(second)), false);
+  assert.equal((await users.findById(id)).avatarFileId, first);
+  assert.equal(await auditRows(), 1);
+  assert.equal(await users.updateAvatarIfCurrent(id, first, second, audit(second)), true);
+  assert.equal(await auditRows(), 2);
+  await files.delete(null, second);
+  assert.equal((await users.findById(id)).avatarFileId, null);
 });
 
 test('a changed password is saved only while the checked hash is still the stored one', async () => {

@@ -25,6 +25,7 @@ const { RolePermission } = require('../dist/modules/rbac/entities/role-permissio
 const { UserRole } = require('../dist/modules/rbac/entities/user-role.entity');
 const { PermissionsRepository } = require('../dist/modules/rbac/permissions.repository');
 const { PlatformRolesRepository } = require('../dist/modules/rbac/platform-roles.repository');
+const { StorageRepository } = require('../dist/modules/storage/storage.repository');
 const { User } = require('../dist/modules/users/entities/user.entity');
 const { UsersRepository } = require('../dist/modules/users/users.repository');
 const { ORIGIN, createFakeStore, refreshCookie } = require('./helpers/auth-app.cjs');
@@ -72,6 +73,7 @@ async function createApp(t, { env = CONFIGURED, api = fakeApi() } = {}) {
     .overrideProvider(OrganizationMembersRepository).useValue(store.repositories.members)
     .overrideProvider(PermissionsRepository).useValue(store.repositories.permissions)
     .overrideProvider(PlatformRolesRepository).useValue(store.repositories.platformRoles)
+    .overrideProvider(StorageRepository).useValue(store.repositories.storageFiles)
     .compile();
   const app = moduleRef.createNestApplication({ logger: false });
   configureApp(app, ORIGIN);

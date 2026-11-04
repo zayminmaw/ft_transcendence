@@ -1,4 +1,6 @@
 require('reflect-metadata');
+const { tmpdir } = require('node:os');
+const { join } = require('node:path');
 const request = require('supertest');
 const { ConfigModule } = require('@nestjs/config');
 const { Reflector } = require('@nestjs/core');
@@ -35,6 +37,8 @@ const ORIGIN = 'http://localhost:5173';
 // The password the module tests give their fixture accounts.
 const PASSWORD = 'Correct-horse-1';
 const ENV = { JWT_SECRET: 'test-secret-with-at-least-32-characters', JWT_ISSUER: 'transcend', JWT_AUDIENCE: 'transcend-web', CORS_ORIGIN: ORIGIN };
+// Auth keeps profile pictures in storage, which needs a folder. A test that saves files sets its own before the app starts.
+process.env.STORAGE_DIR ??= join(tmpdir(), 'transcend-test-storage');
 
 function auditInScope(scope, row) {
   if (scope.kind === 'tenant') return row.organizationId === scope.organizationId;
@@ -118,6 +122,20 @@ function createFakeStore() {
           user.displayName = before;
           throw error;
         }
+      },
+      // The same rule as the SQL: saved only while the picture is still the one that was read, and undone when what is
+      // saved with it fails.
+      updateAvatarIfCurrent: async (id, current, avatarFileId, alsoSave) => {
+        const user = store.users.find((row) => row.id === id && (row.avatarFileId ?? null) === current);
+        if (!user) return false;
+        user.avatarFileId = avatarFileId;
+        try {
+          await alsoSave({});
+        } catch (error) {
+          user.avatarFileId = current;
+          throw error;
+        }
+        return true;
       },
       updatePassword: async (id, passwordHash, mustChangePassword) => {
         Object.assign(store.users.find((user) => user.id === id), { passwordHash, mustChangePassword });

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { type EntityManager, Repository } from 'typeorm';
+import { type EntityManager, IsNull, Repository } from 'typeorm';
 import { User } from './entities/user.entity';
 
 @Injectable()
@@ -29,6 +29,23 @@ export class UsersRepository {
     await this.users.manager.transaction(async (manager) => {
       await manager.update(User, { id }, { displayName });
       await alsoSave(manager);
+    });
+  }
+
+  // Saved only while the picture is still the one that was read, so of two changes at once only one wins. One
+  // transaction with `alsoSave` (the change's audit row), which runs only when the picture was saved. false when
+  // nothing was saved.
+  async updateAvatarIfCurrent(
+    id: string,
+    current: string | null,
+    avatarFileId: string | null,
+    alsoSave: (manager: EntityManager) => Promise<void>,
+  ): Promise<boolean> {
+    return this.users.manager.transaction(async (manager) => {
+      const result = await manager.update(User, { id, avatarFileId: current ?? IsNull() }, { avatarFileId });
+      if (result.affected !== 1) return false;
+      await alsoSave(manager);
+      return true;
     });
   }
 
