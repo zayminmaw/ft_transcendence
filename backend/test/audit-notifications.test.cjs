@@ -16,6 +16,11 @@ test('a committed company change reaches the people who may view that resource',
 	assert.equal(notificationFor(event({ action: 'create' }))[1].action, 'CREATE');
 	assert.equal(notificationFor(event({ action: 'delete' }))[1].action, 'DELETE');
 	assert.equal(notificationFor(event({ action: 'password_reset' }))[1].action, 'UPDATE');
+	// An archived merchant refreshes everyone viewing clients.
+	assert.deepEqual(notificationFor(event({ module: 'clients', action: 'status_change', resourceType: 'client', recordId: '7' })), [
+		{ organizationId: '1', permission: 'clients.view' },
+		{ action: 'UPDATE', module: 'clients', resourceId: '7' },
+	]);
 });
 
 test('sign-ins, reads, refusals and resources nobody watches notify no one', () => {

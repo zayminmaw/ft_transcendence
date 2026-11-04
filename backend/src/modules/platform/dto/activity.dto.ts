@@ -1,8 +1,9 @@
 import { Type } from 'class-transformer';
 import { IsIn, IsInt, IsOptional, IsString, Matches, MaxLength, Min } from 'class-validator';
 import { Trim } from '../../../common/decorators/trim.decorator';
+import { ID_PATTERN } from '../../../common/ids';
+import { PAGE_SIZES } from '../../../common/paging';
 import { ACTIVITY_FILTERS, ACTIVITY_SORTS } from '../constants';
-import { ID_PATTERN, PAGE_SIZES } from './tenant.dto';
 
 export class ListActivityQueryDto {
   @Trim() @IsOptional() @IsString() @MaxLength(100)

@@ -36,7 +36,7 @@ Use Node 24 LTS (see `.nvmrc`), npm, Docker, and Docker Compose 2.24.4 or newer.
 
 ## How the scaffold fits together
 
-The backend is a modular monolith: one NestJS process combines domain modules. Controllers will handle routing and DTO validation, services will implement business rules, and repositories will isolate database queries. The shared foundation already verifies JWTs, checks permissions and active organization membership, sanitizes errors, and exposes health endpoints. The business modules reserve DTO/entity folders for the next features; they do not yet expose business APIs.
+The backend is a modular monolith: one NestJS process combines domain modules. Controllers will handle routing and DTO validation, services will implement business rules, and repositories will isolate database queries. The shared foundation already verifies JWTs, checks permissions and active organization membership, sanitizes errors, and exposes health endpoints. The business modules reserve DTO/entity folders for the next features; clients is the first to expose a business API.
 
 The frontend mirrors the business domains so related work has a predictable home on both sides. Each module owns its pages, components, hooks, types, routes, and root `index.ts` public exports. The app combines module routes, while shared services attach session and organization headers. TanStack Query manages remote data caching; React Hook Form and Zod handle forms.
 
@@ -130,7 +130,9 @@ It refuses a username or email that already exists and never changes an existing
 
 From then on, company admins (anyone whose role has `admin.manage_users`, `org_admin` by default) run their own people through `/api/members` with `X-Organization-Id`: list them, create an account (username, email, a first password, a role), deactivate or reactivate a membership, change its role (`PATCH /api/members/:userId` with `{ roleCode }`), and reset a forgotten password (the answer holds a one-time password to hand over). With `admin.manage_roles` they can also see what every role allows and how many people hold it (`GET /api/members/roles`, read-only: roles are shared by every company). A new or reset account must choose its own password at the next login with `POST /api/auth/password`; until then every other endpoint answers `403 AUTH_PASSWORD_CHANGE_REQUIRED`. In the app, these admins use **People & access** in the sidebar (`/app/<company>/rbac`), and a new or reset account is taken to `/change-password` right after logging in.
 
-For development and evaluation, load the demo companies and accounts:
+Merchant accounts live under `/api/clients` (with `X-Organization-Id`): list them with search, `status=active|archived|all`, sort and paging (the answer also counts the whole company's active, archived and pinned merchants), read one, create (`clients.create`), edit (`PATCH`, `clients.edit`), and archive or reactivate (`POST /api/clients/:id/archive` and `/reactivate`, `clients.delete`). Reading needs `clients.view`. Balances and the rate tier are answered only with `clients.view_financials`, which is also needed to set the tier; balances never change here, only through billing. A client code is unique within the company (`409 CLIENT_CODE_TAKEN`), and another company's client is simply not found (`404 CLIENT_NOT_FOUND`). Every change is audited and refreshes the open Clients pages of everyone with `clients.view`.
+
+For development and evaluation, load the demo companies, accounts and merchants:
 
 ```sh
 docker compose exec backend npm run seed:demo -- --force
