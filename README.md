@@ -130,6 +130,8 @@ It refuses a username or email that already exists and never changes an existing
 
 From then on, company admins (anyone whose role has `admin.manage_users`, `org_admin` by default) run their own people through `/api/members` with `X-Organization-Id`: list them, create an account (username, email, a first password, a role), deactivate or reactivate a membership, change its role (`PATCH /api/members/:userId` with `{ roleCode }`), and reset a forgotten password (the answer holds a one-time password to hand over). With `admin.manage_roles` they can also see what every role allows and how many people hold it (`GET /api/members/roles`, read-only: roles are shared by every company). A new or reset account must choose its own password at the next login with `POST /api/auth/password`; until then every other endpoint answers `403 AUTH_PASSWORD_CHANGE_REQUIRED`. In the app, these admins use **People & access** in the sidebar (`/app/<company>/rbac`), and a new or reset account is taken to `/change-password` right after logging in.
 
+Couriers live under `/api/drivers` (with `X-Organization-Id`). A driver is an `employees` row plus its `delivery_drivers` row, always written together. Reading needs `drivers.view`: the list (search by name, code, mobile or zone, `status=<duty status>|all`, sort and paging, with counts over the company's working drivers, including licenses expired or expiring within 30 days), one driver, and `GET /api/drivers/choices` (everyone still employed, for other modules to choose from). Each field group needs its own permission and is left out otherwise: personal details `drivers.manage`, pay and bank details `staff.view_payroll` (also needed to set them), the license and checks `drivers.view_compliance`, and the commission `drivers.view_earnings`. With `drivers.manage` a person onboards (`POST`) and edits (`PATCH /api/drivers/:id`) drivers, sets the duty status by hand (`PATCH /api/drivers/:id/duty-status`: `available`, `off_duty` or `suspended`), and links the login account (`PUT /api/drivers/:id/account` with `{ userId }`, or `null` to unlink; `GET /api/drivers/linkable-accounts` lists the company's unlinked driver-role members). The employee code, license number and linked account are unique within the company (`409 EMPLOYEE_CODE_TAKEN`, `LICENSE_NUMBER_TAKEN`, `ACCOUNT_ALREADY_LINKED`). Ending employment needs a termination date and takes the driver off duty. Every change is audited and refreshes the open Drivers pages of everyone with `drivers.view`.
+
 For development and evaluation, load the demo companies and accounts:
 
 ```sh
@@ -144,6 +146,7 @@ docker compose exec backend npm run seed:demo -- --force
 | `lina` | Tenant admin, Meridian Courier |
 | `dana.saleh` | Dispatcher, Meridian Courier |
 | `omar.hub`, `rania.finance`, `yusuf.hr`, `maya.fleet`, `samir.farah` | Hub Sorter, Finance, HR Manager, Fleet Lead, Driver at Meridian Courier |
+| `leen.mansour` | Driver at Meridian Courier, not yet linked to a driver (to try **Link account**) |
 | `karim.harbor` | Tenant admin, Harbor Express |
 | `noor` | Dispatcher at Meridian Courier and Finance at Harbor Express |
 | `alaa`, `zaid` | Dispatcher at Meridian Courier and Finance at Harbor Express (42 login) |

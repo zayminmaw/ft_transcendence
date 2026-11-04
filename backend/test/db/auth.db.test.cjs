@@ -490,17 +490,31 @@ test('the first-admin command creates a platform admin and never reuses an accou
 
 const { In, Like } = require('typeorm');
 const { DEMO_ACCOUNTS, DEMO_PASSWORD, seedDemo } = require('../../dist/database/seeders/demo.seed');
+const { DEMO_DRIVERS } = require('../../dist/database/seeders/demo-drivers.seed');
 const { verifyPassword } = require('../../dist/modules/users/password');
 
 test('the demo seed adds everything once and skips it the second time', async () => {
-  assert.deepEqual(await seedDemo(database), { companiesCreated: 2, accountsCreated: 16, accountsSkipped: [] });
+  const drivers = Object.values(DEMO_DRIVERS).flat();
+  assert.deepEqual(await seedDemo(database), {
+    companiesCreated: 2, accountsCreated: DEMO_ACCOUNTS.length, accountsSkipped: [], driversCreated: drivers.length,
+  });
   const again = await seedDemo(database);
-  assert.deepEqual([again.companiesCreated, again.accountsCreated], [0, 0]);
+  assert.deepEqual([again.companiesCreated, again.accountsCreated, again.driversCreated], [0, 0, 0]);
   assert.deepEqual(again.accountsSkipped, DEMO_ACCOUNTS.map((account) => account.username));
+  const demo = DEMO_ACCOUNTS.filter((account) => account.email.endsWith('.example.test'));
   const demoIds = (await database.getRepository(User).findBy({ email: Like('%.example.test') })).map((user) => user.id);
-  assert.equal(demoIds.length, 13);
-  assert.equal(await database.getRepository(OrganizationMember).countBy({ userId: In(demoIds) }), 13);
-  assert.equal(await database.getRepository(UserRole).countBy({ userId: In(demoIds) }), 2);
+  assert.equal(demoIds.length, demo.length);
+  assert.equal(
+    await database.getRepository(OrganizationMember).countBy({ userId: In(demoIds) }),
+    demo.reduce((total, account) => total + account.memberships.length, 0),
+  );
+  assert.equal(await database.getRepository(UserRole).countBy({ userId: In(demoIds) }), demo.filter((account) => account.platformAdmin).length);
+  // Each demo driver has its two rows, and the accounts named in the seed are linked.
+  const [{ total }] = await database.query(`SELECT COUNT(*) AS total FROM employees employee
+    JOIN delivery_drivers driver ON driver.employee_id = employee.id AND driver.organization_id = employee.organization_id`);
+  assert.equal(Number(total), drivers.length);
+  const linked = await database.query(`SELECT account.username FROM employees employee JOIN users account ON account.id = employee.user_id`);
+  assert.deepEqual(linked.map((row) => row.username), drivers.filter((driver) => driver.account).map((driver) => driver.account));
 });
 
 test('the demo accounts cover the picker cases and share the demo password', async () => {
