@@ -61,7 +61,7 @@ async function app(t) {
     socket.on('connect', () => resolve(socket));
     socket.on('connect_error', reject);
   });
-  return { connect, memberships, presence: nest.get(PresenceService) };
+  return { connect, memberships, members, presence: nest.get(PresenceService) };
 }
 const summary = (socket) => socket.received.map(({ organizationId, userId, status }) => [organizationId, userId, status]);
 
@@ -145,4 +145,12 @@ test("closeCompany disconnects every socket of that company and no one else's", 
   assert.equal(await noorClosed, 'io server disconnect');
   await wait(100);
   assert.equal(karim.connected, true);
+});
+
+test('refresh and closeCompany never throw, so a failed lookup cannot fail the change that was saved', async (t) => {
+  const { connect, members, presence } = await app(t);
+  await connect('10', '1');
+  members.isActiveMember = async () => { throw new Error('database unavailable'); };
+  await presence.refresh('1', '11');
+  await presence.closeCompany('1');
 });

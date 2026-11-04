@@ -211,3 +211,22 @@ test('a reset is refused for yourself and for accounts used outside this company
   assert.equal((await reset(lina, '13').expect(403)).body.code, 'MEMBER_NOT_ALLOWED');
   assert.equal((await reset(lina, '14').expect(403)).body.code, 'MEMBER_NOT_ALLOWED');
 });
+
+test('deactivating a member refreshes their presence in that company, reactivating does too', async (t) => {
+  const { server, store } = await meridianApp(t);
+  const lina = await tokenFor(server, 'lina');
+  const patch = (userId, isActive) => as(request(server).patch(`/api/members/${userId}`), lina).send({ isActive });
+  await patch('12', false).expect(200);
+  assert.deepEqual(store.presenceCalls, [['refresh', '1', '12']]);
+  // Asking for the state it already has changes nothing, so nothing is refreshed.
+  await patch('12', false).expect(200);
+  assert.equal(store.presenceCalls.length, 1);
+  await patch('12', true).expect(200);
+  assert.deepEqual(store.presenceCalls, [['refresh', '1', '12'], ['refresh', '1', '12']]);
+  // A refused change refreshes nothing.
+  await patch('10', false).expect(403);
+  assert.equal(store.presenceCalls.length, 2);
+  // A role change leaves the person's status as it was.
+  await as(request(server).patch('/api/members/12'), lina).send({ roleCode: 'finance' }).expect(200);
+  assert.equal(store.presenceCalls.length, 2);
+});

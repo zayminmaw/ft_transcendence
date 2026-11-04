@@ -49,16 +49,25 @@ export class PresenceService implements OnModuleDestroy {
 
   // Call after anything that changes someone's access to a company. Recomputes their status, ends their sockets in that
   // company when they are suspended, and tells the people who saved them. Only a refresh can announce a reactivation,
-  // because a person who reconnects inside the grace period is not a change to the registry.
+  // because a person who reconnects inside the grace period is not a change to the registry. It never throws: the
+  // change that called it is already saved, and a failed refresh must not fail it.
   async refresh(organizationId: string, userId: string): Promise<void> {
-    const status = await this.statusOf(organizationId, userId);
-    if (status === 'suspended') this.server?.in(userRoom(organizationId, userId)).disconnectSockets(true);
-    await this.tell(organizationId, userId, status);
+    try {
+      const status = await this.statusOf(organizationId, userId);
+      if (status === 'suspended') this.server?.in(userRoom(organizationId, userId)).disconnectSockets(true);
+      await this.tell(organizationId, userId, status);
+    } catch (error) {
+      this.logger.warn(`Presence refresh failed: ${error instanceof Error ? error.message : 'unknown error'}`);
+    }
   }
 
-  // The company was suspended: end every connection to it.
+  // The company was suspended: end every connection to it. Never throws, like refresh.
   async closeCompany(organizationId: string): Promise<void> {
-    this.server?.in(organizationRoom(organizationId)).disconnectSockets(true);
+    try {
+      this.server?.in(organizationRoom(organizationId)).disconnectSockets(true);
+    } catch (error) {
+      this.logger.warn(`Closing company connections failed: ${error instanceof Error ? error.message : 'unknown error'}`);
+    }
   }
 
   onModuleDestroy(): void {
