@@ -7,6 +7,7 @@ const { JwtService } = require('@nestjs/jwt');
 const { io } = require('socket.io-client');
 const { EventsGateway } = require('../dist/modules/notifications/events.gateway');
 const { OrganizationMembersService } = require('../dist/modules/organizations/organization-members.service');
+const { PresenceService } = require('../dist/modules/notifications/presence.service');
 const { PermissionPolicyService } = require('../dist/modules/rbac/permission-policy.service');
 
 test('WebSocket notifications reach only authenticated, authorized members of the target organization', async (t) => {
@@ -30,6 +31,8 @@ test('WebSocket notifications reach only authenticated, authorized members of th
 		{ provide: JwtService, useValue: jwt },
 		{ provide: OrganizationMembersService, useValue: members },
 		{ provide: PermissionPolicyService, useValue: policy },
+		// Presence has its own tests (presence.test.cjs); here the gateway only needs something to report sockets to.
+		{ provide: PresenceService, useValue: { attach() {}, connect() {}, disconnect() {} } },
 	] }).compile();
 	const app = module.createNestApplication({ logger: false });
 	await app.listen(0, '127.0.0.1');
