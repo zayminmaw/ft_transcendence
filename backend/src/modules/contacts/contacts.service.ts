@@ -2,6 +2,7 @@ import { BadRequestException, ConflictException, ForbiddenException, Injectable,
 import type { TenantContext } from '../../common/types/authenticated-request';
 import { AuditService } from '../audit';
 import type { RequestMeta } from '../auth';
+import { PresenceService } from '../notifications';
 import { canAdd } from './contact-rules';
 import { type ContactRow, ContactsRepository } from './contacts.repository';
 
@@ -36,16 +37,17 @@ const publicContact = (row: ContactRow, online: boolean): PublicContact => ({
 });
 
 // Your own contacts in the company of the request. The company and the person always come from the verified tenant
-// context and token, never from the request body. Presence arrives later; until then nobody is online.
+// context and token, never from the request body. Online means a live connection to this company.
 @Injectable()
 export class ContactsService {
   constructor(
     private readonly contacts: ContactsRepository,
     private readonly audit: AuditService,
+    private readonly presence: PresenceService,
   ) {}
 
   async list(tenant: TenantContext, userId: string): Promise<PublicContact[]> {
-    return (await this.contacts.list(tenant.organizationId, userId)).map((row) => publicContact(row, false));
+    return (await this.contacts.list(tenant.organizationId, userId)).map((row) => this.show(tenant, row));
   }
 
   // Who you could add: the role rules applied to the active, not yet saved colleagues.
@@ -53,7 +55,7 @@ export class ContactsService {
     const me = await this.contacts.findMember(tenant.organizationId, userId);
     if (!me) return [];
     const rows = await this.contacts.candidates(tenant.organizationId, userId);
-    return rows.filter((row) => canAdd(me.role.code, row.role.code)).map((row) => publicContact(row, false));
+    return rows.filter((row) => canAdd(me.role.code, row.role.code)).map((row) => this.show(tenant, row));
   }
 
   // Checked again here, not only when the list was shown: roles and suspensions change in between.
@@ -80,7 +82,7 @@ export class ContactsService {
       }),
     );
     if (!saved) throw new ConflictException(EXISTS);
-    return publicContact(target, false);
+    return this.show(tenant, target);
   }
 
   async remove(tenant: TenantContext, userId: string, targetUserId: string, meta: RequestMeta): Promise<void> {
@@ -102,5 +104,10 @@ export class ContactsService {
       }),
     );
     if (!removed) throw new NotFoundException(NOT_FOUND);
+  }
+
+  // Suspended first, then whether they are connected to this company (never another one).
+  private show(tenant: TenantContext, row: ContactRow): PublicContact {
+    return publicContact(row, this.presence.isOnline(tenant.organizationId, row.userId));
   }
 }

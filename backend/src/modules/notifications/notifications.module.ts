@@ -1,7 +1,9 @@
 import { Module } from '@nestjs/common';
 import { AuditModule } from '../audit';
 import { AuthModule } from '../auth';
-import { ContactsStoreModule } from '../contacts';
+// Imported from its own file, not the contacts index: that index loads ContactsModule, which imports this module, and the
+// cycle would leave this import undefined (test/module-graph.test.cjs catches it).
+import { ContactsStoreModule } from '../contacts/contacts-store.module';
 import { OrganizationsModule } from '../organizations';
 import { RbacModule } from '../rbac';
 import { AuditNotifications } from './audit-notifications';

@@ -63,6 +63,8 @@ function createFakeStore() {
     contacts: [],
     // What the presence service was asked to do, in order: ['refresh', organizationId, userId] or ['closeCompany', organizationId].
     presenceCalls: [],
+    // Who has a live connection, as 'organizationId:userId' (presence itself has its own tests).
+    online: new Set(),
   };
   let nextSessionId = 1;
   let nextFileId = 1;
@@ -250,6 +252,7 @@ function createFakeStore() {
         && row.organizationId === organizationId && row.isActive),
     },
     presence: {
+      isOnline: (organizationId, userId) => store.online.has(`${organizationId}:${userId}`),
       refresh: async (organizationId, userId) => { store.presenceCalls.push(['refresh', organizationId, userId]); },
       closeCompany: async (organizationId) => { store.presenceCalls.push(['closeCompany', organizationId]); },
     },

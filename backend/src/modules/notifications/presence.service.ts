@@ -1,7 +1,7 @@
 import { Inject, Injectable, Logger, type OnModuleDestroy, Optional } from '@nestjs/common';
 import type { Server } from 'socket.io';
 import { ContactsRepository } from '../contacts/contacts.repository';
-import { type ContactStatus } from '../contacts/contacts.service';
+import type { ContactStatus } from '../contacts/contacts.service';
 import { OrganizationMembersService } from '../organizations';
 import { PresenceRegistry } from './presence.registry';
 import { organizationRoom, userRoom } from './rooms';
