@@ -19,6 +19,7 @@ export * from './Breadcrumbs/types.tsx';
 export { DashboardLayout } from './DashboardLayout/DashboardLayout';
 export type { NavigationGroup } from './Sidebar/SidebarContent';
 export { Table } from './Table/Table';
+export { TableToolbar } from './Table/TableToolbar';
 export * from './Table/types.tsx';
 export { TipCard } from './TipCard/TipCard';
 export { Toaster } from './Toast/Toaster';
