@@ -13,6 +13,8 @@ export const MODULE_ACCESS = {
 	staff: { permission: 'staff.view', label: 'workspace.nav.staff' },
 	rbac: { permission: 'admin.manage_users', label: 'workspace.nav.rbac' },
 	organizations: { permission: 'admin.manage_roles', label: 'workspace.nav.organizations' },
+	// Every company role holds it: your own contacts, not other people's.
+	contacts: { permission: 'contacts.manage_own', label: 'workspace.nav.contacts' },
 } as const;
 type Module = keyof typeof MODULE_ACCESS;
 
@@ -35,7 +37,7 @@ export function getTenantNavigation(
 			label: t('workspace.nav.operations'),
 			items: [
 				{ to: home, label: t('workspace.nav.overview'), end: true },
-				...links(['parcels', 'clients', 'drivers', 'assets']),
+				...links(['parcels', 'clients', 'drivers', 'assets', 'contacts']),
 			],
 		},
 		{

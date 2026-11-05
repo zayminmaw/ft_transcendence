@@ -7,6 +7,7 @@ import { assetsRoutes } from '@modules/assets';
 import { parcelsRoutes, parcelTrackingRoutes } from '@modules/parcels';
 import { billingRoutes } from '@modules/billing';
 import { rbacRoutes } from '@modules/rbac';
+import { contactsRoutes } from '@modules/contacts';
 import { auditRoutes } from '@modules/audit';
 import { MarketingLayout, marketingRoutes } from '@modules/marketing';
 import { platformRoutes } from '@modules/platform';
@@ -41,6 +42,7 @@ const workspaceRoutes = [
 	...allowed('parcels', parcelsRoutes),
 	...allowed('billing', billingRoutes),
 	...allowed('rbac', rbacRoutes),
+	...allowed('contacts', contactsRoutes),
 	// The audit page checks admin.audit_logs itself (see AuditLogPage).
 	...auditRoutes,
 ];

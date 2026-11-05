@@ -51,7 +51,8 @@
 			"billing": "Billing & COD",
 			"staff": "Staff",
 			"rbac": "People & access",
-			"organizations": "Organization settings"
+			"organizations": "Organization settings",
+			"contacts": "Contacts"
 		},
 		"overview": {
 			"title": "Operations overview",
