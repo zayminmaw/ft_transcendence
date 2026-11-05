@@ -1,32 +1,55 @@
 import { useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Input, ModulePage, TipCard, useToast } from '@global-components';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Input, ModulePage, Textarea, TipCard, useToast } from '@global-components';
 import { useCompanyPath } from '@hooks/useCompanyPath';
-import { drivers, findDriver, parcelStatusLabels, parcels } from '../data/sampleParcels';
+import { dispatchStatusLabels, parcelStatusLabels, vehicleLabel } from '../constants';
+import { useParcelMutations } from '../hooks/useParcelMutations';
+import { useAssignableParcels, useDispatchDrivers } from '../hooks/useParcels';
 
-// Only sorted parcels and failed attempts can be (re)assigned, and only to available drivers.
-const assignableParcels = parcels.filter(
-	(parcel) => parcel.status === 'in_hub_sorted' || parcel.status === 'failed_attempt',
-);
-const availableDrivers = drivers.filter((driver) => driver.status === 'available');
-
+// /parcels/assign?parcel=<id>: send a sorted parcel, or a failed attempt again, out with a driver on duty. The parcel
+// travels in the vehicle the driver has checked out and joins their run for today.
 export function AssignDriverPage() {
 	const navigate = useNavigate();
 	const companyPath = useCompanyPath();
 	const { toast } = useToast();
 	const [searchParams] = useSearchParams();
-	const [parcelId, setParcelId] = useState(searchParams.get('parcel') ?? assignableParcels[0].id);
-	const [driverId, setDriverId] = useState(availableDrivers[0].id);
+	const { assignable, isAssignablePending } = useAssignableParcels();
+	const { dispatchDrivers, isDriversPending } = useDispatchDrivers();
+	const { assignParcel, isAssigning } = useParcelMutations();
+	const [parcelId, setParcelId] = useState(searchParams.get('parcel') ?? '');
+	const [driverId, setDriverId] = useState('');
+	const [error, setError] = useState<string | null>(null);
 
-	const parcel = assignableParcels.find((item) => item.id === parcelId) ?? assignableParcels[0];
-	const driver = findDriver(driverId) ?? availableDrivers[0];
-	const currentDriver = findDriver(parcel.driverId);
+	if (isAssignablePending || isDriversPending)
+		return <span className="loading loading-spinner" aria-label="Loading" />;
+
+	const parcel = assignable.find((item) => item.id === parcelId) ?? assignable[0];
+	const driver = dispatchDrivers.find((item) => item.id === driverId) ?? dispatchDrivers[0];
+
+	if (!parcel || !driver) {
+		return (
+			<div className="flex flex-col gap-6">
+				<Link to={companyPath('parcels')} className="link link-hover w-fit text-sm">
+					Back to dispatch
+				</Link>
+				<ModulePage
+					title="Nothing to assign right now"
+					description={
+						parcel
+							? 'No driver is on duty. Set a driver available on the drivers page.'
+							: 'No parcel is sorted in the hub or waiting for another attempt.'
+					}
+				/>
+			</div>
+		);
+	}
 
 	const review = [
 		{ label: 'Parcel stage', value: parcelStatusLabels[parcel.status] },
-		...(currentDriver ? [{ label: 'Previous owner', value: currentDriver.name }] : []),
+		...(parcel.driver ? [{ label: 'Previous owner', value: parcel.driver.name }] : []),
 		{ label: 'New owner', value: driver.name },
-		{ label: 'Asset', value: driver.vehicle },
+		{ label: 'Vehicle', value: vehicleLabel(driver.vehicle) },
+		{ label: 'Run', value: driver.run?.code ?? 'Opens a new run for today' },
 	];
 
 	return (
@@ -38,17 +61,33 @@ export function AssignDriverPage() {
 			<div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
 				<form
 					id="assign-driver-form"
-					onSubmit={(e) => {
-						e.preventDefault();
-						toast({
-							variant: 'success',
-							title: 'Driver assigned',
-							description: `${parcel.tracking} is assigned to ${driver.name}.`,
-						});
-						navigate(companyPath('parcels'));
+					onSubmit={(event) => {
+						event.preventDefault();
+						setError(null);
+						// As typed: the API trims the notes and drops empty ones.
+						const notes = String(new FormData(event.currentTarget).get('notes') ?? '');
+						assignParcel(
+							{ parcelId: parcel.id, driverId: driver.id, notes },
+							{
+								onSuccess: (saved) => {
+									toast({
+										variant: 'success',
+										title: 'Driver assigned',
+										description: `${saved.trackingNumber} is out with ${driver.name} on ${saved.run?.code}.`,
+									});
+									navigate(companyPath(`parcels/${saved.id}`));
+								},
+								onError: (failure) => setError(failure.message),
+							},
+						);
 					}}
 					className="flex flex-col gap-4 rounded-box border border-base-300 p-4 md:p-8"
 				>
+					{error && (
+						<p role="alert" className="rounded-box bg-error/10 p-4 text-sm text-error">
+							{error}
+						</p>
+					)}
 					<div>
 						<label htmlFor="parcel" className="mb-2 block text-sm font-medium">
 							Parcel *
@@ -59,9 +98,9 @@ export function AssignDriverPage() {
 							value={parcel.id}
 							onChange={(e) => setParcelId(e.target.value)}
 						>
-							{assignableParcels.map((item) => (
+							{assignable.map((item) => (
 								<option key={item.id} value={item.id}>
-									{item.tracking} · {item.recipient} ·{' '}
+									{item.trackingNumber} · {item.recipientName} ·{' '}
 									{parcelStatusLabels[item.status]}
 								</option>
 							))}
@@ -70,14 +109,14 @@ export function AssignDriverPage() {
 					<Input
 						id="merchant"
 						label="Merchant"
-						value={parcel.merchant}
+						value={parcel.client.name}
 						readOnly
 						className="border-0 bg-base-200"
 					/>
 					<Input
 						id="zone"
 						label="Delivery zone"
-						value={`${parcel.zone} zone`}
+						value={`${parcel.deliveryCityZone} zone`}
 						readOnly
 						className="border-0 bg-base-200"
 					/>
@@ -91,20 +130,21 @@ export function AssignDriverPage() {
 							value={driver.id}
 							onChange={(e) => setDriverId(e.target.value)}
 						>
-							{availableDrivers.map((item) => (
+							{dispatchDrivers.map((item) => (
 								<option key={item.id} value={item.id}>
-									{item.name} · Available · {item.zone} zone
+									{item.name} · {dispatchStatusLabels[item.dispatchStatus]}
+									{item.zone && ` · ${item.zone} zone`}
 								</option>
 							))}
 						</select>
 						<p className="mt-1 text-xs text-[var(--color-slate)]">
-							Only drivers who are available for dispatch are listed.
+							Only drivers who are on duty are listed.
 						</p>
 					</div>
 					<Input
 						id="asset"
-						label="Assigned asset"
-						value={driver.vehicle}
+						label="Assigned vehicle"
+						value={vehicleLabel(driver.vehicle)}
 						readOnly
 						className="border-0 bg-base-200"
 					/>
@@ -115,6 +155,7 @@ export function AssignDriverPage() {
 						className="border-0 bg-base-200"
 						readOnly
 					/>
+					<Textarea name="notes" label="Notes for the driver" rows={2} maxLength={2000} />
 					<div className="mt-2 flex flex-col gap-2 sm:flex-row">
 						<button
 							type="button"
@@ -123,8 +164,8 @@ export function AssignDriverPage() {
 						>
 							Cancel
 						</button>
-						<button type="submit" className="btn btn-primary">
-							Confirm assignment
+						<button type="submit" className="btn btn-primary" disabled={isAssigning}>
+							{isAssigning ? 'Assigning…' : 'Confirm assignment'}
 						</button>
 					</div>
 				</form>
@@ -146,7 +187,7 @@ export function AssignDriverPage() {
 					</section>
 					<TipCard
 						title="A clear handoff to the field."
-						description="The selected driver receives the assigned parcel. Driver access is limited to assigned work; this prototype does not simulate live routing."
+						description="The parcel joins the driver's run for today, with the vehicle they have checked out. Reassigning a failed attempt keeps the previous owner in the history."
 					/>
 				</aside>
 			</div>
