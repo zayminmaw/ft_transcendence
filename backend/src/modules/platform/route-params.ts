@@ -1,7 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
 import type { AuthenticatedRequest } from '../../common/types/authenticated-request';
 import { requestMeta } from '../auth';
-import { ID_PATTERN } from './dto/tenant.dto';
+import { ID_PATTERN } from '../../common/ids';
 import type { PlatformActor } from './types/tenant';
 
 // URL ids are BIGINTs and stay strings.

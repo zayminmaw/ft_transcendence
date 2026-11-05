@@ -55,6 +55,29 @@ export const AUDIT_RESOURCES: Record<string, AuditResource> = {
 			reason: 'plain',
 		},
 	},
+	// A merchant account. The contact's email and phones are personal data; notes are free text that may hold anything.
+	// Balances are left out: they change only through billing's ledger entries.
+	client: {
+		category: 'data',
+		fields: {
+			clientCode: 'plain',
+			businessName: 'plain',
+			tradeLicenseNo: 'plain',
+			contactPersonName: 'plain',
+			contactTitle: 'plain',
+			mobile1: 'maskPhone',
+			mobile2: 'maskPhone',
+			email: 'maskEmail',
+			billingAddress: 'plain',
+			defaultPickupAddress: 'plain',
+			pickupLatitude: 'plain',
+			pickupLongitude: 'plain',
+			rateProfileTier: 'plain',
+			operationalNotes: 'redact',
+			isActive: 'plain',
+		},
+		viewPermission: 'clients.view',
+	},
 	audit_log: { category: 'access', fields: {} },
 };
 

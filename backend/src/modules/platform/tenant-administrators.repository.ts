@@ -1,11 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { Brackets, DataSource, EntityManager, In, Not } from 'typeorm';
+import { containsPattern } from '../../common/like-pattern';
 import { OrganizationMember } from '../organizations';
 import { Role } from '../rbac';
 import { User } from '../users';
 import { CANDIDATE_LIMIT, NON_MEMBER_ROLES, TENANT_ADMIN_ROLE } from './constants';
 import {
-  accountConflict, auditPlatformChange, changeTenantStatus, containsPattern, countUsableAdministrators, findRole, insertAdministrator,
+  accountConflict, auditPlatformChange, changeTenantStatus, countUsableAdministrators, findRole, insertAdministrator,
   lockTenant,
 } from './tenant-writes';
 import type {

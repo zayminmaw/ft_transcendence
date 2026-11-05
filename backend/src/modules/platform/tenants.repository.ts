@@ -1,12 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Brackets, DataSource, type ObjectLiteral, Repository, type SelectQueryBuilder } from 'typeorm';
+import { containsPattern } from '../../common/like-pattern';
 import { Organization, OrganizationMember } from '../organizations';
 import { Role } from '../rbac';
 import { User } from '../users';
 import { SORT_COLUMNS, TENANT_ADMIN_ROLE } from './constants';
 import {
-  accountConflict, auditPlatformChange, changeTenantStatus, containsPattern, countUsableAdministrators, insertAdministrator,
+  accountConflict, auditPlatformChange, changeTenantStatus, countUsableAdministrators, insertAdministrator,
   lockTenant,
 } from './tenant-writes';
 import type {
