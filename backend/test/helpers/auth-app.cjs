@@ -5,6 +5,7 @@ const request = require('supertest');
 const { ConfigModule } = require('@nestjs/config');
 const { Reflector } = require('@nestjs/core');
 const { JwtService } = require('@nestjs/jwt');
+const { Module } = require('@nestjs/common');
 const { Test } = require('@nestjs/testing');
 const { getRepositoryToken } = require('@nestjs/typeorm');
 const { configureApp } = require('../../dist/app.setup');
@@ -31,6 +32,10 @@ const { MembersAuditRepository } = require('../../dist/modules/members/members-a
 const { MembersRepository } = require('../../dist/modules/members/members.repository');
 const { StorageRepository } = require('../../dist/modules/storage/storage.repository');
 const { ClientsRepository } = require('../../dist/modules/clients/clients.repository');
+const { NotificationsModule } = require('../../dist/modules/notifications');
+const { PresenceService } = require('../../dist/modules/notifications/presence.service');
+const { Contact } = require('../../dist/modules/contacts/entities/contact.entity');
+const { ContactsRepository } = require('../../dist/modules/contacts/contacts.repository');
 
 const ORIGIN = 'http://localhost:5173';
 // The password the module tests give their fixture accounts.
@@ -57,6 +62,12 @@ function createFakeStore() {
     storageFiles: [],
     // Merchant rows, as the `clients` columns: { id, organizationId, clientCode, businessName, ..., isActive, createdAt }.
     clients: [],
+    // Saved contacts: { organizationId, ownerUserId, contactUserId }.
+    contacts: [],
+    // What the presence service was asked to do, in order: ['refresh', organizationId, userId] or ['closeCompany', organizationId].
+    presenceCalls: [],
+    // Who has a live connection, as 'organizationId:userId' (presence itself has its own tests).
+    online: new Set(),
   };
   let nextSessionId = 1;
   let nextClientId = 1;
@@ -86,6 +97,19 @@ function createFakeStore() {
       };
     })
     .sort((a, b) => a.username.localeCompare(b.username));
+  // The same shape ContactsRepository returns for one member of a company.
+  const contactRow = (membership) => {
+    const user = store.users.find((candidate) => candidate.id === membership.userId);
+    const role = store.roles.find((candidate) => String(candidate.id) === membership.roleId);
+    return {
+      userId: user.id, username: user.username, displayName: user.displayName ?? null, role: { code: role.code, name: role.name },
+      accountActive: user.isActive !== false, memberActive: membership.isActive,
+    };
+  };
+  const byRoleThenName = (a, b) => a.role.name.localeCompare(b.role.name) || a.username.localeCompare(b.username);
+  const memberOf = (organizationId, userId) => store.memberships.find((row) => row.organizationId === organizationId && row.userId === userId);
+  const sameContact = (organizationId, ownerUserId, contactUserId) => (row) => row.organizationId === organizationId
+    && row.ownerUserId === ownerUserId && row.contactUserId === contactUserId;
   const revoke = async (id, reason, at) => {
     const row = store.sessions.find((session) => session.id === id && !session.revokedAt);
     if (row) Object.assign(row, { revokedAt: at, revokedReason: reason });
@@ -281,6 +305,55 @@ function createFakeStore() {
       },
       setActive: (organizationId, id, isActive, audit) => store.repositories.clients.update(organizationId, id, { isActive }, audit),
     },
+    presence: {
+      isOnline: (organizationId, userId) => store.online.has(`${organizationId}:${userId}`),
+      refresh: async (organizationId, userId) => { store.presenceCalls.push(['refresh', organizationId, userId]); },
+      closeCompany: async (organizationId) => { store.presenceCalls.push(['closeCompany', organizationId]); },
+    },
+    contacts: {
+      list: async (organizationId, ownerUserId) => store.contacts
+        .filter((row) => row.organizationId === organizationId && row.ownerUserId === ownerUserId)
+        .map((row) => contactRow(memberOf(organizationId, row.contactUserId))).sort(byRoleThenName),
+      candidates: async (organizationId, ownerUserId) => store.memberships
+        .filter((row) => row.organizationId === organizationId && row.isActive && row.userId !== ownerUserId)
+        .map(contactRow)
+        .filter((row) => row.accountActive && !store.contacts.some(sameContact(organizationId, ownerUserId, row.userId)))
+        .sort(byRoleThenName),
+      findMember: async (organizationId, userId) => {
+        const membership = memberOf(organizationId, userId);
+        return membership ? contactRow(membership) : null;
+      },
+      // Like the real transaction: when what is saved with it fails, the contact is not kept.
+      add: async (organizationId, ownerUserId, contactUserId, alsoSave) => {
+        if (!memberOf(organizationId, ownerUserId) || !memberOf(organizationId, contactUserId)) return false;
+        if (store.contacts.some(sameContact(organizationId, ownerUserId, contactUserId))) return false;
+        const row = { organizationId, ownerUserId, contactUserId };
+        store.contacts.push(row);
+        try {
+          await alsoSave({});
+        } catch (error) {
+          store.contacts.splice(store.contacts.indexOf(row), 1);
+          throw error;
+        }
+        return true;
+      },
+      remove: async (organizationId, ownerUserId, contactUserId, alsoSave) => {
+        const row = store.contacts.find(sameContact(organizationId, ownerUserId, contactUserId));
+        if (!row) return false;
+        store.contacts.splice(store.contacts.indexOf(row), 1);
+        try {
+          await alsoSave({});
+        } catch (error) {
+          store.contacts.push(row);
+          throw error;
+        }
+        return true;
+      },
+      viewersOf: async (organizationId, contactUserId) => store.contacts
+        .filter((row) => row.organizationId === organizationId && row.contactUserId === contactUserId)
+        .filter((row) => memberOf(organizationId, row.ownerUserId)?.isActive && store.users.find((user) => user.id === row.ownerUserId)?.isActive !== false)
+        .map((row) => row.ownerUserId),
+    },
     storageFiles: {
       insert: async (input) => {
         const row = { id: String(nextFileId++), createdAt: new Date(), ...input };
@@ -307,7 +380,7 @@ function createFakeStore() {
 
 // TypeORM's own repository providers need a database connection; the fakes above replace every class that uses
 // them, so these only have to exist.
-const ENTITIES = [User, OrganizationMember, UserRole, RolePermission, UserSession, AuditLog];
+const ENTITIES = [User, OrganizationMember, UserRole, RolePermission, UserSession, AuditLog, Contact];
 
 // A fresh app per test, so throttling counts never leak from one test into another.
 // `controllers` adds fixture endpoints (e.g. a company endpoint) next to the real auth ones; `imports` adds modules
@@ -318,6 +391,11 @@ async function createAuthApp(t, store = createFakeStore(), { controllers = [], i
     controllers,
   });
   for (const entity of ENTITIES) builder = builder.overrideProvider(getRepositoryToken(entity)).useValue({});
+  // The real notifications module opens sockets and listens to the audit trail; modules that only need the presence
+  // service get this stand-in, which records what they ask for (presence has its own tests).
+  class FakeNotificationsModule {}
+  Module({ providers: [{ provide: PresenceService, useValue: store.repositories.presence }], exports: [PresenceService] })(FakeNotificationsModule);
+  builder = builder.overrideModule(NotificationsModule).useModule(FakeNotificationsModule);
   const moduleRef = await builder
     .overrideProvider(UsersRepository).useValue(store.repositories.users)
     .overrideProvider(SessionsRepository).useValue(store.repositories.sessions)
@@ -331,6 +409,7 @@ async function createAuthApp(t, store = createFakeStore(), { controllers = [], i
     .overrideProvider(MembersAuditRepository).useValue(store.repositories.membersAudit)
     .overrideProvider(StorageRepository).useValue(store.repositories.storageFiles)
     .overrideProvider(ClientsRepository).useValue(store.repositories.clients)
+    .overrideProvider(ContactsRepository).useValue(store.repositories.contacts)
     .compile();
   const app = moduleRef.createNestApplication({ logger: false });
   configureApp(app, ORIGIN);

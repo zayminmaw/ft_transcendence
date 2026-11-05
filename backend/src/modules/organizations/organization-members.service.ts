@@ -11,6 +11,11 @@ export class OrganizationMembersService {
     return membership;
   }
 
+  // True while the membership, the company and the account are all active (what the guard checks on every request).
+  async isActiveMember(userId: string, organizationId: string): Promise<boolean> {
+    return !!(await this.members.findActiveMembership(userId, organizationId));
+  }
+
   listActiveWorkspaces(userId: string) {
     return this.members.findActiveWorkspaces(userId);
   }

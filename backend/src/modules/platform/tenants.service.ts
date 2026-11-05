@@ -1,4 +1,5 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { PresenceService } from '../notifications';
 import { hashPassword, passwordProblems } from '../users/password';
 import type { Organization } from '../organizations';
 import { PASSWORD_RULE } from '../users/account-rules';
@@ -9,7 +10,10 @@ import type { PlatformActor } from './types/tenant';
 
 @Injectable()
 export class TenantsService {
-  constructor(private readonly tenants: TenantsRepository) {}
+  constructor(
+    private readonly tenants: TenantsRepository,
+    private readonly presence: PresenceService,
+  ) {}
 
   async list(query: ListTenantsQueryDto) {
     const [page, counts] = await Promise.all([this.tenants.list(query), this.tenants.counts()]);
@@ -49,7 +53,12 @@ export class TenantsService {
 
   async setActive(id: string, isActive: boolean, reason: string | null, actor: PlatformActor) {
     const result = await this.tenants.setActive(id, isActive, reason, actor);
-    if (result.changed) return this.toTenant(result.organization);
+    if (result.changed) {
+      // After the transaction has committed: a suspended company's open connections are closed. Reactivating opens none,
+      // people connect again themselves.
+      if (!isActive) await this.presence.closeCompany(id);
+      return this.toTenant(result.organization);
+    }
     if (result.problem === 'not_found') throw new NotFoundException(TENANT_NOT_FOUND);
     if (result.problem === 'no_administrator') throw new ConflictException(TENANT_HAS_NO_ADMINISTRATOR);
     throw new ConflictException(isActive ? TENANT_ALREADY_ACTIVE : TENANT_ALREADY_SUSPENDED);

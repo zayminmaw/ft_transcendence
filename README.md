@@ -26,6 +26,8 @@ docker-compose.yml        Root entry point for the Docker manifests
 
 Architecture and engineering documents live in [`.docs/`](.docs/). Environment files, dependencies, and build outputs are ignored. `npm run setup` installs a Husky pre-push hook that runs `npm run verify`.
 
+The [domain logic working draft](.docs/domain-logic/README.md) covers business rules, current implementation, proposed delivery/accounting workflows, and open decisions, with links to the supporting code.
+
 See the [0.1.0 release notes](.docs/releases/0.1.0.md) for the initial scaffold's scope and validation.
 
 This workspace already has ignored `.env` files with randomly generated local database passwords and a JWT secret. Its frontend uses http://localhost:8081 and MariaDB uses port 3307 because Windows blocks ports 8080 and 3306. The tracked example files retain the standard ports and contain placeholders only.
