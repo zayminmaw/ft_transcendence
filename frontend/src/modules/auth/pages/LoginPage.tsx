@@ -76,7 +76,7 @@ export function LoginPage() {
 	const ended = (state as { ended?: SessionEnd } | null)?.ended;
 	const oauth = searchParams.get('oauth');
 	const oauthMessage =
-		oauth && oauth in OAUTH_MESSAGES
+		oauth && Object.hasOwn(OAUTH_MESSAGES, oauth)
 			? OAUTH_MESSAGES[oauth as keyof typeof OAUTH_MESSAGES]
 			: undefined;
 
