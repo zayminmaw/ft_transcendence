@@ -5,3 +5,4 @@ export {
 	type NotificationEvent,
 	type NotificationTarget,
 } from './events.gateway';
+export { PresenceService } from './presence.service';

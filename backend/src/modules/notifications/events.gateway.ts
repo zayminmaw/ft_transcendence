@@ -10,6 +10,8 @@ import type { Server, Socket } from 'socket.io';
 import type { TenantContext } from '../../common/types/authenticated-request';
 import { OrganizationMembersService } from '../organizations';
 import { PermissionPolicyService } from '../rbac';
+import { PresenceService } from './presence.service';
+import { organizationRoom, userRoom } from './rooms';
 
 export type NotificationAction = 'CREATE' | 'UPDATE' | 'DELETE';
 
@@ -40,8 +42,6 @@ class HandshakeRejected extends Error {}
 
 const tokenErrors = new Set(['JsonWebTokenError', 'TokenExpiredError', 'NotBeforeError']);
 const positiveId = /^[1-9]\d*$/;
-const organizationRoom = (organizationId: string) => `org:${organizationId}`;
-const userRoom = (organizationId: string, userId: string) => `org:${organizationId}:user:${userId}`;
 
 @WebSocketGateway()
 export class EventsGateway implements OnGatewayInit, OnGatewayConnection {
@@ -54,9 +54,11 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection {
 		private readonly jwt: JwtService,
 		private readonly members: OrganizationMembersService,
 		private readonly policy: PermissionPolicyService,
+		private readonly presence: PresenceService,
 	) {}
 
 	afterInit(server: Server): void {
+		this.presence.attach(server);
 		// Middleware rejects the handshake, so unauthorized clients never connect or join a room.
 		server.use((socket, next) => {
 			this.authenticate(socket).then(
@@ -82,7 +84,12 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection {
 		]);
 		// The client reconnects with a refreshed token, and that handshake re-checks the membership.
 		const expiry = setTimeout(() => socket.disconnect(true), Math.max(0, expiresAt * 1000 - Date.now()));
-		socket.once('disconnect', () => clearTimeout(expiry));
+		// Presence counts this socket for the person, in this company only.
+		this.presence.connect(tenant.organizationId, user.id, socket.id);
+		socket.once('disconnect', () => {
+			clearTimeout(expiry);
+			this.presence.disconnect(tenant.organizationId, user.id, socket.id);
+		});
 	}
 
 	// Best effort, like delivery itself: a failed delivery is logged, never thrown, so it can't fail the change that

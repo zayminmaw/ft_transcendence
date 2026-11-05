@@ -174,3 +174,32 @@ test('add and remove each write one audit row in the same transaction, and a fai
   await as(request(server).delete('/api/contacts/11'), dana).expect(500);
   assert.equal(store.contacts.length, 1);
 });
+
+test('a connected contact shows Online, a disconnected one Offline, and a suspended one Suspended even with a live socket', async (t) => {
+  const { server, store } = await app(t);
+  for (const id of ['11', '13', '14']) save(store, '1', '10', id);
+  // Omar and Ivy are connected. Ivy's membership is suspended, so her live socket does not count.
+  store.online.add('1:11');
+  store.online.add('1:14');
+  const dana = await tokenFor(server, 'dana');
+  const list = (await as(request(server).get('/api/contacts'), dana).expect(200)).body;
+  assert.deepEqual(list.map(({ username, status }) => [username, status]), [['ivy', 'suspended'], ['omar', 'online'], ['noor', 'offline']]);
+  // Candidates and the answer to an add carry the same live status.
+  store.contacts.length = 0;
+  store.online.add('1:13');
+  const candidates = (await as(request(server).get('/api/contacts/candidates'), dana).expect(200)).body;
+  assert.deepEqual(candidates.map(({ username, status }) => [username, status]), [['omar', 'online'], ['noor', 'online']]);
+  const added = await as(request(server).post('/api/contacts'), dana).send({ userId: '13' }).expect(201);
+  assert.equal(added.body.status, 'online');
+});
+
+test('the status of a person online in another company does not show here', async (t) => {
+  const { server, store } = await app(t);
+  save(store, '1', '10', '11');
+  save(store, '2', '10', '11');
+  // Omar is connected to Harbor only.
+  store.online.add('2:11');
+  const dana = await tokenFor(server, 'dana');
+  assert.equal((await as(request(server).get('/api/contacts'), dana, '1').expect(200)).body[0].status, 'offline');
+  assert.equal((await as(request(server).get('/api/contacts'), dana, '2').expect(200)).body[0].status, 'online');
+});

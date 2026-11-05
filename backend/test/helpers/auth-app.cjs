@@ -5,6 +5,7 @@ const request = require('supertest');
 const { ConfigModule } = require('@nestjs/config');
 const { Reflector } = require('@nestjs/core');
 const { JwtService } = require('@nestjs/jwt');
+const { Module } = require('@nestjs/common');
 const { Test } = require('@nestjs/testing');
 const { getRepositoryToken } = require('@nestjs/typeorm');
 const { configureApp } = require('../../dist/app.setup');
@@ -30,6 +31,8 @@ const { createAccount } = require('../../dist/modules/users/accounts');
 const { MembersAuditRepository } = require('../../dist/modules/members/members-audit.repository');
 const { MembersRepository } = require('../../dist/modules/members/members.repository');
 const { StorageRepository } = require('../../dist/modules/storage/storage.repository');
+const { NotificationsModule } = require('../../dist/modules/notifications');
+const { PresenceService } = require('../../dist/modules/notifications/presence.service');
 const { Contact } = require('../../dist/modules/contacts/entities/contact.entity');
 const { ContactsRepository } = require('../../dist/modules/contacts/contacts.repository');
 
@@ -58,6 +61,10 @@ function createFakeStore() {
     storageFiles: [],
     // Saved contacts: { organizationId, ownerUserId, contactUserId }.
     contacts: [],
+    // What the presence service was asked to do, in order: ['refresh', organizationId, userId] or ['closeCompany', organizationId].
+    presenceCalls: [],
+    // Who has a live connection, as 'organizationId:userId' (presence itself has its own tests).
+    online: new Set(),
   };
   let nextSessionId = 1;
   let nextFileId = 1;
@@ -244,6 +251,11 @@ function createFakeStore() {
       isActiveMember: async (userId, organizationId) => store.memberships.some((row) => row.userId === userId
         && row.organizationId === organizationId && row.isActive),
     },
+    presence: {
+      isOnline: (organizationId, userId) => store.online.has(`${organizationId}:${userId}`),
+      refresh: async (organizationId, userId) => { store.presenceCalls.push(['refresh', organizationId, userId]); },
+      closeCompany: async (organizationId) => { store.presenceCalls.push(['closeCompany', organizationId]); },
+    },
     contacts: {
       list: async (organizationId, ownerUserId) => store.contacts
         .filter((row) => row.organizationId === organizationId && row.ownerUserId === ownerUserId)
@@ -325,6 +337,11 @@ async function createAuthApp(t, store = createFakeStore(), { controllers = [], i
     controllers,
   });
   for (const entity of ENTITIES) builder = builder.overrideProvider(getRepositoryToken(entity)).useValue({});
+  // The real notifications module opens sockets and listens to the audit trail; modules that only need the presence
+  // service get this stand-in, which records what they ask for (presence has its own tests).
+  class FakeNotificationsModule {}
+  Module({ providers: [{ provide: PresenceService, useValue: store.repositories.presence }], exports: [PresenceService] })(FakeNotificationsModule);
+  builder = builder.overrideModule(NotificationsModule).useModule(FakeNotificationsModule);
   const moduleRef = await builder
     .overrideProvider(UsersRepository).useValue(store.repositories.users)
     .overrideProvider(SessionsRepository).useValue(store.repositories.sessions)

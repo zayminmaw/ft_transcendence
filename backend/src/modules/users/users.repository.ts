@@ -16,6 +16,8 @@ export class UsersRepository {
     return (await this.users.findOneBy({ id })) ?? undefined;
   }
 
+  // Nothing deactivates an account yet. When something does, call PresenceService.refresh(company, userId) for each of the
+  // person's companies afterwards: their contacts must see Suspended and their sockets must close.
   isActive(id: string): Promise<boolean> {
     return this.users.existsBy({ id, isActive: true });
   }
