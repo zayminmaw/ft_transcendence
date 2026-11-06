@@ -46,5 +46,22 @@
 	},
 	"errors": {
 		"unknown": "Something went wrong. Try again."
+	},
+	"add": {
+		"title": "Add contact",
+		"description": "Choose a colleague your {{role}} role can add in {{company}}.",
+		"back": "Back to contacts",
+		"loading": "Loading colleagues…",
+		"loadFailed": "The colleagues you can add could not be loaded.",
+		"policyTitle": "You can add the colleagues your role allows.",
+		"policyBody": "Only eligible colleagues in this company are listed. Their status is available once you add them.",
+		"groupTitle": "{{role}} · {{count}} eligible",
+		"select": "Select",
+		"selectNamed": "Add {{name}} to your contacts",
+		"added": "{{name}} was added to your contacts.",
+		"exists": "{{name}} is already in your contacts.",
+		"notEligible": "{{name}} can't be added. The list has been refreshed.",
+		"allAdded": "{{role}} · All eligible colleagues are already in your contacts.",
+		"none": "There is no one your role can add right now."
 	}
 }
