@@ -55,6 +55,7 @@ The **Log in** page offers **Log in with 42** below the password form. `GET /api
 - Success ends exactly like password login: a new session, the same refresh cookie, a `login` audit entry, and a redirect to `/app`, where the workspace picker continues as usual.
 - Every failure returns to `/login?oauth=<reason>` without a session: `denied` (cancelled on 42), `failed` (missing or mismatched state, or 42 refused or did not answer), `no_account` (no active account with that email, audited as `login_failed`), and `unavailable` (the 42 credentials are not configured). The page shows the matching message.
 - 42 tokens and the client secret are never stored, logged, or sent to the browser.
+- When 42 sends an error other than `access_denied`, or a call to 42 fails, the API logs a warning with the reason, such as the status 42 answered with. This is the place to look when every 42 login shows `failed`, for example after a wrong secret.
 
 ## Company workspace picker (required, not implemented)
 

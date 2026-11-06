@@ -2,6 +2,7 @@ require('reflect-metadata');
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const request = require('supertest');
+const { Logger } = require('@nestjs/common');
 const { ConfigModule } = require('@nestjs/config');
 const { Reflector } = require('@nestjs/core');
 const { JwtService } = require('@nestjs/jwt');
@@ -190,4 +191,49 @@ test('without 42 credentials both endpoints answer unavailable', async (t) => {
   assert.equal(stateCookie(started), undefined);
   const finished = await callback(server, { code: 'the-code', state: 'x' }, 'x').expect(302);
   assert.equal(finished.headers.location, '/login?oauth=unavailable');
+});
+
+// The warnings logged during a test, as plain text.
+function captureWarnings(t) {
+  const warn = t.mock.method(Logger.prototype, 'warn', () => {});
+  return () => warn.mock.calls.map((call) => call.arguments[0]);
+}
+
+test('only access_denied reads as cancelled, and saying no is not logged', async (t) => {
+  const warnings = captureWarnings(t);
+  const { server } = await createApp(t);
+  const declined = await callback(server, { error: 'access_denied' }).expect(302);
+  assert.equal(declined.headers.location, '/login?oauth=denied');
+  assert.deepEqual(warnings(), []);
+  const broken = await callback(server, { error: 'server_error' }).expect(302);
+  assert.equal(broken.headers.location, '/login?oauth=failed');
+  assert.deepEqual(warnings(), ['42 answered with an error: server_error']);
+});
+
+test('text a visitor puts in the error value never reaches the log', async (t) => {
+  const warnings = captureWarnings(t);
+  const { server } = await createApp(t);
+  for (const query of [{ error: 'evil\ninjected' }, { error: ['server_error', 'twice'] }]) {
+    const response = await callback(server, query).expect(302);
+    assert.equal(response.headers.location, '/login?oauth=failed');
+  }
+  assert.deepEqual(warnings(), ['42 answered with an error: unrecognized', '42 answered with an error: unrecognized']);
+});
+
+test('a failing 42 API logs its reason, but never the answer it could not parse', async (t) => {
+  const warnings = captureWarnings(t);
+  const refused = await createApp(t, { api: fakeApi({ fail: true }) });
+  const first = await start(refused.server);
+  await callback(refused.server, { code: 'the-code', state: first.state }, first.state).expect(302);
+  assert.deepEqual(warnings(), ['42 login failed: refused']);
+
+  const unreadable = fakeApi();
+  unreadable.exchangeCode = async () => {
+    throw new SyntaxError('Unexpected token, "secret-body" is not valid JSON');
+  };
+  const garbled = await createApp(t, { api: unreadable });
+  const second = await start(garbled.server);
+  const response = await callback(garbled.server, { code: 'the-code', state: second.state }, second.state).expect(302);
+  assert.equal(response.headers.location, '/login?oauth=failed');
+  assert.deepEqual(warnings(), ['42 login failed: refused', '42 login failed: unreadable answer']);
 });
