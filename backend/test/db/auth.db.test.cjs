@@ -11,7 +11,8 @@ const count = async (sql, params = []) => Number((await database.query(sql, para
 test('the migrations add the sessions table and the documented roles and permissions', async () => {
   assert.equal(await count('SELECT COUNT(*) AS total FROM permissions'), 31);
   assert.equal(await count('SELECT COUNT(*) AS total FROM roles'), 8);
-  assert.equal(await count('SELECT COUNT(*) AS total FROM role_permissions'), 54);
+  // Every full-scope grant of the docs table, plus the driver's four assigned_only ones (checked below).
+  assert.equal(await count('SELECT COUNT(*) AS total FROM role_permissions'), Object.values(DOCS_MATRIX).flat().length + 4);
   assert.equal(await count(`SELECT COUNT(*) AS total FROM role_permissions rp JOIN roles r ON r.id = rp.role_id
     WHERE r.code = 'driver' AND rp.scope = 'assigned_only'`), 4);
   assert.equal(await count(`SELECT COUNT(*) AS total FROM role_permissions rp JOIN roles r ON r.id = rp.role_id
@@ -214,10 +215,10 @@ const { RolePermission } = require('../../dist/modules/rbac/entities/role-permis
 // "only their own" (assigned_only), which the guard refuses until ownership rules exist; platform_admin has none.
 const DOCS_MATRIX = {
   org_admin: ['admin.manage_users', 'admin.manage_roles', 'admin.audit_logs', 'contacts.manage_own'],
-  dispatcher: ['clients.view', 'clients.create', 'clients.edit', 'parcels.view', 'parcels.create', 'parcels.dispatch',
+  dispatcher: ['clients.view', 'clients.create', 'clients.edit', 'clients.delete', 'parcels.view', 'parcels.create', 'parcels.dispatch',
     'parcels.update_status', 'parcels.mark_delivered', 'drivers.view', 'assets.view', 'assets.assign', 'contacts.manage_own'],
   hub_sorter: ['parcels.view', 'parcels.update_status', 'contacts.manage_own'],
-  finance: ['clients.view', 'clients.create', 'clients.view_financials', 'parcels.view', 'parcels.override_fee',
+  finance: ['clients.view', 'clients.create', 'clients.edit', 'clients.view_financials', 'parcels.view', 'parcels.override_fee',
     'staff.view_payroll', 'drivers.view', 'drivers.view_earnings', 'billing.view', 'billing.reconcile_cod',
     'billing.create_invoice', 'billing.adjust_balance', 'billing.export', 'admin.audit_logs', 'contacts.manage_own'],
   hr_manager: ['staff.view', 'staff.manage', 'staff.view_payroll', 'drivers.view', 'drivers.manage',
@@ -492,13 +493,15 @@ test('the first-admin command creates a platform admin and never reuses an accou
 });
 
 const { In, Like } = require('typeorm');
-const { DEMO_ACCOUNTS, DEMO_PASSWORD, seedDemo } = require('../../dist/database/seeders/demo.seed');
+const { DEMO_ACCOUNTS, DEMO_CLIENTS, DEMO_PASSWORD, seedDemo } = require('../../dist/database/seeders/demo.seed');
 const { verifyPassword } = require('../../dist/modules/users/password');
 
 test('the demo seed adds everything once and skips it the second time', async () => {
-  assert.deepEqual(await seedDemo(database), { companiesCreated: 2, accountsCreated: 16, accountsSkipped: [] });
+  assert.deepEqual(await seedDemo(database), {
+    companiesCreated: 2, accountsCreated: DEMO_ACCOUNTS.length, accountsSkipped: [], clientsCreated: Object.values(DEMO_CLIENTS).flat().length,
+  });
   const again = await seedDemo(database);
-  assert.deepEqual([again.companiesCreated, again.accountsCreated], [0, 0]);
+  assert.deepEqual([again.companiesCreated, again.accountsCreated, again.clientsCreated], [0, 0, 0]);
   assert.deepEqual(again.accountsSkipped, DEMO_ACCOUNTS.map((account) => account.username));
   const demoIds = (await database.getRepository(User).findBy({ email: Like('%.example.test') })).map((user) => user.id);
   assert.equal(demoIds.length, 13);

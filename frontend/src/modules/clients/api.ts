@@ -1,5 +1,5 @@
-// /api/clients (planned): the merchant accounts of the open company. Until the API exists, the hooks answer from
-// the sample data in data/sampleClients.ts, with these shapes and the API's refusals.
+// /api/clients: the merchant accounts of the open company (X-Organization-Id). Refusals carry a code, e.g.
+// CLIENT_CODE_TAKEN or CLIENT_NOT_FOUND.
 export type ClientStatusFilter = 'active' | 'archived' | 'all';
 
 export type ClientSortKey = 'businessName' | 'clientCode' | 'createdAt';
@@ -27,7 +27,7 @@ export type Client = {
 	defaultPickupAddress: string;
 	pickupLatitude: string | null;
 	pickupLongitude: string | null;
-	// Only with clients.view_financials: the API will leave them out otherwise. Balances change only through
+	// Only with clients.view_financials: the API leaves them out otherwise. Balances change only through
 	// ledger entries (billing), never through this module.
 	currentBalance?: string;
 	pendingCodBalance?: string;
