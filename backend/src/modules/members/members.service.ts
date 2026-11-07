@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import type { TenantContext } from '../../common/types/authenticated-request';
 import { type RequestMeta, SessionsService } from '../auth';
+import { PresenceService } from '../notifications';
 import { AccountError, hashPassword, temporaryPassword, UsersRepository } from '../users';
 import type { CreateMemberDto } from './dto/create-member.dto';
 import { MembersAuditRepository } from './members-audit.repository';
@@ -27,6 +28,7 @@ export class MembersService {
     private readonly users: UsersRepository,
     private readonly sessions: SessionsService,
     private readonly audit: MembersAuditRepository,
+    private readonly presence: PresenceService,
   ) {}
 
   async list(tenant: TenantContext) {
@@ -63,6 +65,8 @@ export class MembersService {
     if (member.isActive === isActive) return publicMember(member);
     await this.members.setActive(tenant.organizationId, member.userId, isActive);
     await this.audit.record(isActive ? 'member_reactivated' : 'member_deactivated', this.entry(tenant, actorId, member), meta);
+    // Their contacts see Suspended (and their sockets here close) or the live status again.
+    await this.presence.refresh(tenant.organizationId, member.userId);
     return publicMember({ ...member, isActive });
   }
 

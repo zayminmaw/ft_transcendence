@@ -1,4 +1,5 @@
 import type { EntityManager } from 'typeorm';
+import { isDuplicateKey } from '../../common/database-errors';
 import { User } from './entities/user.entity';
 import { hashPassword, PASSWORD_RULE_MESSAGE, passwordProblems } from './password';
 
@@ -20,11 +21,6 @@ export class AccountError extends Error {
 const USERNAME_PATTERN = /^[A-Za-z0-9._-]{3,64}$/;
 // Printable ASCII only: login refuses anything else, so an account with an accented email could never log in by email.
 const EMAIL_PATTERN = /^[\x21-\x3F\x41-\x7E]+@[\x21-\x3F\x41-\x7E]+\.[\x21-\x3F\x41-\x7E]+$/;
-
-function isDuplicateKey(error: unknown): boolean {
-  const driver = (error as { driverError?: { errno?: number; code?: string } }).driverError;
-  return driver?.errno === 1062 || driver?.code === 'ER_DUP_ENTRY';
-}
 
 // The one way to create an account (company admins, tenant onboarding, the first-admin command), inside the caller's
 // transaction. Never attaches to, overwrites or resets an existing account. Returns the new user's id.

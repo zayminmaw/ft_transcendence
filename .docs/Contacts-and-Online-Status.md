@@ -4,7 +4,22 @@
 
 **Users can add other users as contacts and see their status.** Tenant roles determine who can be added within the active company workspace. Once a contact has been validly added, viewing that contact's status is included; there is no separate role-based status permission. The only contact statuses are **Online**, **Offline**, and **Suspended**.
 
-This is required product behavior, not an implemented feature. Contact persistence, role-based add policies, APIs, real-time delivery, and frontend views still need implementation. The existing 22-table baseline does not contain a contacts relationship or an online-presence service.
+**Implementation status.** The backend is built: the `contacts` table, the `contacts.manage_own` permission, the role rules, the four endpoints below and live presence. The frontend views still need implementation. The contacts table references memberships, so a contact goes when either person leaves the company.
+
+**Presence.** Who is connected is kept in memory only, per company, and never stored. A person with several tabs or devices counts as one, and when their last connection closes they stay Online for 30 seconds before they become Offline, so a reconnect never flickers. Whoever saved that person is told with a `presence` event (`organizationId`, `userId`, `status`, `timestamp`, no names) in their own socket room for that company, and the list endpoint carries the status at load time. Suspending someone's membership, removing a tenant administrator or suspending a company refreshes the status at once, closes the person's connections in that company (or all of the company's) and sends the new status. Someone connected to company B only shows Offline in company A.
+
+### Endpoints
+
+All routes need a signed-in user, the `X-Organization-Id` header and `contacts.manage_own` in that company. They only ever touch the caller's own list.
+
+| Route | What it does |
+| --- | --- |
+| `GET /api/contacts` | Your saved contacts in this company, sorted by role name then username. Each has `userId`, `username`, `displayName`, `role { code, name }` and `status` (`online`, `offline` or `suspended`). Suspended people stay in the list. |
+| `GET /api/contacts/candidates` | People you could still add: active, not you, not already saved, and allowed by your role. |
+| `POST /api/contacts` with `{ "userId": "11" }` | Adds one contact and answers `201` with that contact. Eligibility is checked again here. Errors: `CONTACT_SELF` 400, `CONTACT_NOT_ELIGIBLE` 403 (one neutral answer for a person in another company, a suspended person or a disallowed role, so it never reveals another company), `CONTACT_EXISTS` 409. |
+| `DELETE /api/contacts/:userId` | Removes one contact and answers `204`. `CONTACT_NOT_FOUND` 404 when that person is not your contact. |
+
+Adding and removing are audited (module `contacts`, resource `contact`) in the same transaction as the change.
 
 ## Role-based contact eligibility and grouping
 
@@ -17,7 +32,19 @@ Use the acting user's role and the target user's role in the selected company to
 | Courier / Driver | Dispatcher roles and other explicitly permitted target roles | Add operational contacts without unrestricted company-wide additions. |
 | Other roles | Only target roles explicitly allowed by the company's contact policy | Deny unconfigured role pairings. |
 
-The examples define intended role relationships; the complete allowed role-to-role matrix, permission codes for managing one's own contacts, and role seeds still need implementation contracts. **Employees** may be a friendly display group aggregating configured tenant roles rather than a new role or department enum value. A role assignment is sufficient input to the contact policy even if an account has no personnel/department link; existing staff/driver permissions alone must not implicitly allow contact additions.
+The permission is `contacts.manage_own` (scope `all`), held by every tenant role. The confirmed role-to-role matrix, kept in one place (`backend/src/modules/contacts/contact-rules.ts`):
+
+| Acting role | May add |
+| --- | --- |
+| Organization Admin | every tenant role |
+| Dispatcher | Courier / Driver, Dispatcher |
+| Courier / Driver | Dispatcher |
+| HR Manager | HR Manager, Courier / Driver, Dispatcher |
+| Finance | Finance, Dispatcher, HR Manager |
+| Hub Sorter | Hub Sorter, Dispatcher, Courier / Driver |
+| Fleet Lead | Fleet Lead, Dispatcher, Courier / Driver |
+
+Platform administrators have no contacts. A role missing from the table adds nobody and is added by nobody. **Employees** may be a friendly display group aggregating configured tenant roles rather than a new role or department enum value. A role assignment is sufficient input to the contact policy even if an account has no personnel/department link; existing staff/driver permissions alone must not implicitly allow contact additions.
 
 Apply role-based eligibility when listing candidates and when accepting an add request on the server. Client filtering or hiding an Add button is insufficient. Adding/removing one's own contacts remains distinct from administering other users' lists. Do not introduce a separate `presence.view` or equivalent role gate for saved contacts.
 

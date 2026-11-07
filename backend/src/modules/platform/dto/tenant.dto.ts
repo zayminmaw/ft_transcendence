@@ -1,16 +1,10 @@
-import { Transform, Type } from 'class-transformer';
+import { Type } from 'class-transformer';
 import { IsDefined, IsIn, IsInt, IsNotEmpty, IsOptional, IsString, Matches, MaxLength, Min, ValidateIf, ValidateNested } from 'class-validator';
-import { Trim } from '../../../common/decorators/trim.decorator';
+import { IsOmittable, Trim, TrimOrNull } from '../../../common/decorators/trim.decorator';
+import { ID_PATTERN } from '../../../common/ids';
+import { PAGE_SIZES } from '../../../common/paging';
 import { EMAIL_MAX_LENGTH, EMAIL_PATTERN, USERNAME_PATTERN } from '../../users/account-rules';
 import { REVOKE_OUTCOMES } from '../constants';
-
-// Left out means unchanged; null is refused, because these columns are required.
-const IsOmittable = () => ValidateIf((_object: object, value: unknown) => value !== undefined);
-// An optional detail sent as "" is cleared, like one sent as null.
-const trimOrNull = () => Transform(({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim() || null : value));
-
-// BIGINT ids in the URL and body.
-export const ID_PATTERN = /^[1-9]\d{0,19}$/;
 
 // The company's URL name (/app/<slug>): lower-case words joined by single dashes.
 export const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -26,10 +20,10 @@ export class TenantOrganizationDto {
   @Trim() @IsString() @MaxLength(EMAIL_MAX_LENGTH) @Matches(EMAIL_PATTERN, { message: 'contactEmail must be an email address' })
   contactEmail!: string;
 
-  @trimOrNull() @IsOptional() @IsString() @MaxLength(32)
+  @TrimOrNull() @IsOptional() @IsString() @MaxLength(32)
   contactPhone?: string | null;
 
-  @trimOrNull() @IsOptional() @IsString() @MaxLength(1000)
+  @TrimOrNull() @IsOptional() @IsString() @MaxLength(1000)
   address?: string | null;
 }
 
@@ -61,10 +55,10 @@ export class UpdateTenantDto {
   @Trim() @IsOmittable() @IsString() @MaxLength(EMAIL_MAX_LENGTH) @Matches(EMAIL_PATTERN, { message: 'contactEmail must be an email address' })
   contactEmail?: string;
 
-  @trimOrNull() @IsOptional() @IsString() @MaxLength(32)
+  @TrimOrNull() @IsOptional() @IsString() @MaxLength(32)
   contactPhone?: string | null;
 
-  @trimOrNull() @IsOptional() @IsString() @MaxLength(1000)
+  @TrimOrNull() @IsOptional() @IsString() @MaxLength(1000)
   address?: string | null;
 }
 
@@ -74,7 +68,7 @@ export class SuspendTenantDto {
 }
 
 export class ReactivateTenantDto {
-  @trimOrNull() @IsOptional() @IsString() @MaxLength(500)
+  @TrimOrNull() @IsOptional() @IsString() @MaxLength(500)
   reason?: string | null;
 }
 
@@ -112,7 +106,6 @@ export class RevokeAdministratorDto {
 
 export const TENANT_STATUSES = ['all', 'active', 'suspended'] as const;
 export const TENANT_SORTS = ['name', 'members', 'createdAt'] as const;
-export const PAGE_SIZES = [10, 25, 50];
 
 export class ListTenantsQueryDto {
   @Trim() @IsOptional() @IsString() @MaxLength(100)

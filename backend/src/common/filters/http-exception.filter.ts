@@ -1,5 +1,6 @@
 import { ArgumentsHost, Catch, ExceptionFilter, HttpException, Logger } from '@nestjs/common';
 import type { Response } from 'express';
+import { isDuplicateKey } from '../database-errors';
 
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
@@ -18,9 +19,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
       // Only machine-readable codes (e.g. AUTH_INVALID_CREDENTIALS) reach the client, so the frontend can translate them.
       if (typeof bodyCode === 'string' && /^[A-Z_]+$/.test(bodyCode)) code = bodyCode;
     } else {
-      const databaseError = error as { code?: string; errno?: number; driverError?: { code?: string; errno?: number } } | null;
-      const driver = databaseError?.driverError ?? databaseError;
-      if (driver?.errno === 1062 || driver?.code === 'ER_DUP_ENTRY') {
+      if (isDuplicateKey(error)) {
         status = 409;
         message = 'A record with those unique details already exists.';
       } else {

@@ -1,4 +1,5 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { PresenceService } from '../notifications';
 import { hashPassword, passwordProblems } from '../users/password';
 import { PASSWORD_RULE } from '../users/account-rules';
 import { ADMINISTRATOR_PROBLEMS, TENANT_CONFLICTS, TENANT_NOT_FOUND } from './constants';
@@ -12,6 +13,7 @@ export class TenantAdministratorsService {
   constructor(
     private readonly administrators: TenantAdministratorsRepository,
     private readonly tenants: TenantsRepository,
+    private readonly presence: PresenceService,
   ) {}
 
   async findCandidates(organizationId: string, search?: string) {
@@ -46,7 +48,13 @@ export class TenantAdministratorsService {
     const { outcome, reason } = body;
     const request: RevokeAdministrator = outcome === 'change_role' ? { outcome, roleCode: body.roleCode!, reason } : { outcome, reason };
     const result = await this.administrators.revoke(organizationId, userId, request, actor);
-    if (result.done) return { tenantSuspended: result.tenantSuspended };
+    if (result.done) {
+      // After the transaction has committed. A suspended company loses every connection; otherwise the removed person's
+      // status is recomputed. Moving them to another role keeps the membership, so nothing changes for their contacts.
+      if (result.tenantSuspended) await this.presence.closeCompany(organizationId);
+      else if (outcome !== 'change_role') await this.presence.refresh(organizationId, userId);
+      return { tenantSuspended: result.tenantSuspended };
+    }
     if (result.problem === 'tenant_not_found') throw new NotFoundException(TENANT_NOT_FOUND);
     if (result.problem === 'administrator_not_found') throw new NotFoundException(ADMINISTRATOR_PROBLEMS.administrator_not_found);
     throw new ConflictException(ADMINISTRATOR_PROBLEMS[result.problem]);

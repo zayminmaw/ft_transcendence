@@ -4,7 +4,7 @@ import { AuditLog } from '../audit';
 import { Organization } from '../organizations';
 import { User } from '../users';
 import { ACTIVITY_ACTIONS, ACTIVITY_COUNT_DAYS, ACTIVITY_SORT_COLUMNS } from './constants';
-import { containsPattern } from './tenant-writes';
+import { containsPattern } from '../../common/like-pattern';
 import type { ActivityCounts, ActivityDetails, ActivityEvent, ActivityListQuery } from './types/activity';
 
 type ActivityRow = {

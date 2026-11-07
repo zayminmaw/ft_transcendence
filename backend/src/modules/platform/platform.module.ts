@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { NotificationsModule } from '../notifications';
 import { Organization } from '../organizations';
 import { ActivityController } from './activity.controller';
 import { ActivityRepository } from './activity.repository';
@@ -13,7 +14,7 @@ import { TenantsService } from './tenants.service';
 
 // Platform administration: managing the companies (tenants) that use Transcend.
 @Module({
-  imports: [TypeOrmModule.forFeature([Organization])],
+  imports: [TypeOrmModule.forFeature([Organization]), NotificationsModule],
   controllers: [TenantsController, TenantAdministratorsController, ActivityController],
   providers: [
     TenantsRepository, TenantsService, TenantAdministratorsRepository, TenantAdministratorsService, ActivityRepository, ActivityService,

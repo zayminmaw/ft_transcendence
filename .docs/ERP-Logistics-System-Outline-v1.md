@@ -168,16 +168,17 @@ To properly handle different operational responsibilities, personnel records sha
 | **Admin** | `admin.manage_users` | Create user accounts, assign allowed tenant memberships/roles, and link same-tenant employee profiles; no platform authority |
 | | `admin.manage_roles` | Create and edit role permission mappings |
 | | `admin.audit_logs` | View operational and financial audit logs |
+| **Contacts** | `contacts.manage_own` | Add and remove your own contacts and see their status |
 
 ## 5. Default Role-Permission Assignments
 
 | Role Name | Assigned Permissions | Scope / Notes |
 |---|---|---|
 | **Platform Admin** | Explicit platform tenant-management permissions; exact codes to be agreed | Cross-tenant organization administration and monitoring; no automatic access to tenant business records |
-| **Tenant Admin (`org_admin`)** | Explicit organization-scoped administration permissions, including `admin.manage_users` and `admin.manage_roles` | First administrator created during tenant onboarding; manages its own organization's users, employees, memberships, and allowed role/permission assignments; no platform authority |
-| **Dispatcher** | `clients.view`, `clients.create`, `clients.edit`, `parcels.view`, `parcels.create`, `parcels.dispatch`, `parcels.update_status`, `parcels.mark_delivered`, `drivers.view`, `assets.view`, `assets.assign` | Route management and fleet assignment; no payroll, billing, or audit access |
-| **Hub Sorter** | `parcels.view`, `parcels.update_status` | Inbound intake, sorting, and hub transfer verification only |
-| **Finance** | `clients.view`, `clients.create`, `clients.view_financials`, `parcels.view`, `parcels.override_fee`, `staff.view_payroll`, `drivers.view`, `drivers.view_earnings`, `billing.view`, `billing.reconcile_cod`, `billing.create_invoice`, `billing.adjust_balance`, `billing.export`, `admin.audit_logs` | Financial ledger control, COD settlement, invoicing, and payroll audit |
-| **HR Manager** | `staff.view`, `staff.manage`, `staff.view_payroll`, `drivers.view`, `drivers.manage`, `drivers.view_compliance`, `drivers.view_earnings` | Personnel management, driver onboarding, compliance docs, and payroll records |
-| **Fleet Lead** | `drivers.view`, `drivers.view_compliance`, `assets.view`, `assets.create`, `assets.assign`, `assets.log_maintenance` | Vehicle inventory, inspection schedules, maintenance logs, and driver licensing compliance |
-| **Courier / Driver** | `parcels.view`, `parcels.update_status`, `parcels.mark_delivered`, `drivers.view_earnings` | Scoped strictly to assigned run sheet and personal commission summary |
+| **Tenant Admin (`org_admin`)** | Explicit organization-scoped administration permissions, including `admin.manage_users` and `admin.manage_roles`, and `contacts.manage_own` | First administrator created during tenant onboarding; manages its own organization's users, employees, memberships, and allowed role/permission assignments; no platform authority |
+| **Dispatcher** | `clients.view`, `clients.create`, `clients.edit`, `clients.delete`, `parcels.view`, `parcels.create`, `parcels.dispatch`, `parcels.update_status`, `parcels.mark_delivered`, `drivers.view`, `assets.view`, `assets.assign`, `contacts.manage_own` | Route management and fleet assignment; no payroll, billing, or audit access |
+| **Hub Sorter** | `parcels.view`, `parcels.update_status`, `contacts.manage_own` | Inbound intake, sorting, and hub transfer verification only |
+| **Finance** | `clients.view`, `clients.create`, `clients.edit`, `clients.view_financials`, `parcels.view`, `parcels.override_fee`, `staff.view_payroll`, `drivers.view`, `drivers.view_earnings`, `billing.view`, `billing.reconcile_cod`, `billing.create_invoice`, `billing.adjust_balance`, `billing.export`, `admin.audit_logs`, `contacts.manage_own` | Financial ledger control, COD settlement, invoicing, and payroll audit |
+| **HR Manager** | `staff.view`, `staff.manage`, `staff.view_payroll`, `drivers.view`, `drivers.manage`, `drivers.view_compliance`, `drivers.view_earnings`, `contacts.manage_own` | Personnel management, driver onboarding, compliance docs, and payroll records |
+| **Fleet Lead** | `drivers.view`, `drivers.view_compliance`, `assets.view`, `assets.create`, `assets.assign`, `assets.log_maintenance`, `contacts.manage_own` | Vehicle inventory, inspection schedules, maintenance logs, and driver licensing compliance |
+| **Courier / Driver** | `parcels.view`, `parcels.update_status`, `parcels.mark_delivered`, `drivers.view_earnings`, `contacts.manage_own` | Scoped strictly to assigned run sheet and personal commission summary |

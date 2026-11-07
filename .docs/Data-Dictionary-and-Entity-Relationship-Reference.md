@@ -354,6 +354,20 @@ Added by migration `1792627200000-StorageFiles` (not in the baseline). One store
 | `size_bytes` | `INT UNSIGNED` | NOT NULL | Size in bytes (images: at most 10 MB) |
 | `created_at` | `TIMESTAMP` | NOT NULL DEFAULT CURRENT_TIMESTAMP | Upload time |
 
+### `contacts`
+
+Added by migration `1793322000000-Contacts` (not in the baseline). One saved contact: one member of a company who has saved a colleague of the same company, so they can see that colleague's status (see [Contacts and online status](Contacts-and-Online-Status.md)). The relationship is one-way and per company: the same two people can have independent contacts in each company they share. The status is never stored. Owner and contact are memberships, and both foreign keys carry `organization_id`, so the database keeps the pair inside one company. The permission `contacts.manage_own` (migration `1793322060000-ContactsPermission`, granted to every tenant role) guards one's own list.
+
+| Column | Data Type | Constraints | Description |
+| --- | --- | --- | --- |
+| `id` | `BIGINT UNSIGNED` | AUTO_INCREMENT PRIMARY KEY | Contact identifier |
+| `organization_id` | `BIGINT UNSIGNED` | NOT NULL | Company of both memberships |
+| `owner_member_id` | `BIGINT UNSIGNED` | NOT NULL; FK -> organization_members (`id`, `organization_id`) (`ON DELETE CASCADE`) | Who saved the contact |
+| `contact_member_id` | `BIGINT UNSIGNED` | NOT NULL; FK -> organization_members (`id`, `organization_id`) (`ON DELETE CASCADE`), indexed | The saved colleague |
+| `created_at` | `TIMESTAMP` | NOT NULL DEFAULT CURRENT_TIMESTAMP | When it was saved |
+
+Constraints: `UNIQUE KEY uq_contacts_pair (owner_member_id, contact_member_id)` and `CHECK (owner_member_id <> contact_member_id)`.
+
 ## 7. Financial Settlement & Balances
 
 ### `driver_cod_settlements`
@@ -505,6 +519,7 @@ These definitions are taken from the baseline. A composite unique key applies to
 ### `organization_members`
 
 - `UNIQUE KEY uq_org_user (organization_id, user_id)`
+- `UNIQUE KEY uq_om_id_org (id, organization_id)` (added by `1793322000000-Contacts`, the target of the composite keys of `contacts`)
 - `INDEX idx_organization_members_organization_id (organization_id)`
 - `INDEX idx_organization_members_user_id (user_id)`
 - `INDEX idx_organization_members_role_id (role_id)`
@@ -654,6 +669,8 @@ These definitions are taken from the baseline. A composite unique key applies to
 | `invoice_items.parcel_id` | `parcels.id` | RESTRICT | `fk_ii_parcel` |
 | `storage_files.organization_id` | `organizations.id` | CASCADE | `fk_storage_files_org` |
 | `storage_files.uploaded_by_user_id` | `users.id` | SET NULL | `fk_storage_files_user` |
+| `contacts.(owner_member_id, organization_id)` | `organization_members.(id, organization_id)` | CASCADE | `fk_contacts_owner` |
+| `contacts.(contact_member_id, organization_id)` | `organization_members.(id, organization_id)` | CASCADE | `fk_contacts_contact` |
 | `users.avatar_file_id` | `storage_files.id` | SET NULL | `fk_users_avatar_file` |
 
 ## 12. Domain integrity

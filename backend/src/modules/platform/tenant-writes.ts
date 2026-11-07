@@ -8,11 +8,6 @@ import type { AccountConflict, NewAdministrator, PlatformActor } from './types/t
 
 // Transaction steps shared by the tenant and tenant administrator repositories. Each takes the transaction's manager.
 
-// A LIKE pattern that finds the text anywhere, with its own wildcards escaped.
-export function containsPattern(text: string): string {
-  return `%${text.replace(/[\\%_]/g, (character) => `\\${character}`)}%`;
-}
-
 // Locks the company row until the transaction ends. Status and administrator changes all take this lock first, so
 // two of them on one company run one after the other and always count the administrators correctly.
 export function lockTenant(manager: EntityManager, id: string): Promise<Organization | null> {
