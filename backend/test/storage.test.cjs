@@ -13,8 +13,13 @@ const { hashPassword } = require('../dist/modules/users/password');
 const { PASSWORD, as, createAuthApp, createFakeStore, tokenFor } = require('./helpers/auth-app.cjs');
 
 process.env.NODE_ENV = 'test';
-// Not a real image: the upload only checks the type the client sends.
+// Only the first bytes of a PNG: StorageService checks that a file starts the way its type does.
 const PNG = Buffer.from('89504e470d0a1a0a0000000d49484452', 'hex');
+// What each allowed type starts with. StorageService trusts the bytes, not the type the client claims.
+const JPEG = Buffer.from('ffd8ffe000104a464946', 'hex');
+const WEBP = Buffer.concat([Buffer.from('RIFF'), Buffer.from([0x1a, 0, 0, 0]), Buffer.from('WEBPVP8 ')]);
+const WORD_ZIP = Buffer.from('504b0304', 'hex');
+const WORD_OLD = Buffer.from('d0cf11e0a1b11ae1', 'hex');
 
 let storage;
 before(async () => {
@@ -128,7 +133,7 @@ test('imageUploadOptions: only JPEG, PNG or WebP up to 10 MB', async (t) => {
   const dana = await tokenFor(server, 'dana');
   await upload(server, dana, Buffer.from('<script>'), { filename: 'page.html', contentType: 'text/html' }).expect(400);
   await upload(server, dana, Buffer.alloc(10 * 1024 * 1024 + 1), { filename: 'huge.png', contentType: 'image/png' }).expect(413);
-  await upload(server, dana, PNG, { filename: 'photo.jpg', contentType: 'image/jpeg' }).expect(201);
+  await upload(server, dana, JPEG, { filename: 'photo.jpg', contentType: 'image/jpeg' }).expect(201);
   assert.equal(store.storageFiles.length, 1);
 });
 
@@ -141,9 +146,60 @@ test('documentUploadOptions: only PDF or Word up to 10 MB', async (t) => {
   await uploadDocument(PNG, { filename: 'photo.png', contentType: 'image/png' }).expect(400);
   await uploadDocument(Buffer.alloc(10 * 1024 * 1024 + 1), { filename: 'huge.pdf', contentType: 'application/pdf' }).expect(413);
   await uploadDocument(Buffer.from('%PDF-1.7'), { filename: 'invoice.pdf', contentType: 'application/pdf' }).expect(201);
-  await uploadDocument(Buffer.from('PK'), { filename: 'contract.docx', contentType: DOCX }).expect(201);
-  await uploadDocument(Buffer.from('doc'), { filename: 'old.doc', contentType: 'application/msword' }).expect(201);
+  await uploadDocument(WORD_ZIP, { filename: 'contract.docx', contentType: DOCX }).expect(201);
+  await uploadDocument(WORD_OLD, { filename: 'old.doc', contentType: 'application/msword' }).expect(201);
   assert.deepEqual(store.storageFiles.map((file) => file.mimeType), ['application/pdf', DOCX, 'application/msword']);
+});
+
+test('a file is kept only when its bytes are the type it claims', async (t) => {
+  const { server, store } = await storageApp(t);
+  const dana = await tokenFor(server, 'dana');
+  const DOCX = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+  const image = (content, filename, contentType) => upload(server, dana, content, { filename, contentType });
+  const document = (content, filename, contentType) =>
+    as(request(server).post('/api/fixture/photos/documents'), dana).attach('file', content, { filename, contentType });
+
+  // Real files of each allowed type are kept.
+  await image(PNG, 'a.png', 'image/png').expect(201);
+  await image(JPEG, 'a.jpg', 'image/jpeg').expect(201);
+  await image(WEBP, 'a.webp', 'image/webp').expect(201);
+  await document(Buffer.from('%PDF-1.7'), 'a.pdf', 'application/pdf').expect(201);
+  await document(WORD_ZIP, 'a.docx', DOCX).expect(201);
+  await document(WORD_OLD, 'a.doc', 'application/msword').expect(201);
+  const kept = store.storageFiles.length;
+  assert.equal(kept, 6);
+  // The folder is shared with the earlier tests, so count what is there now and compare after.
+  const onDisk = (await readdir(join(storage, '1'))).length;
+
+  // A page, a script or another type of file under an allowed type is refused, and nothing is stored.
+  const lie = { code: undefined, message: 'The file is not the type it says it is.' };
+  for (const [content, filename, type] of [
+    [Buffer.from('<script>alert(1)</script>'), 'a.png', 'image/png'],
+    [Buffer.from('<html></html>'), 'a.jpg', 'image/jpeg'],
+    [PNG, 'a.jpg', 'image/jpeg'],
+    [JPEG, 'a.webp', 'image/webp'],
+    [Buffer.from('RIFF....WAVEfmt '), 'a.webp', 'image/webp'],
+  ]) {
+    const response = await image(content, filename, type).expect(400);
+    assert.equal(response.body.message, lie.message);
+  }
+  for (const [content, filename, type] of [
+    [Buffer.from('<script>'), 'a.pdf', 'application/pdf'],
+    [PNG, 'a.docx', DOCX],
+    [Buffer.from('%PDF-1.7'), 'a.doc', 'application/msword'],
+  ]) {
+    await document(content, filename, type).expect(400);
+  }
+  assert.equal(store.storageFiles.length, kept);
+  assert.equal((await readdir(join(storage, '1'))).length, onDisk);
+});
+
+test('a type name that is a built-in object property is not an accepted type', () => {
+  const { matchesDeclaredType } = require('../dist/modules/storage/file-signature');
+  for (const name of ['constructor', 'toString', '__proto__', 'hasOwnProperty']) {
+    assert.equal(matchesDeclaredType(name, PNG), false, name);
+  }
+  assert.equal(matchesDeclaredType('image/png', PNG), true);
 });
 
 test('a company never sees another company\'s files', async (t) => {
@@ -178,6 +234,7 @@ test('a signed link opens the image without a login, until it expires', async (t
   const opened = await request(server).get(url).buffer(true).parse(binary).expect(200);
   assert.deepEqual(opened.body, PNG);
   assert.equal(opened.headers['content-type'], 'image/png');
+  assert.equal(opened.headers['x-content-type-options'], 'nosniff');
   assert.match(opened.headers['cache-control'], /^private, max-age=(\d+)$/);
   assert.ok(Number(/max-age=(\d+)/.exec(opened.headers['cache-control'])[1]) <= 15 * 60);
 
