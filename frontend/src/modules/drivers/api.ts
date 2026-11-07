@@ -1,6 +1,9 @@
-// /api/drivers (planned): the couriers of the open company. A driver is an `employees` row (personnel_type
-// 'driver') plus its `delivery_drivers` row; the API creates both together. Until the API exists, the hooks answer
-// from the sample data in data/sampleDrivers.ts, with these shapes and the API's refusals.
+// /api/drivers: the couriers of the open company. A driver is an `employees` row (personnel_type 'driver') plus its
+// `delivery_drivers` row; the API creates both together. These are the shapes it answers with.
+// The API path of one driver, or of something under it (e.g. '/account').
+export const driverPath = (driverId: string, rest = '') =>
+	`drivers/${encodeURIComponent(driverId)}${rest}`;
+
 export type DispatchStatus =
 	'off_duty' | 'available' | 'on_pickup' | 'out_for_delivery' | 'suspended';
 
@@ -51,7 +54,7 @@ export type Driver = {
 	dispatchStatus: DispatchStatus;
 	lastLocationPing: string | null;
 	account: DriverAccount | null;
-	// Only with drivers.manage: the API will leave them out otherwise.
+	// Only with drivers.manage: the API leaves them out otherwise.
 	nationalId?: string;
 	dateOfBirth?: string;
 	residentialAddress?: string;

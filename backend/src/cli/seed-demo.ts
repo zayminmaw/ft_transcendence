@@ -15,7 +15,7 @@ async function main() {
   await database.initialize();
   try {
     const result = await seedDemo(database);
-    console.log(`Demo data: ${result.companiesCreated} companies, ${result.accountsCreated} accounts and ${result.clientsCreated} clients added.`);
+    console.log(`Demo data: ${result.companiesCreated} companies, ${result.accountsCreated} accounts, ${result.clientsCreated} clients and ${result.driversCreated} drivers added.`);
     if (result.accountsSkipped.length > 0) console.log(`Already there, left unchanged: ${result.accountsSkipped.join(', ')}.`);
     console.log(`Every demo account's password: ${DEMO_PASSWORD}`);
   } finally {

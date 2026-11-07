@@ -94,6 +94,7 @@ export const DRIVER_DEFAULT_VALUES: DriverFormValues = {
 export const DRIVER_FIELD_ERRORS = {
 	EMPLOYEE_CODE_TAKEN: 'employeeCode',
 	LICENSE_NUMBER_TAKEN: 'licenseNumber',
+	DRIVER_TERMINATION_DATE_REQUIRED: 'terminationDate',
 } as const;
 
 // The API's codes for drivers, as translation keys. Anything else gets the general message.
@@ -101,5 +102,9 @@ export const DRIVER_ERROR_MESSAGES = {
 	EMPLOYEE_CODE_TAKEN: 'errors.codeTaken',
 	LICENSE_NUMBER_TAKEN: 'errors.licenseTaken',
 	ACCOUNT_ALREADY_LINKED: 'errors.accountTaken',
+	ACCOUNT_NOT_LINKABLE: 'errors.accountNotLinkable',
 	DRIVER_NOT_FOUND: 'errors.notFound',
+	DRIVER_TERMINATION_DATE_REQUIRED: 'errors.terminationDateRequired',
+	DRIVER_TERMINATED: 'errors.terminated',
+	DRIVER_PAYROLL_FORBIDDEN: 'errors.payrollForbidden',
 } as const satisfies Record<string, ParseKeys<'drivers'>>;
