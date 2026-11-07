@@ -49,6 +49,7 @@
 		"parcels": "Parcels",
 		"staff": "Staff",
 		"drivers": "Drivers",
+		"contacts": "Contacts",
 		"assets": "Fleet & assets",
 		"billing": "Billing",
 		"admin": "Administration"
@@ -73,6 +74,9 @@
 			"view": "view",
 			"manage": "manage",
 			"view_payroll": "see payroll"
+		},
+		"contacts": {
+			"manage_own": "manage their own contacts"
 		},
 		"drivers": {
 			"view": "view",

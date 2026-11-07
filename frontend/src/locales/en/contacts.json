@@ -1,0 +1,67 @@
+{
+	"page": {
+		"title": "Contacts",
+		"description": "Your contacts in {{company}}, grouped by role.",
+		"add": "Add contact",
+		"loading": "Loading contacts…",
+		"loadFailed": "Your contacts could not be loaded.",
+		"retry": "Try again",
+		"noAccess": "You don't have access to contacts."
+	},
+	"filters": {
+		"search": "Search by name or username",
+		"role": "Role",
+		"allRoles": "All roles"
+	},
+	"group": {
+		"title": "{{role}} · {{count}}"
+	},
+	"table": {
+		"contact": "Contact",
+		"role": "Role",
+		"username": "Username",
+		"status": "Status",
+		"action": "Action",
+		"remove": "Remove",
+		"removeNamed": "Remove {{name}} from your contacts"
+	},
+	"status": {
+		"online": "Online",
+		"offline": "Offline",
+		"suspended": "Suspended"
+	},
+	"footer": "Online, Offline or Suspended. Status is included for your saved contacts.",
+	"empty": {
+		"title": "You haven't added any contacts yet",
+		"description": "Add the colleagues you work with to see whether they are online.",
+		"noMatch": "No contact matches your search."
+	},
+	"remove": {
+		"title": "Remove {{name}}?",
+		"description": "{{name}} will no longer be in your contacts. You can add them again later if your role allows it.",
+		"cancel": "Cancel",
+		"submit": "Remove",
+		"removed": "{{name}} was removed from your contacts.",
+		"notFound": "{{name}} is no longer in your contacts."
+	},
+	"errors": {
+		"unknown": "Something went wrong. Try again."
+	},
+	"add": {
+		"title": "Add contact",
+		"description": "Choose a colleague your {{role}} role can add in {{company}}.",
+		"back": "Back to contacts",
+		"loading": "Loading colleagues…",
+		"loadFailed": "The colleagues you can add could not be loaded.",
+		"policyTitle": "You can add the colleagues your role allows.",
+		"policyBody": "Only eligible colleagues in this company are listed. Their status is available once you add them.",
+		"groupTitle": "{{role}} · {{count}} eligible",
+		"select": "Select",
+		"selectNamed": "Add {{name}} to your contacts",
+		"added": "{{name}} was added to your contacts.",
+		"exists": "{{name}} is already in your contacts.",
+		"notEligible": "{{name}} can't be added. The list has been refreshed.",
+		"allAdded": "{{role}} · All eligible colleagues are already in your contacts.",
+		"none": "There is no one your role can add right now."
+	}
+}

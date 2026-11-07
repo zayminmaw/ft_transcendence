@@ -49,6 +49,7 @@
 		"parcels": "الطرود",
 		"staff": "الموظفون",
 		"drivers": "السائقون",
+		"contacts": "جهات الاتصال",
 		"assets": "الأسطول والأصول",
 		"billing": "الفوترة",
 		"admin": "الإدارة"
@@ -73,6 +74,9 @@
 			"view": "عرض",
 			"manage": "إدارة",
 			"view_payroll": "عرض الرواتب"
+		},
+		"contacts": {
+			"manage_own": "إدارة جهات اتصالهم"
 		},
 		"drivers": {
 			"view": "عرض",

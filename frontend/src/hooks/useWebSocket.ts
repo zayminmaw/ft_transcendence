@@ -13,22 +13,32 @@ export type NotificationPayload = {
 	timestamp: string;
 };
 
+// A contact's new status. The server sends it only to people who saved that person, for the company of this socket.
+export type PresencePayload = {
+	organizationId: string;
+	userId: string;
+	status: 'online' | 'offline' | 'suspended';
+	timestamp: string;
+};
+
 export type WebSocketHandlers = {
 	onNotification?: (payload: NotificationPayload) => void;
+	onPresence?: (payload: PresencePayload) => void;
 	// Events sent while disconnected are lost, so refetch here.
 	onReconnect?: () => void;
 };
 
 export function useWebSocket({
 	onNotification = (payload) => console.info('[notification]', payload),
+	onPresence,
 	onReconnect,
 }: WebSocketHandlers = {}) {
 	const { accessToken, activeOrganizationId } = useAuth();
-	const handlers = useRef({ onNotification, onReconnect });
+	const handlers = useRef({ onNotification, onPresence, onReconnect });
 	const connectedBefore = useRef(false);
 
 	useEffect(() => {
-		handlers.current = { onNotification, onReconnect };
+		handlers.current = { onNotification, onPresence, onReconnect };
 	});
 
 	useEffect(() => {
@@ -57,6 +67,12 @@ export function useWebSocket({
 			// Drop events queued for a previous company or session.
 			if (active && payload.organizationId === activeOrganizationId)
 				handlers.current.onNotification?.(payload);
+		});
+
+		socket.on('presence', (payload: PresencePayload) => {
+			// Same guard as notifications: drop events queued for a previous company or session.
+			if (active && payload.organizationId === activeOrganizationId)
+				handlers.current.onPresence?.(payload);
 		});
 
 		// The server closes the socket when the access token expires. A new token reconnects it.
