@@ -86,7 +86,7 @@ export function ContactGroup({
 					>
 						<div className="min-w-0">
 							<p className="truncate font-medium">{shownName(contact)}</p>
-							<p className="truncate text-xs text-[var(--color-slate)]">
+							<p className="text-xs text-[var(--color-slate)] [overflow-wrap:anywhere]">
 								{label} ·{' '}
 								<span dir="ltr" className="inline-block">
 									{contact.username}
