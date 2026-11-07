@@ -4,8 +4,14 @@ import { useTranslation } from 'react-i18next';
 import { useToast, type TableSort } from '@global-components';
 import { useDebounced } from '@hooks/useDebounced';
 import { tenantQueryKey } from '@utils/query-keys';
-import type { ClientListParams, ClientSortKey, ClientStatusFilter } from '../api';
-import { sampleClientsApi } from '../data/sampleClients';
+import { apiRequest } from '@services/api-client';
+import type {
+	Client,
+	ClientList,
+	ClientListParams,
+	ClientSortKey,
+	ClientStatusFilter,
+} from '../api';
 
 // The merchant list with its search, status filter, sort and paging; active clients by name by default. Changing
 // anything but the page goes back to page 1. The previous page stays on screen while the next one loads.
@@ -18,7 +24,8 @@ export function useClients() {
 	const [pageSize, setPageSizeValue] = useState(10);
 	const debouncedSearch = useDebounced(search);
 	const params: ClientListParams = {
-		search: debouncedSearch,
+		// Trimmed here, so "abc" and "abc " share one cached answer.
+		search: debouncedSearch.trim(),
 		status,
 		sort: (sort?.key as ClientSortKey | undefined) ?? 'businessName',
 		direction: sort?.direction ?? 'asc',
@@ -27,8 +34,17 @@ export function useClients() {
 	};
 	const query = useQuery({
 		queryKey: tenantQueryKey('clients', 'list', params),
-		// GET /api/clients?search=&status=&sort=&direction=&page=&pageSize= once the API exists.
-		queryFn: () => sampleClientsApi.list(params),
+		queryFn: () => {
+			const search = new URLSearchParams({
+				status: params.status,
+				sort: params.sort,
+				direction: params.direction,
+				page: String(params.page),
+				pageSize: String(params.pageSize),
+			});
+			if (params.search) search.set('search', params.search);
+			return apiRequest<ClientList>(`clients?${search}`);
+		},
 		placeholderData: keepPreviousData,
 	});
 
@@ -69,8 +85,7 @@ export function useClients() {
 export function useClientDetails(clientId: string) {
 	const { data, isPending, isError, error } = useQuery({
 		queryKey: tenantQueryKey('clients', 'details', clientId),
-		// GET /api/clients/:id once the API exists.
-		queryFn: () => sampleClientsApi.get(clientId),
+		queryFn: () => apiRequest<Client>(`clients/${encodeURIComponent(clientId)}`),
 	});
 	return { client: data, isClientPending: isPending, isClientError: isError, clientError: error };
 }

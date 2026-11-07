@@ -28,6 +28,8 @@ export const AUDIT_RESOURCES: Record<string, AuditResource> = {
 		fields: { role: 'plain', isActive: 'plain' },
 		viewPermission: 'admin.manage_users',
 	},
+	// One person saving another as a contact; no live notification.
+	contact: { category: 'data', fields: { contactUserId: 'plain' } },
 	tenant: {
 		category: 'platform',
 		fields: {
@@ -52,6 +54,29 @@ export const AUDIT_RESOURCES: Record<string, AuditResource> = {
 			membershipActive: 'plain',
 			reason: 'plain',
 		},
+	},
+	// A merchant account. The contact's email and phones are personal data; notes are free text that may hold anything.
+	// Balances are left out: they change only through billing's ledger entries.
+	client: {
+		category: 'data',
+		fields: {
+			clientCode: 'plain',
+			businessName: 'plain',
+			tradeLicenseNo: 'plain',
+			contactPersonName: 'plain',
+			contactTitle: 'plain',
+			mobile1: 'maskPhone',
+			mobile2: 'maskPhone',
+			email: 'maskEmail',
+			billingAddress: 'plain',
+			defaultPickupAddress: 'plain',
+			pickupLatitude: 'plain',
+			pickupLongitude: 'plain',
+			rateProfileTier: 'plain',
+			operationalNotes: 'redact',
+			isActive: 'plain',
+		},
+		viewPermission: 'clients.view',
 	},
 	// A courier. Personal and payroll data are the company's own; the platform sees only that they changed.
 	driver: {

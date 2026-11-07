@@ -26,6 +26,8 @@ docker-compose.yml        Root entry point for the Docker manifests
 
 Architecture and engineering documents live in [`.docs/`](.docs/). Environment files, dependencies, and build outputs are ignored. `npm run setup` installs a Husky pre-push hook that runs `npm run verify`.
 
+The [domain logic working draft](.docs/domain-logic/README.md) covers business rules, current implementation, proposed delivery/accounting workflows, and open decisions, with links to the supporting code.
+
 See the [0.1.0 release notes](.docs/releases/0.1.0.md) for the initial scaffold's scope and validation.
 
 This workspace already has ignored `.env` files with randomly generated local database passwords and a JWT secret. Its frontend uses http://localhost:8081 and MariaDB uses port 3307 because Windows blocks ports 8080 and 3306. The tracked example files retain the standard ports and contain placeholders only.
@@ -36,7 +38,7 @@ Use Node 24 LTS (see `.nvmrc`), npm, Docker, and Docker Compose 2.24.4 or newer.
 
 ## How the scaffold fits together
 
-The backend is a modular monolith: one NestJS process combines domain modules. Controllers will handle routing and DTO validation, services will implement business rules, and repositories will isolate database queries. The shared foundation already verifies JWTs, checks permissions and active organization membership, sanitizes errors, and exposes health endpoints. The business modules reserve DTO/entity folders for the next features; they do not yet expose business APIs.
+The backend is a modular monolith: one NestJS process combines domain modules. Controllers will handle routing and DTO validation, services will implement business rules, and repositories will isolate database queries. The shared foundation already verifies JWTs, checks permissions and active organization membership, sanitizes errors, and exposes health endpoints. The business modules reserve DTO/entity folders for the next features; clients is the first to expose a business API.
 
 The frontend mirrors the business domains so related work has a predictable home on both sides. Each module owns its pages, components, hooks, types, routes, and root `index.ts` public exports. The app combines module routes, while shared services attach session and organization headers. TanStack Query manages remote data caching; React Hook Form and Zod handle forms.
 
@@ -132,7 +134,9 @@ From then on, company admins (anyone whose role has `admin.manage_users`, `org_a
 
 Couriers live under `/api/drivers` (with `X-Organization-Id`). A driver is an `employees` row plus its `delivery_drivers` row, always written together. Reading needs `drivers.view`: the list (search by name, code, mobile or zone, `status=<duty status>|all`, sort and paging, with counts over the company's working drivers, including licenses expired or expiring within 30 days), one driver, and `GET /api/drivers/choices` (everyone still employed, for other modules to choose from). Each field group needs its own permission and is left out otherwise: personal details `drivers.manage`, pay and bank details `staff.view_payroll` (also needed to set them), the license and checks `drivers.view_compliance`, and the commission `drivers.view_earnings`. With `drivers.manage` a person onboards (`POST`) and edits (`PATCH /api/drivers/:id`) drivers, sets the duty status by hand (`PATCH /api/drivers/:id/duty-status`: `available`, `off_duty` or `suspended`), and links the login account (`PUT /api/drivers/:id/account` with `{ userId }`, or `null` to unlink; `GET /api/drivers/linkable-accounts` lists the company's unlinked driver-role members). The employee code, license number and linked account are unique within the company (`409 EMPLOYEE_CODE_TAKEN`, `LICENSE_NUMBER_TAKEN`, `ACCOUNT_ALREADY_LINKED`). Ending employment needs a termination date and takes the driver off duty. Every change is audited and refreshes the open Drivers pages of everyone with `drivers.view`.
 
-For development and evaluation, load the demo companies and accounts:
+Merchant accounts live under `/api/clients` (with `X-Organization-Id`): list them with search, `status=active|archived|all`, sort and paging (the answer also counts the whole company's active, archived and pinned merchants), read one, create (`clients.create`), edit (`PATCH`, `clients.edit`), and archive or reactivate (`POST /api/clients/:id/archive` and `/reactivate`, `clients.delete`). Reading needs `clients.view`. Balances and the rate tier are answered only with `clients.view_financials`, which is also needed to set the tier; balances never change here, only through billing. A client code is unique within the company (`409 CLIENT_CODE_TAKEN`), and another company's client is simply not found (`404 CLIENT_NOT_FOUND`). Every change is audited and refreshes the open Clients pages of everyone with `clients.view`.
+
+For development and evaluation, load the demo companies, accounts, merchants and drivers:
 
 ```sh
 docker compose exec backend npm run seed:demo -- --force
