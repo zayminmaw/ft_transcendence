@@ -32,8 +32,10 @@ export class ParcelsController {
     return this.parcels.formOptions(request.tenant!);
   }
 
-  // The drivers on duty, with their vehicle and today's run.
+  // The drivers on duty, with their vehicle and today's run: for whoever sends parcels out, not everyone who reads them
+  // (hub sorters and drivers would otherwise see every colleague on duty and their plate).
   @Get('dispatch-drivers')
+  @RequirePermission('parcels.dispatch')
   dispatchDrivers(@Req() request: AuthenticatedRequest) {
     return this.parcels.dispatchDrivers(request.tenant!);
   }

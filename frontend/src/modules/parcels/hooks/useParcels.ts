@@ -89,6 +89,8 @@ export function useParcels() {
 }
 
 // The parcels a dispatcher can (re)assign, oldest first, for the assign page's choice.
+// shortcut: only the 50 oldest. The parcel a link names is loaded on its own (AssignDriverPage), so it is never
+// missed; a search in the picker would lift the cap.
 export function useAssignableParcels() {
 	const params: ParcelListParams = {
 		search: '',
@@ -105,23 +107,25 @@ export function useAssignableParcels() {
 	return { assignable: data?.items ?? [], isAssignablePending: isPending };
 }
 
-// One parcel with its history.
-export function useParcelDetails(parcelId: string) {
-	const { data, isPending } = useQuery({
+// One parcel with its history. `enabled: false` loads nothing; isParcelPending is then false.
+export function useParcelDetails(parcelId: string, enabled = true) {
+	const { data, isLoading } = useQuery({
 		queryKey: tenantQueryKey('parcels', 'details', parcelId),
 		queryFn: () => apiRequest<ParcelDetails>(parcelPath(parcelId)),
+		enabled,
 	});
-	return { parcel: data, isParcelPending: isPending };
+	return { parcel: data, isParcelPending: isLoading };
 }
 
 // The drivers on duty, with their vehicle and today's run. Under the parcels key, so an assignment refreshes the
-// run counts.
-export function useDispatchDrivers() {
-	const { data, isPending } = useQuery({
+// run counts. Needs parcels.dispatch: pass `enabled: false` without it, and isDriversPending is then false.
+export function useDispatchDrivers(enabled = true) {
+	const { data, isLoading } = useQuery({
 		queryKey: tenantQueryKey('parcels', 'dispatch-drivers'),
 		queryFn: () => apiRequest<DispatchDriver[]>('parcels/dispatch-drivers'),
+		enabled,
 	});
-	return { dispatchDrivers: data ?? [], isDriversPending: isPending };
+	return { dispatchDrivers: data ?? [], isDriversPending: isLoading };
 }
 
 // The merchants and zones the new parcel form chooses from.

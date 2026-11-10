@@ -99,7 +99,8 @@ test('each change needs its own permission; no parcels.view, no parcels', async 
   await as(request(server).post('/api/parcels/1/assignment').send({ driverId: '3' }), tokens.sami).expect(403);
   await as(request(server).post('/api/parcels/1/status').send({ status: 'picked_up' }), tokens.farah).expect(403);
   await as(request(server).get('/api/parcels/form-options'), tokens.dana).expect(200);
-  await as(request(server).get('/api/parcels/dispatch-drivers'), tokens.farah).expect(200);
+  for (const reader of ['farah', 'sami']) await as(request(server).get('/api/parcels/dispatch-drivers'), tokens[reader]).expect(403);
+  await as(request(server).get('/api/parcels/dispatch-drivers'), tokens.dana).expect(200);
   await as(request(server).post('/api/parcels/1/status').send({ status: 'picked_up' }), tokens.sami).expect(200);
 });
 

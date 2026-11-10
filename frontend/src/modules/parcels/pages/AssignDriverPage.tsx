@@ -2,9 +2,14 @@ import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Input, ModulePage, Textarea, TipCard, useToast } from '@global-components';
 import { useCompanyPath } from '@hooks/useCompanyPath';
-import { dispatchStatusLabels, parcelStatusLabels, vehicleLabel } from '../constants';
+import {
+	ASSIGNABLE_STATUSES,
+	dispatchStatusLabels,
+	parcelStatusLabels,
+	vehicleLabel,
+} from '../constants';
 import { useParcelMutations } from '../hooks/useParcelMutations';
-import { useAssignableParcels, useDispatchDrivers } from '../hooks/useParcels';
+import { useAssignableParcels, useDispatchDrivers, useParcelDetails } from '../hooks/useParcels';
 
 // /parcels/assign?parcel=<id>: send a sorted parcel, or a failed attempt again, out with a driver on duty. The parcel
 // travels in the vehicle the driver has checked out and joins their run for today.
@@ -13,18 +18,51 @@ export function AssignDriverPage() {
 	const companyPath = useCompanyPath();
 	const { toast } = useToast();
 	const [searchParams] = useSearchParams();
+	const requestedId = searchParams.get('parcel') ?? '';
 	const { assignable, isAssignablePending } = useAssignableParcels();
+	// The parcel the link names is loaded on its own: it may be past the oldest 50 the choice lists.
+	const { parcel: requested, isParcelPending } = useParcelDetails(
+		requestedId,
+		requestedId !== '',
+	);
 	const { dispatchDrivers, isDriversPending } = useDispatchDrivers();
 	const { assignParcel, isAssigning } = useParcelMutations();
-	const [parcelId, setParcelId] = useState(searchParams.get('parcel') ?? '');
+	const [parcelId, setParcelId] = useState(requestedId);
 	const [driverId, setDriverId] = useState('');
 	const [error, setError] = useState<string | null>(null);
 
-	if (isAssignablePending || isDriversPending)
+	if (isAssignablePending || isParcelPending || isDriversPending)
 		return <span className="loading loading-spinner" aria-label="Loading" />;
 
-	const parcel = assignable.find((item) => item.id === parcelId) ?? assignable[0];
+	const requestedCanGo = requested && ASSIGNABLE_STATUSES.includes(requested.status);
+	const choices =
+		requestedCanGo && !assignable.some((item) => item.id === requested.id)
+			? [requested, ...assignable]
+			: assignable;
+	// A parcel the link names is never swapped for another: the first one is only the default when none is named.
+	const parcel = parcelId ? choices.find((item) => item.id === parcelId) : choices[0];
 	const driver = dispatchDrivers.find((item) => item.id === driverId) ?? dispatchDrivers[0];
+
+	if (!parcel && parcelId) {
+		return (
+			<div className="flex flex-col gap-6">
+				<Link
+					to={companyPath(requested ? `parcels/${requested.id}` : 'parcels')}
+					className="link link-hover w-fit text-sm"
+				>
+					{requested ? 'Back to the parcel' : 'Back to dispatch'}
+				</Link>
+				<ModulePage
+					title="This parcel can't be assigned right now"
+					description={
+						requested
+							? `${requested.trackingNumber} is ${parcelStatusLabels[requested.status].toLowerCase()}. Only parcels sorted in the hub or waiting for another attempt can go out with a driver.`
+							: 'This parcel was not found.'
+					}
+				/>
+			</div>
+		);
+	}
 
 	if (!parcel || !driver) {
 		return (
@@ -98,7 +136,7 @@ export function AssignDriverPage() {
 							value={parcel.id}
 							onChange={(e) => setParcelId(e.target.value)}
 						>
-							{assignable.map((item) => (
+							{choices.map((item) => (
 								<option key={item.id} value={item.id}>
 									{item.trackingNumber} · {item.recipientName} ·{' '}
 									{parcelStatusLabels[item.status]}

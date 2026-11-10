@@ -59,7 +59,8 @@ export function DispatchPage() {
 	const can = useCan();
 	const canDispatch = can('parcels.dispatch');
 	const list = useParcels();
-	const { dispatchDrivers, isDriversPending } = useDispatchDrivers();
+	// Who is on duty, with their plates, is for whoever sends parcels out.
+	const { dispatchDrivers, isDriversPending } = useDispatchDrivers(canDispatch);
 	const statuses = list.counts?.statuses;
 	const number = (value: number | undefined) => formatNumber(value, i18n.language);
 
@@ -185,40 +186,42 @@ export function DispatchPage() {
 			</section>
 
 			<div className="mt-4 grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
-				<section
-					aria-labelledby="available-drivers-title"
-					className="rounded-box bg-base-200 p-6 md:p-8"
-				>
-					<h2 id="available-drivers-title" className="font-semibold">
-						Drivers on duty
-					</h2>
-					{!isDriversPending && dispatchDrivers.length === 0 && (
-						<p className="mt-6 text-sm text-[var(--color-slate)]">
-							No driver is on duty. Set a driver available on the drivers page.
-						</p>
-					)}
-					<ul className="mt-6 flex flex-col gap-5">
-						{dispatchDrivers.map((driver) => (
-							<li
-								key={driver.id}
-								className="grid grid-cols-[3rem_minmax(0,1fr)] gap-2"
-							>
-								<Avatar name={driver.name} seed={driver.id} />
-								<div>
-									<p className="font-medium">
-										{driver.name} · {vehicleLabel(driver.vehicle)}
-									</p>
-									<p className="mt-1 text-xs text-[var(--color-slate)]">
-										{dispatchStatusLabels[driver.dispatchStatus]}
-										{driver.zone && ` · ${driver.zone} zone`}
-										{driver.run &&
-											` · ${driver.run.code} · ${number(driver.run.parcelsOut)} out`}
-									</p>
-								</div>
-							</li>
-						))}
-					</ul>
-				</section>
+				{canDispatch && (
+					<section
+						aria-labelledby="available-drivers-title"
+						className="rounded-box bg-base-200 p-6 md:p-8"
+					>
+						<h2 id="available-drivers-title" className="font-semibold">
+							Drivers on duty
+						</h2>
+						{!isDriversPending && dispatchDrivers.length === 0 && (
+							<p className="mt-6 text-sm text-[var(--color-slate)]">
+								No driver is on duty. Set a driver available on the drivers page.
+							</p>
+						)}
+						<ul className="mt-6 flex flex-col gap-5">
+							{dispatchDrivers.map((driver) => (
+								<li
+									key={driver.id}
+									className="grid grid-cols-[3rem_minmax(0,1fr)] gap-2"
+								>
+									<Avatar name={driver.name} seed={driver.id} />
+									<div>
+										<p className="font-medium">
+											{driver.name} · {vehicleLabel(driver.vehicle)}
+										</p>
+										<p className="mt-1 text-xs text-[var(--color-slate)]">
+											{dispatchStatusLabels[driver.dispatchStatus]}
+											{driver.zone && ` · ${driver.zone} zone`}
+											{driver.run &&
+												` · ${driver.run.code} · ${number(driver.run.parcelsOut)} out`}
+										</p>
+									</div>
+								</li>
+							))}
+						</ul>
+					</section>
+				)}
 				<TipCard
 					title="Every parcel has an owner."
 					description="Each assignment puts the parcel on the driver's run for the day, with the vehicle they have checked out. Reassignment keeps the delivery history intact."
