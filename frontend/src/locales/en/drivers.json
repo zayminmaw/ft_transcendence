@@ -188,6 +188,9 @@
 		"codeTaken": "This employee code is already used.",
 		"licenseTaken": "This license number is already registered.",
 		"accountTaken": "This account is already linked to another driver.",
+		"accountNotLinkable": "This account can't be linked: it needs the driver role in this company.",
+		"terminated": "This driver no longer works here.",
+		"payrollForbidden": "You can't change pay or bank details.",
 		"notFound": "This driver doesn't exist in this company.",
 		"unknown": "Something went wrong. Try again."
 	}

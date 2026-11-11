@@ -2,20 +2,24 @@ import type { Driver, DriverValues } from '../api';
 import { DRIVER_DEFAULT_VALUES } from '../constants';
 import type { DriverFormOutput, DriverFormValues } from '../schemas/driverSchema';
 
-// Empty optional fields are sent as null, like the nullable columns. Without staff.view_payroll the payroll
-// fields aren't on the form, so they're left out and keep their saved value.
-export function toDriverValues(values: DriverFormOutput, withPayroll: boolean): DriverValues {
-	const orNull = (value: string) => value || null;
+// An empty field as null, like the nullable columns; a field that isn't on the form stays left out.
+function orNull(value: string): string | null;
+function orNull(value: string | undefined): string | null | undefined;
+function orNull(value: string | undefined) {
+	return value === undefined ? undefined : value || null;
+}
+
+// The form's values for the API. A group that isn't on the form is left out, so the driver keeps its saved value.
+export function toDriverValues(values: DriverFormOutput): DriverValues {
 	return {
 		...values,
 		terminationDate: orNull(values.terminationDate),
 		assignedZone: orNull(values.assignedZone),
+		bankName: orNull(values.bankName),
+		bankAccountIban: orNull(values.bankAccountIban),
 		backgroundCheckDate: orNull(values.backgroundCheckDate),
 		transitInsurancePolicy: orNull(values.transitInsurancePolicy),
 		transitInsuranceExpiry: orNull(values.transitInsuranceExpiry),
-		baseSalary: withPayroll ? values.baseSalary : undefined,
-		bankName: withPayroll ? orNull(values.bankName) : undefined,
-		bankAccountIban: withPayroll ? orNull(values.bankAccountIban) : undefined,
 	};
 }
 

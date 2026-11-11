@@ -10,4 +10,9 @@ export class PermissionPolicyService {
 	async canAccess(roleId: string, permission: string): Promise<boolean> {
 		return (await this.permissions.findScope(roleId, permission)) === 'all';
 	}
+
+	// The same rule for several permissions at once: the ones the role may use.
+	allowedOf(roleId: string, permissions: readonly string[]): Promise<Set<string>> {
+		return this.permissions.grantedOf(roleId, permissions);
+	}
 }
