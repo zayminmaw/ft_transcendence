@@ -8,6 +8,7 @@ import { parcelsRoutes, parcelTrackingRoutes } from '@modules/parcels';
 import { billingRoutes } from '@modules/billing';
 import { rbacRoutes } from '@modules/rbac';
 import { auditRoutes } from '@modules/audit';
+import { insightsRoutes } from '@modules/insights';
 import { MarketingLayout, marketingRoutes } from '@modules/marketing';
 import { platformRoutes } from '@modules/platform';
 import {
@@ -43,6 +44,8 @@ const workspaceRoutes = [
 	...allowed('rbac', rbacRoutes),
 	// The audit page checks admin.audit_logs itself (see AuditLogPage).
 	...auditRoutes,
+	// Needs admin.audit_logs too, and the page shows its own "no access".
+	...insightsRoutes,
 ];
 
 export const router = createBrowserRouter([

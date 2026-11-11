@@ -48,6 +48,11 @@ export function getTenantNavigation(
 					label: t('nav', { ns: 'audit' }),
 					hidden: !can('admin.audit_logs'),
 				},
+				{
+					to: `${home}/activity`,
+					label: t('nav', { ns: 'insights' }),
+					hidden: !can('admin.audit_logs'),
+				},
 			],
 		},
 	];
