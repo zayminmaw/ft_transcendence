@@ -78,6 +78,31 @@ export const AUDIT_RESOURCES: Record<string, AuditResource> = {
 		},
 		viewPermission: 'clients.view',
 	},
+	// A waybill. The recipient's details are the company's own; the platform sees only that they changed.
+	parcel: {
+		category: 'data',
+		fields: {
+			trackingNumber: 'plain',
+			status: 'plain',
+			clientId: 'plain',
+			recipientName: 'redact',
+			recipientPhone: 'maskPhone',
+			recipientSecondaryPhone: 'maskPhone',
+			deliveryAddress: 'redact',
+			deliveryCityZone: 'plain',
+			deliveryLandmark: 'redact',
+			weightKg: 'plain',
+			isFragile: 'plain',
+			deliveryFee: 'plain',
+			codAmount: 'plain',
+			driverId: 'plain',
+			vehicleId: 'plain',
+			runId: 'plain',
+			deliveryAttemptCount: 'plain',
+			failedReasonCode: 'plain',
+		},
+		viewPermission: 'parcels.view',
+	},
 	audit_log: { category: 'access', fields: {} },
 };
 

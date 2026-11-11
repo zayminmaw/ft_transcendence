@@ -1,74 +1,126 @@
-import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { AnalyticsCard, ModulePage, Table, TipCard } from '@global-components';
-import type { AnalyticsItem, TableColumn, TableSort } from '@global-components';
+import { useTranslation } from 'react-i18next';
+import { AnalyticsCard, Avatar, ModulePage, Table, TipCard } from '@global-components';
+import type { AnalyticsItem, TableColumn } from '@global-components';
+import { useCan } from '@modules/auth';
+import { formatNumber } from '@utils/format';
+import type { Parcel, ParcelList, ParcelQueue, ParcelStatus } from '../api';
 import {
-	driverStatusLabels,
-	drivers,
-	findDriver,
+	ASSIGNABLE_STATUSES,
+	dispatchStatusLabels,
 	parcelStatusLabels,
-	parcels,
-} from '../data/sampleParcels';
-import type { Parcel } from '../data/sampleParcels';
+	vehicleLabel,
+} from '../constants';
+import { useDispatchDrivers, useParcels } from '../hooks/useParcels';
 
-// Sample data until the parcel endpoints exist.
-const dispatchStats: AnalyticsItem[] = [
-	{ label: 'Ready to assign', value: 24, description: 'In hub / sorted' },
-	{ label: 'Out for delivery', value: 96, description: '12 assigned drivers' },
-	{ label: 'Failed attempts', value: 8, description: 'Reason captured' },
-	{ label: 'Returned to sender', value: 4, description: 'Awaiting return review' },
-];
+// Every status but draft, which no parcel has yet, in lifecycle order.
+const STATUS_ORDER = (Object.keys(parcelStatusLabels) as ParcelStatus[]).filter(
+	(status) => status !== 'draft',
+);
 
-const queueFilters = [
-	{ value: 'all', label: 'All parcels' },
-	{ value: 'ready', label: 'Ready to assign · 24' },
-	{ value: 'exceptions', label: 'Exceptions · 12' },
-];
+// The queues first, then each status, with the company's count where the API gives one.
+function queueOptions(counts: ParcelList['counts'] | undefined, language: string) {
+	const count = (statuses: ParcelStatus[]) =>
+		counts
+			? ` · ${formatNumber(
+					statuses.reduce((sum, status) => sum + counts.statuses[status], 0),
+					language,
+				)}`
+			: '';
+	const options: { value: ParcelQueue; label: string }[] = [
+		{ value: 'all', label: 'All parcels' },
+		{ value: 'ready', label: `Ready to assign${count(['in_hub_sorted'])}` },
+		{
+			value: 'exceptions',
+			label: `Exceptions${count(['failed_attempt', 'returned_to_sender'])}`,
+		},
+	];
+	for (const status of STATUS_ORDER) {
+		options.push({ value: status, label: `${parcelStatusLabels[status]}${count([status])}` });
+	}
+	return options;
+}
 
 // Links are relative to this page (/app/<companySlug>/parcels), so they stay in the open company.
-// Sorted parcels without a driver are assigned; failed attempts are reassigned for a reattempt.
-function ParcelAction({ parcel }: { parcel: Parcel }) {
-	if (parcel.status === 'in_hub_sorted' && !parcel.driverId) {
-		return <Link to={`assign?parcel=${parcel.id}`}>Assign</Link>;
-	}
-	if (parcel.status === 'failed_attempt') {
-		return <Link to={`assign?parcel=${parcel.id}`}>Reassign</Link>;
+// Sorted parcels are assigned; failed attempts are reassigned for a reattempt.
+function ParcelAction({ parcel, canDispatch }: { parcel: Parcel; canDispatch: boolean }) {
+	if (canDispatch && ASSIGNABLE_STATUSES.includes(parcel.status)) {
+		return (
+			<Link to={`assign?parcel=${parcel.id}`}>
+				{parcel.status === 'failed_attempt' ? 'Reassign' : 'Assign'}
+			</Link>
+		);
 	}
 	return <span aria-label="No action">—</span>;
 }
 
-const columns: TableColumn<Parcel>[] = [
-	{
-		key: 'tracking',
-		header: 'Tracking / recipient',
-		sortable: true,
-		className: 'font-medium whitespace-nowrap',
-		cell: (parcel) => (
-			<Link to={`${parcel.id}`}>
-				{parcel.tracking} · {parcel.recipient}
-			</Link>
-		),
-	},
-	{ key: 'merchant', header: 'Merchant', sortable: true, cell: (parcel) => parcel.merchant },
-	{
-		key: 'zone',
-		header: 'Zone / driver',
-		cell: (parcel) => `${parcel.zone} · ${findDriver(parcel.driverId)?.name ?? 'Unassigned'}`,
-	},
-	{
-		key: 'status',
-		header: 'Delivery status',
-		cell: (parcel) => parcelStatusLabels[parcel.status],
-	},
-	{ key: 'action', header: 'Action', cell: (parcel) => <ParcelAction parcel={parcel} /> },
-];
-
 export function DispatchPage() {
-	const [search, setSearch] = useState('');
-	const [queue, setQueue] = useState('all');
-	const [sort, setSort] = useState<TableSort | null>(null);
-	const [page, setPage] = useState(1);
-	const [pageSize, setPageSize] = useState(10);
+	const { i18n } = useTranslation();
+	const can = useCan();
+	const canDispatch = can('parcels.dispatch');
+	const list = useParcels();
+	// Who is on duty, with their plates, is for whoever sends parcels out.
+	const { dispatchDrivers, isDriversPending } = useDispatchDrivers(canDispatch);
+	const statuses = list.counts?.statuses;
+	const number = (value: number | undefined) => formatNumber(value, i18n.language);
+
+	const stats: AnalyticsItem[] = [
+		{
+			label: 'Ready to assign',
+			value: number(statuses?.in_hub_sorted),
+			description: 'In hub / sorted',
+		},
+		{
+			label: 'Out for delivery',
+			value: number(statuses?.out_for_delivery),
+			description: `${number(list.counts?.driversOut)} ${list.counts?.driversOut === 1 ? 'driver' : 'drivers'} out`,
+		},
+		{
+			label: 'Failed attempts',
+			value: number(statuses?.failed_attempt),
+			description: 'Reason captured',
+		},
+		{
+			label: 'Returned to sender',
+			value: number(statuses?.returned_to_sender),
+			description: 'Back with the merchant',
+		},
+	];
+
+	const columns: TableColumn<Parcel>[] = [
+		{
+			key: 'tracking',
+			header: 'Tracking / recipient',
+			sortable: true,
+			className: 'font-medium whitespace-nowrap',
+			cell: (parcel) => (
+				<Link to={parcel.id}>
+					{parcel.trackingNumber} · {parcel.recipientName}
+				</Link>
+			),
+		},
+		{
+			key: 'merchant',
+			header: 'Merchant',
+			sortable: true,
+			cell: (parcel) => parcel.client.name,
+		},
+		{
+			key: 'zone',
+			header: 'Zone / driver',
+			cell: (parcel) => `${parcel.deliveryCityZone} · ${parcel.driver?.name ?? 'Unassigned'}`,
+		},
+		{
+			key: 'status',
+			header: 'Delivery status',
+			cell: (parcel) => parcelStatusLabels[parcel.status],
+		},
+		{
+			key: 'action',
+			header: 'Action',
+			cell: (parcel) => <ParcelAction parcel={parcel} canDispatch={canDispatch} />,
+		},
+	];
 
 	return (
 		<div className="flex flex-col gap-4">
@@ -76,102 +128,103 @@ export function DispatchPage() {
 				title="Dispatch & parcels"
 				description="Assign ready parcels and resolve delivery exceptions."
 				actions={
-					<div className="flex w-full flex-col gap-2 sm:flex-row md:w-auto">
-						<Link to="new" className="btn border-0 bg-base-200 md:px-8">
-							New parcel
-						</Link>
-						<Link to="assign" className="btn btn-primary md:px-12">
-							Assign driver
-						</Link>
-					</div>
+					(can('parcels.create') || canDispatch) && (
+						<div className="flex w-full flex-col gap-2 sm:flex-row md:w-auto">
+							{can('parcels.create') && (
+								<Link to="new" className="btn border-0 bg-base-200 md:px-8">
+									New parcel
+								</Link>
+							)}
+							{canDispatch && (
+								<Link to="assign" className="btn btn-primary md:px-12">
+									Assign driver
+								</Link>
+							)}
+						</div>
+					)
 				}
 			/>
-			<AnalyticsCard items={dispatchStats} />
+			<AnalyticsCard items={stats} />
 			<section aria-labelledby="parcel-queue-title" className="mt-4 flex flex-col gap-4">
 				<div>
 					<h2 id="parcel-queue-title" className="font-medium">
 						Parcel queue
 					</h2>
 					<p className="mt-1 text-xs text-[var(--color-slate)]">
-						24 parcels are ready for driver assignment
+						{number(statuses?.in_hub_sorted)} parcels are ready for driver assignment
 					</p>
 				</div>
 				<Table
 					caption="Parcel queue"
 					columns={columns}
-					rows={parcels}
+					rows={list.parcels}
 					getRowKey={(parcel) => parcel.id}
-					sort={sort}
-					onSortChange={(next) => {
-						setSort(next);
-						setPage(1);
-					}}
+					sort={list.sort}
+					onSortChange={list.setSort}
 					search={{
-						value: search,
-						placeholder: 'Search tracking or recipient',
-						onChange: (value) => {
-							setSearch(value);
-							setPage(1);
-						},
+						value: list.search,
+						placeholder: 'Search tracking, recipient or merchant',
+						onChange: list.setSearch,
 					}}
 					filter={{
 						label: 'Queue',
-						options: queueFilters,
-						value: queue,
-						onChange: (value) => {
-							setQueue(value);
-							setPage(1);
-						},
+						options: queueOptions(list.counts, i18n.language),
+						value: list.queue,
+						onChange: (value) => list.setQueue(value as ParcelQueue),
 					}}
 					pagination={{
-						page,
-						pageSize,
-						total: parcels.length,
-						onPageChange: setPage,
-						onPageSizeChange: (size) => {
-							setPageSize(size);
-							setPage(1);
-						},
+						page: list.page,
+						pageSize: list.pageSize,
+						total: list.total,
+						onPageChange: list.setPage,
+						onPageSizeChange: list.setPageSize,
 					}}
-					emptyMessage="No parcels match this search."
+					emptyMessage={
+						list.isPending ? 'Loading parcels…' : 'No parcels match this search.'
+					}
 				/>
 			</section>
 
 			<div className="mt-4 grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
-				<section
-					aria-labelledby="available-drivers-title"
-					className="rounded-box bg-base-200 p-6 md:p-8"
-				>
-					<h2 id="available-drivers-title" className="font-semibold">
-						Available drivers
-					</h2>
-					<ul className="mt-6 flex flex-col gap-5">
-						{drivers.map((driver) => (
-							<li
-								key={driver.id}
-								className="grid grid-cols-[3rem_minmax(0,1fr)] gap-2"
-							>
-								<span
-									aria-hidden="true"
-									className="text-xs text-[var(--color-slate)]"
+				{canDispatch && (
+					<section
+						aria-labelledby="available-drivers-title"
+						className="rounded-box bg-base-200 p-6 md:p-8"
+					>
+						<h2 id="available-drivers-title" className="font-semibold">
+							Drivers on duty
+						</h2>
+						{!isDriversPending && dispatchDrivers.length === 0 && (
+							<p className="mt-6 text-sm text-[var(--color-slate)]">
+								No driver is on duty. Set a driver available on the drivers page.
+							</p>
+						)}
+						<ul className="mt-6 flex flex-col gap-5">
+							{dispatchDrivers.map((driver) => (
+								<li
+									key={driver.id}
+									className="grid grid-cols-[3rem_minmax(0,1fr)] gap-2"
 								>
-									{driver.initials}
-								</span>
-								<div>
-									<p className="font-medium">
-										{driver.name} · {driver.vehicle}
-									</p>
-									<p className="mt-1 text-xs text-[var(--color-slate)]">
-										{driverStatusLabels[driver.status]} · {driver.zone} zone
-									</p>
-								</div>
-							</li>
-						))}
-					</ul>
-				</section>
+									<Avatar name={driver.name} seed={driver.id} />
+									<div>
+										<p className="font-medium">
+											{driver.name} · {vehicleLabel(driver.vehicle)}
+										</p>
+										<p className="mt-1 text-xs text-[var(--color-slate)]">
+											{dispatchStatusLabels[driver.dispatchStatus]}
+											{driver.zone && ` · ${driver.zone} zone`}
+											{driver.run &&
+												` · ${driver.run.code} · ${number(driver.run.parcelsOut)} out`}
+										</p>
+									</div>
+								</li>
+							))}
+						</ul>
+					</section>
+				)}
 				<TipCard
 					title="Every parcel has an owner."
-					description="Assigned drivers see only their work. Reassignment keeps the delivery history intact."
+					description="Each assignment puts the parcel on the driver's run for the day, with the vehicle they have checked out. Reassignment keeps the delivery history intact."
 					footer="Pickup → Hub → Delivery → POD"
 				/>
 			</div>
