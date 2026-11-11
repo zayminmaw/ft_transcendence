@@ -17,14 +17,17 @@ import {
 import { useDriverMutations } from '../hooks/useDriverMutations';
 import {
 	driverSchema,
+	driverSchemaWithoutCompliance,
 	type DriverFormOutput,
 	type DriverFormValues,
 } from '../schemas/driverSchema';
-import { toDriverValues } from '../utils/driverFormValues';
+import { type DriverFormGroups, toDriverValues } from '../utils/driverFormValues';
 import { driverErrorField, driverErrorKey } from '../utils/errors';
 
 // The driver fields, for onboarding a driver (no `driver`) or editing one (drivers.manage). Saving opens the
-// driver's page. Payroll fields show only with staff.view_payroll.
+// driver's page. Payroll fields show only with staff.view_payroll. A new driver needs a license, so onboarding asks
+// for every other field; editing shows the compliance fields and the commission only to someone who can see their
+// saved values, so nobody overwrites what they can't see.
 export function DriverForm({
 	driver,
 	defaultValues,
@@ -37,7 +40,11 @@ export function DriverForm({
 	const companyPath = useCompanyPath();
 	const { toast } = useToast();
 	const can = useCan();
-	const withPayroll = can('staff.view_payroll');
+	const groups: DriverFormGroups = {
+		payroll: can('staff.view_payroll'),
+		compliance: !driver || can('drivers.view_compliance'),
+		earnings: !driver || can('drivers.view_earnings'),
+	};
 	const { createDriver, isCreating, createError, updateDriver, isUpdating, updateError } =
 		useDriverMutations();
 	const saveError = driver ? updateError : createError;
@@ -49,7 +56,7 @@ export function DriverForm({
 		control,
 		formState: { errors },
 	} = useForm<DriverFormValues, unknown, DriverFormOutput>({
-		resolver: zodResolver(driverSchema),
+		resolver: zodResolver(groups.compliance ? driverSchema : driverSchemaWithoutCompliance),
 		defaultValues,
 	});
 	const employmentStatus = useWatch({ control, name: 'employmentStatus' });
@@ -62,7 +69,7 @@ export function DriverForm({
 	) => values.map((value) => ({ value, label: t(`${group}.${value}` as ParseKeys<'drivers'>) }));
 
 	const onSubmit = handleSubmit((values) => {
-		const driverValues = toDriverValues(values, withPayroll);
+		const driverValues = toDriverValues(values, groups);
 		const handlers = {
 			onSuccess: (saved: Driver) => {
 				toast({
@@ -240,13 +247,15 @@ export function DriverForm({
 						error={fieldError(errors.assignedZone?.message)}
 						{...register('assignedZone')}
 					/>
-					<Input
-						label={t('fields.commissionPerDrop')}
-						inputMode="decimal"
-						dir="ltr"
-						error={fieldError(errors.commissionPerDrop?.message)}
-						{...register('commissionPerDrop')}
-					/>
+					{groups.earnings && (
+						<Input
+							label={t('fields.commissionPerDrop')}
+							inputMode="decimal"
+							dir="ltr"
+							error={fieldError(errors.commissionPerDrop?.message)}
+							{...register('commissionPerDrop')}
+						/>
+					)}
 					<Input
 						label={t('fields.maxWeightCapacityKg')}
 						inputMode="decimal"
@@ -264,62 +273,64 @@ export function DriverForm({
 				</div>
 			</fieldset>
 
-			<fieldset className="flex flex-col gap-4">
-				<legend className="mb-4 text-lg font-semibold">{t('form.compliance')}</legend>
-				<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-					<Input
-						label={t('fields.licenseNumber')}
-						required
-						dir="ltr"
-						autoComplete="off"
-						error={fieldError(errors.licenseNumber?.message)}
-						{...register('licenseNumber')}
-					/>
-					<Input
-						label={t('fields.licenseClass')}
-						required
-						autoComplete="off"
-						error={fieldError(errors.licenseClass?.message)}
-						{...register('licenseClass')}
-					/>
-					<Input
-						label={t('fields.licenseExpiryDate')}
-						type="date"
-						required
-						error={fieldError(errors.licenseExpiryDate?.message)}
-						{...register('licenseExpiryDate')}
-					/>
-					<Input
-						label={t('fields.backgroundCheckDate')}
-						type="date"
-						error={fieldError(errors.backgroundCheckDate?.message)}
-						{...register('backgroundCheckDate')}
-					/>
-					<Input
-						label={t('fields.transitInsurancePolicy')}
-						dir="ltr"
-						autoComplete="off"
-						error={fieldError(errors.transitInsurancePolicy?.message)}
-						{...register('transitInsurancePolicy')}
-					/>
-					<Input
-						label={t('fields.transitInsuranceExpiry')}
-						type="date"
-						error={fieldError(errors.transitInsuranceExpiry?.message)}
-						{...register('transitInsuranceExpiry')}
-					/>
-				</div>
-				<label className="flex w-fit cursor-pointer items-center gap-3 text-sm font-medium">
-					<input
-						type="checkbox"
-						className="checkbox checkbox-sm"
-						{...register('backgroundCheckPassed')}
-					/>
-					{t('fields.backgroundCheckPassed')}
-				</label>
-			</fieldset>
+			{groups.compliance && (
+				<fieldset className="flex flex-col gap-4">
+					<legend className="mb-4 text-lg font-semibold">{t('form.compliance')}</legend>
+					<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+						<Input
+							label={t('fields.licenseNumber')}
+							required
+							dir="ltr"
+							autoComplete="off"
+							error={fieldError(errors.licenseNumber?.message)}
+							{...register('licenseNumber')}
+						/>
+						<Input
+							label={t('fields.licenseClass')}
+							required
+							autoComplete="off"
+							error={fieldError(errors.licenseClass?.message)}
+							{...register('licenseClass')}
+						/>
+						<Input
+							label={t('fields.licenseExpiryDate')}
+							type="date"
+							required
+							error={fieldError(errors.licenseExpiryDate?.message)}
+							{...register('licenseExpiryDate')}
+						/>
+						<Input
+							label={t('fields.backgroundCheckDate')}
+							type="date"
+							error={fieldError(errors.backgroundCheckDate?.message)}
+							{...register('backgroundCheckDate')}
+						/>
+						<Input
+							label={t('fields.transitInsurancePolicy')}
+							dir="ltr"
+							autoComplete="off"
+							error={fieldError(errors.transitInsurancePolicy?.message)}
+							{...register('transitInsurancePolicy')}
+						/>
+						<Input
+							label={t('fields.transitInsuranceExpiry')}
+							type="date"
+							error={fieldError(errors.transitInsuranceExpiry?.message)}
+							{...register('transitInsuranceExpiry')}
+						/>
+					</div>
+					<label className="flex w-fit cursor-pointer items-center gap-3 text-sm font-medium">
+						<input
+							type="checkbox"
+							className="checkbox checkbox-sm"
+							{...register('backgroundCheckPassed')}
+						/>
+						{t('fields.backgroundCheckPassed')}
+					</label>
+				</fieldset>
+			)}
 
-			{withPayroll && (
+			{groups.payroll && (
 				<fieldset className="flex flex-col gap-4">
 					<legend className="mb-4 text-lg font-semibold">{t('form.payroll')}</legend>
 					<div className="grid grid-cols-1 gap-4 md:grid-cols-2">

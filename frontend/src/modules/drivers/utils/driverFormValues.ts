@@ -2,24 +2,52 @@ import type { Driver, DriverValues } from '../api';
 import { DRIVER_DEFAULT_VALUES } from '../constants';
 import type { DriverFormOutput, DriverFormValues } from '../schemas/driverSchema';
 
-// Empty optional fields are sent as null, like the nullable columns. Without staff.view_payroll the payroll
-// fields aren't on the form, so they're left out and keep their saved value.
-export function toDriverValues(values: DriverFormOutput, withPayroll: boolean): DriverValues {
+// The field groups on the form: payroll with staff.view_payroll; when editing, compliance with
+// drivers.view_compliance and the commission with drivers.view_earnings.
+export type DriverFormGroups = { payroll: boolean; compliance: boolean; earnings: boolean };
+
+// Empty optional fields are sent as null, like the nullable columns. A group that isn't on the form is left out, so
+// it keeps its saved value instead of being overwritten with the form's defaults.
+export function toDriverValues(values: DriverFormOutput, groups: DriverFormGroups): DriverValues {
 	const orNull = (value: string) => value || null;
+	const {
+		baseSalary,
+		bankName,
+		bankAccountIban,
+		licenseNumber,
+		licenseClass,
+		licenseExpiryDate,
+		backgroundCheckPassed,
+		backgroundCheckDate,
+		transitInsurancePolicy,
+		transitInsuranceExpiry,
+		commissionPerDrop,
+		...always
+	} = values;
 	return {
-		...values,
+		...always,
 		terminationDate: orNull(values.terminationDate),
 		assignedZone: orNull(values.assignedZone),
-		backgroundCheckDate: orNull(values.backgroundCheckDate),
-		transitInsurancePolicy: orNull(values.transitInsurancePolicy),
-		transitInsuranceExpiry: orNull(values.transitInsuranceExpiry),
-		baseSalary: withPayroll ? values.baseSalary : undefined,
-		bankName: withPayroll ? orNull(values.bankName) : undefined,
-		bankAccountIban: withPayroll ? orNull(values.bankAccountIban) : undefined,
+		...(groups.payroll && {
+			baseSalary,
+			bankName: orNull(bankName),
+			bankAccountIban: orNull(bankAccountIban),
+		}),
+		...(groups.compliance && {
+			licenseNumber,
+			licenseClass,
+			licenseExpiryDate,
+			backgroundCheckPassed,
+			backgroundCheckDate: orNull(backgroundCheckDate),
+			transitInsurancePolicy: orNull(transitInsurancePolicy),
+			transitInsuranceExpiry: orNull(transitInsuranceExpiry),
+		}),
+		...(groups.earnings && { commissionPerDrop }),
 	};
 }
 
-// A saved driver as form fields: nulls and fields this person can't see become the defaults.
+// A saved driver as form fields: nulls and fields this person can't see become the defaults. The ones they can't
+// see aren't shown or sent (toDriverValues).
 export function toDriverFormValues(driver: Driver): DriverFormValues {
 	const d = DRIVER_DEFAULT_VALUES;
 	return {
