@@ -79,6 +79,8 @@ export const AUDIT_RESOURCES: Record<string, AuditResource> = {
 		viewPermission: 'clients.view',
 	},
 	audit_log: { category: 'access', fields: {} },
+	// Someone opened the activity insights page, or was refused. Only counts are shown there, so no fields are stored.
+	activity_insight: { category: 'access', fields: {} },
 };
 
 export function auditResource(resourceType: string): AuditResource {
