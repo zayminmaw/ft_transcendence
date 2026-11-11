@@ -16,18 +16,17 @@ import {
 } from '../constants';
 import { useDriverMutations } from '../hooks/useDriverMutations';
 import {
-	driverSchema,
-	driverSchemaWithoutCompliance,
+	driverSchemaFor,
 	type DriverFormOutput,
 	type DriverFormValues,
 } from '../schemas/driverSchema';
-import { type DriverFormGroups, toDriverValues } from '../utils/driverFormValues';
+import { toDriverValues } from '../utils/driverFormValues';
 import { driverErrorField, driverErrorKey } from '../utils/errors';
 
 // The driver fields, for onboarding a driver (no `driver`) or editing one (drivers.manage). Saving opens the
 // driver's page. Payroll fields show only with staff.view_payroll. A new driver needs a license, so onboarding asks
-// for every other field; editing shows the compliance fields and the commission only to someone who can see their
-// saved values, so nobody overwrites what they can't see.
+// for every other group; editing shows each only to someone who can see its saved values, so nobody overwrites
+// what they can't see.
 export function DriverForm({
 	driver,
 	defaultValues,
@@ -40,7 +39,7 @@ export function DriverForm({
 	const companyPath = useCompanyPath();
 	const { toast } = useToast();
 	const can = useCan();
-	const groups: DriverFormGroups = {
+	const groups = {
 		payroll: can('staff.view_payroll'),
 		compliance: !driver || can('drivers.view_compliance'),
 		earnings: !driver || can('drivers.view_earnings'),
@@ -56,7 +55,7 @@ export function DriverForm({
 		control,
 		formState: { errors },
 	} = useForm<DriverFormValues, unknown, DriverFormOutput>({
-		resolver: zodResolver(groups.compliance ? driverSchema : driverSchemaWithoutCompliance),
+		resolver: zodResolver(driverSchemaFor(groups)),
 		defaultValues,
 	});
 	const employmentStatus = useWatch({ control, name: 'employmentStatus' });
@@ -69,7 +68,7 @@ export function DriverForm({
 	) => values.map((value) => ({ value, label: t(`${group}.${value}` as ParseKeys<'drivers'>) }));
 
 	const onSubmit = handleSubmit((values) => {
-		const driverValues = toDriverValues(values, groups);
+		const driverValues = toDriverValues(values);
 		const handlers = {
 			onSuccess: (saved: Driver) => {
 				toast({

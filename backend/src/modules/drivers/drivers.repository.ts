@@ -189,9 +189,7 @@ export class DriversRepository {
       if (!before) return { status: 'not_found' };
       if ((before.account?.userId ?? null) === userId) return { status: 'unchanged', driver: before };
       if (userId) {
-        // A shared lock: enough to keep the membership, role and account as checked until the link is saved, without
-        // making links to other accounts wait on the driver role's row. The unique key stops one account being linked
-        // to two drivers.
+        // Shared: holds the membership as checked without making other links wait on the driver role's row.
         const [member] = await manager.query(
           `${MEMBERS_WITH_ROLE} AND member.user_id = ? LOCK IN SHARE MODE`, [organizationId, DRIVER_ROLE, userId],
         );
