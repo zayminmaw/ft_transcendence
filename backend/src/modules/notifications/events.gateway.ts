@@ -8,6 +8,7 @@ import {
 } from '@nestjs/websockets';
 import type { Server, Socket } from 'socket.io';
 import type { TenantContext } from '../../common/types/authenticated-request';
+import { ActivityRecorder } from '../insights/activity-recorder';
 import { OrganizationMembersService } from '../organizations';
 import { PermissionPolicyService } from '../rbac';
 import { PresenceService } from './presence.service';
@@ -55,6 +56,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection {
 		private readonly members: OrganizationMembersService,
 		private readonly policy: PermissionPolicyService,
 		private readonly presence: PresenceService,
+		private readonly activity: ActivityRecorder,
 	) {}
 
 	afterInit(server: Server): void {
@@ -86,6 +88,8 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection {
 		const expiry = setTimeout(() => socket.disconnect(true), Math.max(0, expiresAt * 1000 - Date.now()));
 		// Presence counts this socket for the person, in this company only.
 		this.presence.connect(tenant.organizationId, user.id, socket.id);
+		// The member had this company open today. Fire and forget: the recorder never throws.
+		void this.activity.markActive(tenant.organizationId, user.id);
 		socket.once('disconnect', () => {
 			clearTimeout(expiry);
 			this.presence.disconnect(tenant.organizationId, user.id, socket.id);

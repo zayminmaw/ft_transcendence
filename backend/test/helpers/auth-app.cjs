@@ -16,6 +16,8 @@ const { AuthAuditRepository } = require('../../dist/modules/auth/auth-audit.repo
 const { AuditLog } = require('../../dist/modules/audit/entities/audit-log.entity');
 const { AuditService } = require('../../dist/modules/audit/audit.service');
 const { AuditRepository } = require('../../dist/modules/audit/audit.repository');
+const { CompanyActivityDay } = require('../../dist/modules/insights/entities/company-activity-day.entity');
+const { InsightsRepository } = require('../../dist/modules/insights/insights.repository');
 const { UserSession } = require('../../dist/modules/auth/entities/user-session.entity');
 const { SessionsRepository } = require('../../dist/modules/auth/sessions.repository');
 const { OrganizationMember } = require('../../dist/modules/organizations/entities/organization-member.entity');
@@ -53,7 +55,7 @@ function auditInScope(scope, row) {
 // In-memory stand-ins for the SQL repositories: same method names and return shapes. test:db checks the real SQL.
 function createFakeStore() {
   const store = {
-    users: [], sessions: [], audit: [], auditEntries: [], auditRows: [], workspaces: new Map(), platformAdmins: new Set(), lastLogins: [],
+    users: [], sessions: [], audit: [], auditEntries: [], auditRows: [], insightCalls: [], insightResults: {}, workspaces: new Map(), platformAdmins: new Set(), lastLogins: [],
     // Company access for the guard: memberships ({ organizationId, userId, roleId, isActive }) and each role's codes.
     memberships: [], rolePermissions: new Map(),
     // Roles for the people list and the roles you may give: { id, code, name, description }.
@@ -258,6 +260,25 @@ function createFakeStore() {
       isActiveMember: async (userId, organizationId) => store.memberships.some((row) => row.userId === userId
         && row.organizationId === organizationId && row.isActive),
     },
+    // InsightsRepository: returns what a test put in store.insightResults[company] ({ activity, changes }), or zeros, and
+    // remembers each call so a test can see which company and days were asked for. test:db covers the SQL.
+    insights: {
+      activity: async (organizationId, from, to) => {
+        store.insightCalls.push(['activity', organizationId, from, to]);
+        return store.insightResults[organizationId]?.activity ?? {
+          hasHistory: false, members: { active: 0, total: 0 }, visits: 0, activeByDay: [], activeByRole: [],
+        };
+      },
+      changes: async (organizationId, from, to) => {
+        store.insightCalls.push(['changes', organizationId, from, to]);
+        return store.insightResults[organizationId]?.changes ?? {
+          changes: { total: 0, byModule: [] }, security: { passwordResets: 0, accountsSwitchedOff: 0, roleChanges: 0, deniedAttempts: 0 },
+        };
+      },
+      markActive: async () => undefined,
+      addVisit: async () => undefined,
+      purgeBefore: async () => 0,
+    },
     // ClientsRepository: the same results; the audit step gets a stand-in manager (the fake AuditService ignores it).
     clients: {
       list: async (organizationId, query) => {
@@ -380,7 +401,7 @@ function createFakeStore() {
 
 // TypeORM's own repository providers need a database connection; the fakes above replace every class that uses
 // them, so these only have to exist.
-const ENTITIES = [User, OrganizationMember, UserRole, RolePermission, UserSession, AuditLog, Contact];
+const ENTITIES = [User, OrganizationMember, UserRole, RolePermission, UserSession, AuditLog, Contact, CompanyActivityDay];
 
 // A fresh app per test, so throttling counts never leak from one test into another.
 // `controllers` adds fixture endpoints (e.g. a company endpoint) next to the real auth ones; `imports` adds modules
@@ -402,6 +423,7 @@ async function createAuthApp(t, store = createFakeStore(), { controllers = [], i
     .overrideProvider(AuthAuditRepository).useValue(store.repositories.audit)
     .overrideProvider(AuditService).useValue(store.repositories.auditService)
     .overrideProvider(AuditRepository).useValue(store.repositories.auditRepository)
+    .overrideProvider(InsightsRepository).useValue(store.repositories.insights)
     .overrideProvider(OrganizationMembersRepository).useValue(store.repositories.members)
     .overrideProvider(PermissionsRepository).useValue(store.repositories.permissions)
     .overrideProvider(PlatformRolesRepository).useValue(store.repositories.platformRoles)
