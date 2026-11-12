@@ -69,9 +69,9 @@ export function InsightsPage() {
 	return (
 		<div className="flex flex-col gap-4">
 			{header}
-			<section aria-label={t('range.label')} className="flex flex-wrap items-end gap-2">
+			<div className="flex flex-wrap items-end gap-2">
 				<RangeSelect value={range} onChange={setRange} />
-			</section>
+			</div>
 			<AnalyticsCard
 				items={[
 					{
