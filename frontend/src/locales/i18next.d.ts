@@ -6,6 +6,7 @@ import type auth from './en/auth.json';
 import type clients from './en/clients.json';
 import type common from './en/common.json';
 import type drivers from './en/drivers.json';
+import type insights from './en/insights.json';
 import type rbac from './en/rbac.json';
 
 declare module 'i18next' {
@@ -18,6 +19,7 @@ declare module 'i18next' {
 			clients: typeof clients;
 			common: typeof common;
 			drivers: typeof drivers;
+			insights: typeof insights;
 			rbac: typeof rbac;
 		};
 	}
