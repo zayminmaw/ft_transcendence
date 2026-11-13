@@ -172,7 +172,7 @@ test('a file is kept only when its bytes are the type it claims', async (t) => {
   const onDisk = (await readdir(join(storage, '1'))).length;
 
   // A page, a script or another type of file under an allowed type is refused, and nothing is stored.
-  const lie = { code: undefined, message: 'The file is not the type it says it is.' };
+  const lie = { code: 'FILE_TYPE_MISMATCH', message: 'The file is not the type it says it is.' };
   for (const [content, filename, type] of [
     [Buffer.from('<script>alert(1)</script>'), 'a.png', 'image/png'],
     [Buffer.from('<html></html>'), 'a.jpg', 'image/jpeg'],
@@ -182,6 +182,7 @@ test('a file is kept only when its bytes are the type it claims', async (t) => {
   ]) {
     const response = await image(content, filename, type).expect(400);
     assert.equal(response.body.message, lie.message);
+    assert.equal(response.body.code, lie.code);
   }
   for (const [content, filename, type] of [
     [Buffer.from('<script>'), 'a.pdf', 'application/pdf'],
