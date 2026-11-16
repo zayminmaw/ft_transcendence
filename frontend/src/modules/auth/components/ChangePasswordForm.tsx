@@ -4,7 +4,7 @@ import type { ParseKeys } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
 import { Button, PasswordInput } from '@global-components';
-import { ApiError } from '@services/api-client';
+import { errorCode, fromErrorCode } from '@services/api-client';
 import { meetsPasswordRule } from '@utils/password';
 import { useChangePassword } from '../hooks';
 
@@ -48,8 +48,9 @@ const FIELD_ERRORS = {
 } as const;
 
 function formErrorKey(error: unknown) {
-	const code = error instanceof ApiError ? error.code : undefined;
-	return code === 'AUTH_TOO_MANY_ATTEMPTS' ? 'errors.tooManyAttempts' : 'errors.unknown';
+	return errorCode(error) === 'AUTH_TOO_MANY_ATTEMPTS'
+		? 'errors.tooManyAttempts'
+		: 'errors.unknown';
 }
 
 // The first-login screen and the profile page. onChanged runs after a change that worked; the fields empty again.
@@ -68,8 +69,7 @@ export function ChangePasswordForm({ mode, onChanged }: { mode: Mode; onChanged?
 	});
 
 	const fieldError = (key?: string) => key && t(key as ParseKeys<'auth'>);
-	const code = change.error instanceof ApiError ? change.error.code : undefined;
-	const showsInForm = !change.isError || !(code && code in FIELD_ERRORS);
+	const showsInForm = !change.isError || !fromErrorCode(FIELD_ERRORS, change.error);
 
 	return (
 		<form
@@ -84,10 +84,9 @@ export function ChangePasswordForm({ mode, onChanged }: { mode: Mode; onChanged?
 							onChanged?.();
 						},
 						onError: (error) => {
-							const known = error instanceof ApiError ? error.code : undefined;
-							if (known && known in FIELD_ERRORS) {
-								const [field, message] =
-									FIELD_ERRORS[known as keyof typeof FIELD_ERRORS];
+							const known = fromErrorCode(FIELD_ERRORS, error);
+							if (known) {
+								const [field, message] = known;
 								setError(field, { message });
 							}
 						},

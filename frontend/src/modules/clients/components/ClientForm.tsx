@@ -7,7 +7,7 @@ import { Button, Input, Select, Textarea, useToast } from '@global-components';
 import { useCompanyPath } from '@hooks/useCompanyPath';
 import { useCan } from '@modules/auth';
 import type { Client } from '../api';
-import { CLIENT_FIELD_ERRORS, RATE_TIERS } from '../constants';
+import { RATE_TIERS } from '../constants';
 import { useClientMutations } from '../hooks/useClientMutations';
 import {
 	clientSchema,
@@ -15,7 +15,7 @@ import {
 	type ClientFormValues,
 } from '../schemas/clientSchema';
 import { toClientValues } from '../utils/clientFormValues';
-import { clientErrorKey, errorCode } from '../utils/errors';
+import { clientErrorField, clientErrorKey } from '../utils/errors';
 import { isRateTier } from '../utils/rateTier';
 
 // The client fields, for adding a client (no `client`) or editing one. Saving opens the client's page.
@@ -55,13 +55,7 @@ export function ClientForm({
 	if (!isRateTier(savedTier)) tierOptions.push({ value: savedTier, label: savedTier });
 	const backTo = client ? companyPath(`clients/${client.id}`) : companyPath('clients');
 	// A refusal that belongs to a field shows under it; anything else above the form.
-	const fieldFor = (error: unknown) => {
-		const code = errorCode(error);
-		return code && code in CLIENT_FIELD_ERRORS
-			? CLIENT_FIELD_ERRORS[code as keyof typeof CLIENT_FIELD_ERRORS]
-			: undefined;
-	};
-	const formError = saveError && !fieldFor(saveError);
+	const formError = saveError && !clientErrorField(saveError);
 
 	const onSubmit = handleSubmit((values) => {
 		const clientValues = toClientValues(values, withTier);
@@ -76,7 +70,7 @@ export function ClientForm({
 				navigate(companyPath(`clients/${saved.id}`));
 			},
 			onError: (error: unknown) => {
-				const field = fieldFor(error);
+				const field = clientErrorField(error);
 				if (field)
 					setError(field, { message: clientErrorKey(error) }, { shouldFocus: true });
 			},

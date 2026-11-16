@@ -1,5 +1,6 @@
 import { z } from 'zod';
-import { administratorAccountSchema, emailSchema } from './administratorAccountSchema';
+import { administratorAccountSchema } from './administratorAccountSchema';
+import { contactEmailSchema } from './editOrganizationSchema';
 
 // The same rules as the API, so most mistakes are caught before sending.
 export const createTenantSchema = z.object({
@@ -14,7 +15,7 @@ export const createTenantSchema = z.object({
 				/^[a-z0-9]+(?:-[a-z0-9]+)*$/,
 				'Use lower-case letters and numbers joined by single dashes.',
 			),
-		contactEmail: emailSchema,
+		contactEmail: contactEmailSchema,
 		contactPhone: z.string().trim().max(32, 'Use at most 32 characters.'),
 		address: z.string().trim().max(1000, 'Use at most 1000 characters.'),
 	}),

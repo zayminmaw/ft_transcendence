@@ -4,8 +4,15 @@ import { useTranslation } from 'react-i18next';
 import { useToast, type TableSort } from '@global-components';
 import { useDebounced } from '@hooks/useDebounced';
 import { tenantQueryKey } from '@utils/query-keys';
-import type { AssetListParams, AssetSortKey, AssetStatusFilter } from '../api';
-import { sampleAssetsApi } from '../data/sampleAssets';
+import { apiRequest } from '@services/api-client';
+import {
+	assetPath,
+	type AssetDetails,
+	type AssetList,
+	type AssetListParams,
+	type AssetSortKey,
+	type AssetStatusFilter,
+} from '../api';
 
 // The asset list with its search, status filter, sort and paging; by asset tag by default. Changing anything but
 // the page goes back to page 1. The previous page stays on screen while the next one loads.
@@ -18,7 +25,8 @@ export function useAssets() {
 	const [pageSize, setPageSizeValue] = useState(10);
 	const debouncedSearch = useDebounced(search);
 	const params: AssetListParams = {
-		search: debouncedSearch,
+		// Trimmed here, so "abc" and "abc " share one cached answer.
+		search: debouncedSearch.trim(),
 		status,
 		sort: (sort?.key as AssetSortKey | undefined) ?? 'assetTag',
 		direction: sort?.direction ?? 'asc',
@@ -27,8 +35,17 @@ export function useAssets() {
 	};
 	const query = useQuery({
 		queryKey: tenantQueryKey('assets', 'list', params),
-		// GET /api/assets?search=&status=&sort=&direction=&page=&pageSize= once the API exists.
-		queryFn: () => sampleAssetsApi.list(params),
+		queryFn: () => {
+			const search = new URLSearchParams({
+				status: params.status,
+				sort: params.sort,
+				direction: params.direction,
+				page: String(params.page),
+				pageSize: String(params.pageSize),
+			});
+			if (params.search) search.set('search', params.search);
+			return apiRequest<AssetList>(`assets?${search}`);
+		},
 		placeholderData: keepPreviousData,
 	});
 
@@ -69,8 +86,7 @@ export function useAssets() {
 export function useAssetDetails(assetId: string) {
 	const { data, isPending, error } = useQuery({
 		queryKey: tenantQueryKey('assets', 'details', assetId),
-		// GET /api/assets/:id once the API exists.
-		queryFn: () => sampleAssetsApi.get(assetId),
+		queryFn: () => apiRequest<AssetDetails>(assetPath(assetId)),
 	});
 	return { asset: data, isAssetPending: isPending, assetError: error };
 }
