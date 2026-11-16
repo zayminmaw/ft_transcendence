@@ -2,6 +2,7 @@ import { Inject, Injectable, Logger, type OnModuleDestroy, Optional } from '@nes
 import type { Server } from 'socket.io';
 import { ContactsRepository } from '../contacts/contacts.repository';
 import type { ContactStatus } from '../contacts/contacts.service';
+import { ActivityRecorder } from '../insights/activity-recorder';
 import { OrganizationMembersService } from '../organizations';
 import { PresenceRegistry } from './presence.registry';
 import { organizationRoom, userRoom } from './rooms';
@@ -20,9 +21,14 @@ export class PresenceService implements OnModuleDestroy {
   constructor(
     private readonly contacts: ContactsRepository,
     private readonly memberships: OrganizationMembersService,
+    private readonly activity: ActivityRecorder,
     @Optional() @Inject(PRESENCE_GRACE_MS) graceMs?: number,
   ) {
-    this.registry = new PresenceRegistry((organizationId, userId) => this.announce(organizationId, userId), graceMs);
+    this.registry = new PresenceRegistry((organizationId, userId, online) => {
+      // A real offline to online change is one visit. The recorder never throws.
+      if (online) void this.activity.recordVisit(organizationId, userId);
+      return this.announce(organizationId, userId);
+    }, graceMs);
   }
 
   // The gateway hands over its socket.io server once it exists; the service never imports the gateway.

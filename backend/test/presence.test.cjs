@@ -7,6 +7,7 @@ const { JwtService } = require('@nestjs/jwt');
 const { io } = require('socket.io-client');
 const { EventsGateway } = require('../dist/modules/notifications/events.gateway');
 const { PRESENCE_GRACE_MS, PresenceService } = require('../dist/modules/notifications/presence.service');
+const { ActivityRecorder } = require('../dist/modules/insights/activity-recorder');
 const { ContactsRepository } = require('../dist/modules/contacts/contacts.repository');
 const { OrganizationMembersService } = require('../dist/modules/organizations/organization-members.service');
 const { PermissionPolicyService } = require('../dist/modules/rbac/permission-policy.service');
@@ -40,8 +41,15 @@ async function app(t) {
       return saved.filter(([organization, , contact]) => organization === organizationId && contact === contactUserId).map(([, owner]) => owner);
     },
   };
+  // What the activity recorder was asked to write; its own tests are in activity-recorder.test.cjs.
+  const activity = [];
+  const recorder = {
+    async markActive(organizationId, userId) { activity.push(['active', organizationId, userId]); },
+    async recordVisit(organizationId, userId) { activity.push(['visit', organizationId, userId]); },
+  };
   const moduleRef = await Test.createTestingModule({ providers: [
     EventsGateway, PresenceService,
+    { provide: ActivityRecorder, useValue: recorder },
     { provide: PRESENCE_GRACE_MS, useValue: GRACE_MS },
     { provide: JwtService, useValue: jwt },
     { provide: OrganizationMembersService, useValue: members },
@@ -61,7 +69,7 @@ async function app(t) {
     socket.on('connect', () => resolve(socket));
     socket.on('connect_error', reject);
   });
-  return { connect, memberships, members, presence: nest.get(PresenceService) };
+  return { connect, memberships, members, activity, presence: nest.get(PresenceService) };
 }
 const summary = (socket) => socket.received.map(({ organizationId, userId, status }) => [organizationId, userId, status]);
 
@@ -153,4 +161,33 @@ test('refresh and closeCompany never throw, so a failed lookup cannot fail the c
   members.isActiveMember = async () => { throw new Error('database unavailable'); };
   await presence.refresh('1', '11');
   await presence.closeCompany('1');
+});
+
+test('a connect marks the member active in that company, and the first socket of a person records one visit', async (t) => {
+  const { connect, activity } = await app(t);
+  await connect('11', '1');
+  await until(() => activity.length === 2, 'activity written');
+  assert.deepEqual(activity.slice().sort(), [['active', '1', '11'], ['visit', '1', '11']]);
+});
+
+test('a second tab, or a reconnect inside the grace, adds no visit', async (t) => {
+  const { connect, activity } = await app(t);
+  const first = await connect('11', '1');
+  await connect('11', '1');
+  first.disconnect();
+  await wait(GRACE_MS / 4);
+  await connect('11', '1');
+  await wait(100);
+  assert.equal(activity.filter(([kind]) => kind === 'visit').length, 1);
+});
+
+test('coming back after the grace is a new visit, and each company counts on its own', async (t) => {
+  const { connect, activity } = await app(t);
+  const first = await connect('11', '1');
+  await connect('11', '2');
+  first.disconnect();
+  await wait(GRACE_MS + 200);
+  await connect('11', '1');
+  await until(() => activity.filter(([kind]) => kind === 'visit').length === 3, 'three visits');
+  assert.deepEqual(activity.filter(([kind]) => kind === 'visit').map(([, organization]) => organization).sort(), ['1', '1', '2']);
 });
