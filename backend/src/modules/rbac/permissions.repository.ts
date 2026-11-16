@@ -15,6 +15,16 @@ export class PermissionsRepository {
     return grant?.scope;
   }
 
+  // Which of these codes one role holds with full scope, in one query (the guard's rule, like grantedCodes).
+  async grantedOf(roleId: string, codes: readonly string[]): Promise<Set<string>> {
+    if (codes.length === 0) return new Set();
+    const grants = await this.rolePermissions.find({
+      where: { roleId: Number(roleId), scope: 'all', permission: { code: In([...codes]) } },
+      relations: { permission: true },
+    });
+    return new Set(grants.map((grant) => grant.permission.code));
+  }
+
   // The codes each role may use, by role code, with the guard's rule: only full-scope permissions (it refuses
   // assigned_only until ownership rules exist). For /me, so the interface offers only what the API allows.
   async grantedCodes(roleCodes: string[]): Promise<Record<string, string[]>> {

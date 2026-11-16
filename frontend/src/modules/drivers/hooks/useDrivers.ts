@@ -4,8 +4,16 @@ import { useTranslation } from 'react-i18next';
 import { useToast, type TableSort } from '@global-components';
 import { useDebounced } from '@hooks/useDebounced';
 import { tenantQueryKey } from '@utils/query-keys';
-import type { DriverListParams, DriverSortKey, DriverStatusFilter } from '../api';
-import { sampleDriversApi } from '../data/sampleDrivers';
+import { apiRequest } from '@services/api-client';
+import {
+	driverPath,
+	type Driver,
+	type DriverChoice,
+	type DriverList,
+	type DriverListParams,
+	type DriverSortKey,
+	type DriverStatusFilter,
+} from '../api';
 
 // The driver list with its search, duty status filter, sort and paging; everyone by last name by default.
 // Changing anything but the page goes back to page 1. The previous page stays on screen while the next one loads.
@@ -18,7 +26,8 @@ export function useDrivers() {
 	const [pageSize, setPageSizeValue] = useState(10);
 	const debouncedSearch = useDebounced(search);
 	const params: DriverListParams = {
-		search: debouncedSearch,
+		// Trimmed here, so "abc" and "abc " share one cached answer.
+		search: debouncedSearch.trim(),
 		status,
 		sort: (sort?.key as DriverSortKey | undefined) ?? 'lastName',
 		direction: sort?.direction ?? 'asc',
@@ -27,8 +36,17 @@ export function useDrivers() {
 	};
 	const query = useQuery({
 		queryKey: tenantQueryKey('drivers', 'list', params),
-		// GET /api/drivers?search=&status=&sort=&direction=&page=&pageSize= once the API exists.
-		queryFn: () => sampleDriversApi.list(params),
+		queryFn: () => {
+			const search = new URLSearchParams({
+				status: params.status,
+				sort: params.sort,
+				direction: params.direction,
+				page: String(params.page),
+				pageSize: String(params.pageSize),
+			});
+			if (params.search) search.set('search', params.search);
+			return apiRequest<DriverList>(`drivers?${search}`);
+		},
 		placeholderData: keepPreviousData,
 	});
 
@@ -69,8 +87,7 @@ export function useDrivers() {
 export function useDriverDetails(driverId: string) {
 	const { data, isPending, error } = useQuery({
 		queryKey: tenantQueryKey('drivers', 'details', driverId),
-		// GET /api/drivers/:id once the API exists.
-		queryFn: () => sampleDriversApi.get(driverId),
+		queryFn: () => apiRequest<Driver>(driverPath(driverId)),
 	});
 	return { driver: data, isDriverPending: isPending, driverError: error };
 }
@@ -80,8 +97,7 @@ export function useDriverDetails(driverId: string) {
 export function useDriverChoices() {
 	const { data, isPending, isError } = useQuery({
 		queryKey: tenantQueryKey('drivers', 'choices'),
-		// GET /api/drivers/choices once the API exists.
-		queryFn: () => sampleDriversApi.choices(),
+		queryFn: () => apiRequest<DriverChoice[]>('drivers/choices'),
 	});
 	return { driverChoices: data ?? [], isChoicesPending: isPending, isChoicesError: isError };
 }
