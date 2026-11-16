@@ -182,6 +182,7 @@ function createFakeStore() {
     },
     permissions: {
       findScope: async (roleId, code) => (store.rolePermissions.get(roleId)?.has(code) ? 'all' : undefined),
+      grantedOf: async (roleId, codes) => new Set(codes.filter((code) => store.rolePermissions.get(roleId)?.has(code))),
       // By role code, sorted, like the real query (every fake permission has full scope).
       grantedCodes: async (roleCodes) => Object.fromEntries(roleCodes.map((code) => {
         const role = store.roles.find((candidate) => candidate.code === code);
@@ -384,13 +385,15 @@ const ENTITIES = [User, OrganizationMember, UserRole, RolePermission, UserSessio
 
 // A fresh app per test, so throttling counts never leak from one test into another.
 // `controllers` adds fixture endpoints (e.g. a company endpoint) next to the real auth ones; `imports` adds modules
-// (e.g. MembersModule), whose repositories are replaced by the fakes above.
-async function createAuthApp(t, store = createFakeStore(), { controllers = [], imports = [] } = {}) {
+// (e.g. MembersModule), whose repositories are replaced by the fakes above. `overrides` replaces more providers, as
+// [provider, value] pairs (e.g. a module's repository faked in its own helper).
+async function createAuthApp(t, store = createFakeStore(), { controllers = [], imports = [], overrides = [] } = {}) {
   let builder = Test.createTestingModule({
     imports: [ConfigModule.forRoot({ isGlobal: true, ignoreEnvFile: true, load: [() => ENV] }), AuthModule, ...imports],
     controllers,
   });
   for (const entity of ENTITIES) builder = builder.overrideProvider(getRepositoryToken(entity)).useValue({});
+  for (const [provider, value] of overrides) builder = builder.overrideProvider(provider).useValue(value);
   // The real notifications module opens sockets and listens to the audit trail; modules that only need the presence
   // service get this stand-in, which records what they ask for (presence has its own tests).
   class FakeNotificationsModule {}
