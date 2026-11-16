@@ -54,6 +54,7 @@ The **Log in** page offers **Log in with 42** below the password form. `GET /api
 - 42 login never creates or links an account. It signs in only the active account whose email matches the 42 email (case-insensitive), the same lookup as an email login. This email match is the authorized way an existing account is reached through 42.
 - Success ends exactly like password login: a new session, the same refresh cookie, a `login` audit entry, and a redirect to `/app`, where the workspace picker continues as usual.
 - Every failure returns to `/login?oauth=<reason>` without a session: `denied` (cancelled on 42), `failed` (missing or mismatched state, or 42 refused or did not answer), `no_account` (no active account with that email, audited as `login_failed`), and `unavailable` (the 42 credentials are not configured). The page shows the matching message.
+- The callback allows 20 requests per minute from one IP address, checked before anything is sent to 42. Above that it answers 429 with `AUTH_TOO_MANY_ATTEMPTS` instead of redirecting.
 - 42 tokens and the client secret are never stored, logged, or sent to the browser.
 
 ## Company workspace picker (required, not implemented)

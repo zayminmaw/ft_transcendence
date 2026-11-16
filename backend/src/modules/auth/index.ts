@@ -1,5 +1,6 @@
 export { AuthAuditRepository } from './auth-audit.repository';
 export { AuthModule } from './auth.module';
+export { AuthThrottlerGuard } from './auth.throttler';
 export { JwtAuthGuard } from './jwt-auth.guard';
 // For the 42 login, so it ends exactly like password login:
 //   const session = await sessions.start(user.id, requestMeta(request));

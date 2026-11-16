@@ -1,11 +1,13 @@
-import { Controller, Get, Query, Req, Res } from '@nestjs/common';
+import { Controller, Get, Query, Req, Res, UseGuards } from '@nestjs/common';
+import { SkipThrottle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { Public } from '../../common/decorators/public.decorator';
-import { requestMeta, SessionsService, setRefreshCookie } from '../auth';
+import { AuthThrottlerGuard, requestMeta, SessionsService, setRefreshCookie } from '../auth';
 import { type FortyTwoFailure, FortyTwoService } from './forty-two.service';
 import { clearStateCookie, newState, STATE_COOKIE, setStateCookie } from './state-cookie';
 
-// Both answers are browser navigations, so every outcome is a redirect: /app with a session, or /login?oauth=<reason>.
+// Both answers are browser navigations, so every outcome the handlers reach is a redirect: /app with a session, or
+// /login?oauth=<reason>. Only the callback's rate limit answers otherwise, before its handler runs.
 const loginPage = (failure: FortyTwoFailure) => `/login?oauth=${failure}`;
 
 @Public()
@@ -26,6 +28,10 @@ export class FortyTwoController {
   }
 
   @Get('callback')
+  // Anyone can invent a matching cookie and state, and each try can call 42 with a 10-second timeout.
+  // shortcut: over the limit shows the guard's JSON 429, not /login; add a redirect if real users hit it.
+  @UseGuards(AuthThrottlerGuard)
+  @SkipThrottle({ login: true, refresh: true, password: true })
   async callback(@Query() query: Record<string, unknown>, @Req() request: Request, @Res() response: Response): Promise<void> {
     const expectedState: unknown = request.cookies?.[STATE_COOKIE];
     // A state is good for one attempt, whatever the outcome.

@@ -170,6 +170,19 @@ test('a missing or different state is refused before 42 is called', async (t) =>
   assert.equal(store.sessions.length, 0);
 });
 
+test('invented matching states stop reaching 42 after 20 callbacks a minute from one address', async (t) => {
+  const { server, api } = await createApp(t);
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    await callback(server, { code: 'made-up', state: 'invented' }, 'invented').expect(302);
+  }
+  assert.equal(api.calls.length, 20);
+  const limited = await callback(server, { code: 'made-up', state: 'invented' }, 'invented').expect(429);
+  assert.equal(limited.body.code, 'AUTH_TOO_MANY_ATTEMPTS');
+  assert.equal(api.calls.length, 20);
+  // Starting a login calls nobody, so it stays open.
+  await start(server);
+});
+
 test('declining on 42 and a failing 42 API each return to login with their reason', async (t) => {
   const denied = await createApp(t);
   const first = await start(denied.server);
