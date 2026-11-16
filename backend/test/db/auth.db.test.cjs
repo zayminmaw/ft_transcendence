@@ -495,16 +495,21 @@ test('the first-admin command creates a platform admin and never reuses an accou
 const { In, Like } = require('typeorm');
 const { DEMO_ACCOUNTS, DEMO_CLIENTS, DEMO_PASSWORD, seedDemo } = require('../../dist/database/seeders/demo.seed');
 const { DEMO_DRIVERS } = require('../../dist/database/seeders/demo-drivers.seed');
+const { DEMO_ASSETS } = require('../../dist/database/seeders/demo-assets.seed');
 const { verifyPassword } = require('../../dist/modules/users/password');
 
 test('the demo seed adds everything once and skips it the second time', async () => {
   const drivers = Object.values(DEMO_DRIVERS).flat();
+  const assets = Object.values(DEMO_ASSETS).flat();
   assert.deepEqual(await seedDemo(database), {
     companiesCreated: 2, accountsCreated: DEMO_ACCOUNTS.length, accountsSkipped: [],
-    clientsCreated: Object.values(DEMO_CLIENTS).flat().length, driversCreated: drivers.length,
+    clientsCreated: Object.values(DEMO_CLIENTS).flat().length, driversCreated: drivers.length, assetsCreated: assets.length,
   });
   const again = await seedDemo(database);
-  assert.deepEqual([again.companiesCreated, again.accountsCreated, again.clientsCreated, again.driversCreated], [0, 0, 0, 0]);
+  assert.deepEqual(
+    [again.companiesCreated, again.accountsCreated, again.clientsCreated, again.driversCreated, again.assetsCreated],
+    [0, 0, 0, 0, 0],
+  );
   assert.deepEqual(again.accountsSkipped, DEMO_ACCOUNTS.map((account) => account.username));
   const demo = DEMO_ACCOUNTS.filter((account) => account.email.endsWith('.example.test'));
   const demoIds = (await database.getRepository(User).findBy({ email: Like('%.example.test') })).map((user) => user.id);
@@ -520,6 +525,16 @@ test('the demo seed adds everything once and skips it the second time', async ()
   assert.equal(Number(total), drivers.length);
   const linked = await database.query(`SELECT account.username FROM employees employee JOIN users account ON account.id = employee.user_id`);
   assert.deepEqual(linked.map((row) => row.username), drivers.filter((driver) => driver.account).map((driver) => driver.account));
+  // Each check-out goes to a driver of the asset's own company, and nothing is checked out twice.
+  const checkOuts = await database.query(`SELECT checkout.asset_id AS assetId, checkout.checked_in_at AS checkedInAt,
+      asset.organization_id = employee.organization_id AS sameCompany
+    FROM asset_assignments checkout
+    JOIN assets asset ON asset.id = checkout.asset_id
+    JOIN employees employee ON employee.id = checkout.driver_id`);
+  assert.equal(checkOuts.length, assets.flatMap((asset) => asset.checkOuts ?? []).length);
+  assert.ok(checkOuts.every((row) => Number(row.sameCompany) === 1));
+  const open = checkOuts.filter((row) => row.checkedInAt === null).map((row) => String(row.assetId));
+  assert.equal(new Set(open).size, open.length);
 });
 
 test('the demo accounts cover the picker cases and share the demo password', async () => {
