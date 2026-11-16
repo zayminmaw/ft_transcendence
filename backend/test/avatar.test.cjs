@@ -9,8 +9,10 @@ const { ORIGIN, createAuthApp, createFakeStore } = require('./helpers/auth-app.c
 
 // The cookie's Secure flag depends on NODE_ENV; pin it like auth.test.cjs.
 process.env.NODE_ENV = 'test';
-// Not a real image: the upload only checks the type the client sends.
+// Only the first bytes of each type: StorageService checks that a file starts the way its type does.
 const PNG = Buffer.from('89504e470d0a1a0a0000000d49484452', 'hex');
+const JPEG = Buffer.from('ffd8ffe000104a464946', 'hex');
+const WEBP = Buffer.concat([Buffer.from('RIFF'), Buffer.from([0x1a, 0, 0, 0]), Buffer.from('WEBPVP8 ')]);
 const PASSWORD = 'Correct-horse-1';
 
 const binary = (response, done) => {
@@ -65,7 +67,7 @@ test('a new picture replaces the old one, whose file is deleted; removing brings
   const { store, put, remove, me, accountFiles } = await noorApp(t);
   await put().expect(200);
   const first = store.storageFiles[0].id;
-  await put(PNG, { filename: 'new.webp', contentType: 'image/webp' }).expect(200);
+  await put(WEBP, { filename: 'new.webp', contentType: 'image/webp' }).expect(200);
   assert.deepEqual(store.storageFiles.map((file) => file.mimeType), ['image/webp']);
   assert.equal((await accountFiles()).length, 1);
   const second = store.storageFiles[0].id;
@@ -86,7 +88,7 @@ test('only one PNG, JPEG or WebP of at most 2 MB, and nothing is kept from a ref
   await put(Buffer.alloc(2 * 1024 * 1024 + 1), { filename: 'huge.png', contentType: 'image/png' }).expect(413);
   assert.deepEqual(store.storageFiles, []);
   assert.equal(store.users[0].avatarFileId, null);
-  await put(Buffer.alloc(2 * 1024 * 1024), { filename: 'big.jpg', contentType: 'image/jpeg' }).expect(200);
+  await put(Buffer.concat([JPEG, Buffer.alloc(2 * 1024 * 1024 - JPEG.length)]), { filename: 'big.jpg', contentType: 'image/jpeg' }).expect(200);
 });
 
 test('an upload without a file is refused, and so is one without a token or before your own password', async (t) => {

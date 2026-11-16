@@ -1,10 +1,11 @@
 import { createHmac, randomUUID } from 'node:crypto';
 import { mkdir, open, unlink, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
-import { ForbiddenException, Injectable, NotFoundException, StreamableFile } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException, StreamableFile } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Environment } from '../../common/config/environment';
 import { safeEqual } from '../../common/safe-equal';
+import { matchesDeclaredType } from './file-signature';
 import { StorageRepository } from './storage.repository';
 import type { FileRecord, FileView, UploadedFileInput } from './types/storage-file';
 
@@ -14,6 +15,8 @@ const LINK_STEP_SECONDS = 5 * 60;
 const LINK_STEPS = 3;
 // The folder for files of an account rather than a company. Company folders are numeric ids, so it can't clash.
 const ACCOUNT_FOLDER = 'accounts';
+// The code lets the frontend show this in the person's language.
+const FILE_TYPE_MISMATCH = { message: 'The file is not the type it says it is.', code: 'FILE_TYPE_MISMATCH' };
 
 // Keeps files on disk, one folder per company, and knows nothing about who may upload or read: the module that owns
 // the record (e.g. parcels) checks its own permissions, then saves files or hands out signed links to them. Files of
@@ -81,6 +84,10 @@ export class StorageService {
 
   // The file goes to disk under a random name first; the row only exists once the bytes do.
   private async store(organizationId: string | null, uploadedByUserId: string, file: UploadedFileInput): Promise<FileView> {
+    // Checked here, not only where the upload is received, so no module that saves files can skip it.
+    if (!matchesDeclaredType(file.mimetype, file.buffer)) {
+      throw new BadRequestException(FILE_TYPE_MISMATCH);
+    }
     const storedName = randomUUID();
     const path = this.pathOf(organizationId, storedName);
     await mkdir(join(this.root, organizationId ?? ACCOUNT_FOLDER), { recursive: true });
