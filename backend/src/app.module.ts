@@ -23,6 +23,7 @@ import { BillingModule } from './modules/billing';
 import { NotificationsModule } from './modules/notifications';
 import { PlatformModule } from './modules/platform';
 import { StorageModule } from './modules/storage';
+import { InsightsModule } from './modules/insights';
 
 @Module({
   imports: [
@@ -39,7 +40,7 @@ import { StorageModule } from './modules/storage';
     }),
     AuthModule, FortyTwoModule, RbacModule, OrganizationsModule, MembersModule, ContactsModule, ClientsModule, StaffModule,
     DriversModule, AssetsModule, ParcelsModule, BillingModule,
-    NotificationsModule, PlatformModule, StorageModule,
+    NotificationsModule, PlatformModule, StorageModule, InsightsModule,
   ],
   controllers: [HealthController],
   providers: [

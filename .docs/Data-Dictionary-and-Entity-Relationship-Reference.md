@@ -368,6 +368,19 @@ Added by migration `1793322000000-Contacts` (not in the baseline). One saved con
 
 Constraints: `UNIQUE KEY uq_contacts_pair (owner_member_id, contact_member_id)` and `CHECK (owner_member_id <> contact_member_id)`.
 
+### `company_activity_days`
+
+Added by migration `1793408400000-CompanyActivity` (not in the baseline). One row for each member, company and UTC day: that the member had the company open that day, and how many times they came in. It holds nothing else, no content, address or device. It feeds the company activity insights page (see [Company activity insights](Activity-Insights.md)). Rows older than 90 days are deleted by the application, and a row goes with its user or its company.
+
+| Column | Data Type | Constraints | Description |
+| --- | --- | --- | --- |
+| `organization_id` | `BIGINT UNSIGNED` | NOT NULL; part of the primary key; FK -> organizations (`id`) (`ON DELETE CASCADE`) | The company |
+| `user_id` | `BIGINT UNSIGNED` | NOT NULL; part of the primary key; FK -> users (`id`) (`ON DELETE CASCADE`), indexed | The member |
+| `day` | `DATE` | NOT NULL; part of the primary key | The UTC day |
+| `visits` | `INT UNSIGNED` | NOT NULL DEFAULT 0 | Times the member came online in the company that day |
+
+Constraints: `PRIMARY KEY (organization_id, user_id, day)` and `INDEX idx_company_activity_day (organization_id, day)` for the range queries.
+
 ## 7. Financial Settlement & Balances
 
 ### `driver_cod_settlements`
@@ -671,6 +684,8 @@ These definitions are taken from the baseline. A composite unique key applies to
 | `storage_files.uploaded_by_user_id` | `users.id` | SET NULL | `fk_storage_files_user` |
 | `contacts.(owner_member_id, organization_id)` | `organization_members.(id, organization_id)` | CASCADE | `fk_contacts_owner` |
 | `contacts.(contact_member_id, organization_id)` | `organization_members.(id, organization_id)` | CASCADE | `fk_contacts_contact` |
+| `company_activity_days.organization_id` | `organizations.id` | CASCADE | `fk_company_activity_organization` |
+| `company_activity_days.user_id` | `users.id` | CASCADE | `fk_company_activity_user` |
 | `users.avatar_file_id` | `storage_files.id` | SET NULL | `fk_users_avatar_file` |
 
 ## 12. Domain integrity
