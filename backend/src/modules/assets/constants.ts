@@ -12,8 +12,6 @@ export const READY_CONDITIONS = ['new', 'good'] as const satisfies readonly Asse
 export const ASSET_STATUS_FILTERS = ['all', 'available', 'checked_out', 'needs_maintenance', 'decommissioned'] as const;
 export type AssetStatusFilter = (typeof ASSET_STATUS_FILTERS)[number];
 export const ASSET_SORTS = ['assetTag', 'assetName'] as const;
-// Road tax counts as due this many days ahead, like the frontend's EXPIRY_WARNING_DAYS.
-export const EXPIRY_WARNING_DAYS = 30;
 // Free text: the notes of an asset, a check-out, a check-in or a service.
 export const NOTES_MAX_LENGTH = 2000;
 

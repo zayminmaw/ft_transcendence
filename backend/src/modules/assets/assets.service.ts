@@ -2,6 +2,7 @@ import { BadRequestException, ConflictException, Injectable, NotFoundException }
 import type { EntityManager } from 'typeorm';
 import type { RequestMeta } from '../../common/context/request-meta';
 import { ID_PATTERN } from '../../common/ids';
+import { sentValues } from '../../common/sent-values';
 import type { TenantContext } from '../../common/types/authenticated-request';
 import { type AuditAction, AuditService } from '../audit';
 import { type AssetResult, AssetsRepository, type AuditStep } from './assets.repository';
@@ -38,14 +39,6 @@ function savedAsset(result: AssetResult): AssetDetails {
 }
 
 const AMOUNT_FIELDS = ['acquisitionCost', 'currentBookValue', 'serviceCost'];
-
-// The fields sent, without the ones left out (a DTO instance holds them as undefined), and the amounts as saved
-// however they were typed ("1.5" is saved as 1.50), so an unchanged amount isn't a change.
-function sentValues<T extends object>(body: T): Partial<T> {
-  return Object.fromEntries(Object.entries(body)
-    .filter(([, value]) => value !== undefined)
-    .map(([field, value]) => [field, AMOUNT_FIELDS.includes(field) ? Number(value).toFixed(2) : value])) as Partial<T>;
-}
 
 // What a new asset gets for each optional field left out: good, at no cost, with no details.
 const CREATE_DEFAULTS = {
@@ -93,7 +86,7 @@ export class AssetsService {
   }
 
   async create(actor: AssetsActor, body: CreateAssetDto) {
-    const values = { ...CREATE_DEFAULTS, ...sentValues(body) } as AssetValues;
+    const values = { ...CREATE_DEFAULTS, ...sentValues(body, AMOUNT_FIELDS) } as AssetValues;
     return savedAsset(await this.assets.create(actor.tenant.organizationId, values, this.auditStep(actor, 'create', editSnapshot)));
   }
 
@@ -101,7 +94,7 @@ export class AssetsService {
   async update(actor: AssetsActor, id: string, body: UpdateAssetDto) {
     requireId(id);
     const audit = this.auditStep(actor, 'update', editSnapshot);
-    return savedAsset(await this.assets.update(actor.tenant.organizationId, id, sentValues(body), audit));
+    return savedAsset(await this.assets.update(actor.tenant.organizationId, id, sentValues(body, AMOUNT_FIELDS), audit));
   }
 
   async checkOut(actor: AssetsActor, id: string, body: CheckOutDto) {
@@ -120,7 +113,7 @@ export class AssetsService {
   async logMaintenance(actor: AssetsActor, id: string, body: MaintenanceDto) {
     requireId(id);
     if (body.nextServiceDue && body.nextServiceDue <= body.serviceDate) throw new BadRequestException(SERVICE_DUE_BEFORE_SERVICE);
-    const { condition, ...service } = { ...SERVICE_DEFAULTS, ...sentValues(body) } as MaintenanceValues;
+    const { condition, ...service } = { ...SERVICE_DEFAULTS, ...sentValues(body, AMOUNT_FIELDS) } as MaintenanceValues;
     const audit = this.auditStep(actor, 'update', (asset) => ({ currentCondition: asset.currentCondition }), { service });
     return savedAsset(await this.assets.logMaintenance(actor.tenant.organizationId, id, { ...service, condition }, audit));
   }

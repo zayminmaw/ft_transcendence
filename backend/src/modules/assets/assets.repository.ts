@@ -1,9 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { DataSource, type EntityManager } from 'typeorm';
 import { isDuplicateKey } from '../../common/database-errors';
+import { EXPIRY_WARNING_DAYS } from '../../common/expiry';
 import { containsPattern } from '../../common/like-pattern';
 import { checkInRefusal, checkOutRefusal, maintenanceRefusal, planUpdate, type RuleRefusal } from './asset-rules';
-import { EXPIRY_WARNING_DAYS, READY_CONDITIONS } from './constants';
+import { READY_CONDITIONS } from './constants';
 import { Asset } from './entities/asset.entity';
 import { AssetAssignment } from './entities/asset-assignment.entity';
 import { AssetMaintenanceLog } from './entities/asset-maintenance-log.entity';

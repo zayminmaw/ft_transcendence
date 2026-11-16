@@ -1,9 +1,10 @@
 import { applyDecorators } from '@nestjs/common';
 import { Type } from 'class-transformer';
+import { IsBoolean, IsDefined, IsIn, IsInt, IsOptional, IsString, Matches, MaxLength, Min, ValidateIf } from 'class-validator';
 import {
-  IsBoolean, IsDefined, IsIn, IsInt, IsISO8601, IsNotEmpty, IsOptional, IsString, Matches, MaxLength, Min, ValidateIf,
-} from 'class-validator';
-import { IsOmittable, Trim, TrimOrNull, TrimUpper } from '../../../common/decorators/trim.decorator';
+  Amount, Code, Day, OptionalDay, OptionalText, Phone, RequiredText,
+} from '../../../common/decorators/field-rules.decorator';
+import { IsOmittable, Trim } from '../../../common/decorators/trim.decorator';
 import { ID_PATTERN } from '../../../common/ids';
 import { PAGE_SIZES } from '../../../common/paging';
 import { EMAIL_MAX_LENGTH, EMAIL_PATTERN } from '../../users/account-rules';
@@ -13,32 +14,15 @@ import { COMPENSATION_TYPES, EMPLOYMENT_CLASSIFICATIONS, EMPLOYMENT_STATUSES } f
 
 // The same rules as the driver form (frontend driverSchema) and the `employees` / `delivery_drivers` columns. Each
 // field's rule is written once and shared by both DTOs; the update DTO adds IsOmittable to the required ones.
-const PHONE_PATTERN = /^\+?[0-9 ()-]{6,32}$/;
-// DECIMAL(12, 2) for money, DECIMAL(8, 2) for capacities: sent as strings, never as JS numbers.
-const MONEY_PATTERN = /^\d{1,10}(\.\d{1,2})?$/;
+// DECIMAL(8, 2) for capacities: sent as strings like money, never as JS numbers.
 const CAPACITY_PATTERN = /^\d{1,6}(\.\d{1,2})?$/;
 
-const RequiredText = (max: number) => applyDecorators(Trim(), IsString(), IsNotEmpty(), MaxLength(max));
-const OptionalText = (max: number) => applyDecorators(TrimOrNull(), IsOptional(), IsString(), MaxLength(max));
-const Phone = () => applyDecorators(Trim(), IsString(), Matches(PHONE_PATTERN, { message: '$property must be a phone number' }));
-// 'YYYY-MM-DD', like the DATE columns, and a real day (no 2026-02-30).
-const Day = () => applyDecorators(
-  IsString(), Matches(/^\d{4}-\d{2}-\d{2}$/, { message: '$property must be a YYYY-MM-DD date' }), IsISO8601({ strict: true }),
-);
-const OptionalDay = () => applyDecorators(TrimOrNull(), IsOptional(), Day());
-const Amount = (pattern: RegExp) => applyDecorators(
-  Trim(), IsString(), Matches(pattern, { message: '$property must be an amount with at most 2 decimals' }),
-);
-
-const EmployeeCode = () => applyDecorators(
-  TrimUpper(), IsString(), Matches(/^[A-Z0-9-]{2,32}$/, { message: 'employeeCode must be 2-32 capital letters, numbers or dashes' }),
-);
 const Email = () => applyDecorators(
   Trim(), IsString(), MaxLength(EMAIL_MAX_LENGTH), Matches(EMAIL_PATTERN, { message: 'personalEmail must be an email address' }),
 );
 
 export class CreateDriverDto {
-  @EmployeeCode() employeeCode!: string;
+  @Code(32) employeeCode!: string;
   @RequiredText(64) firstName!: string;
   @RequiredText(64) lastName!: string;
   @Phone() personalMobile!: string;
@@ -55,7 +39,7 @@ export class CreateDriverDto {
   @Day() hireDate!: string;
   @OptionalDay() terminationDate?: string | null;
   // Only with staff.view_payroll (checked by the service). Left out: no salary and no bank details.
-  @IsOptional() @Amount(MONEY_PATTERN) baseSalary?: string;
+  @IsOptional() @Amount() baseSalary?: string;
   @OptionalText(128) bankName?: string | null;
   @OptionalText(64) bankAccountIban?: string | null;
   @IsIn(DRIVER_CATEGORIES) driverCategory!: (typeof DRIVER_CATEGORIES)[number];
@@ -63,7 +47,7 @@ export class CreateDriverDto {
   @OptionalText(64) assignedZone?: string | null;
   @IsOptional() @Amount(CAPACITY_PATTERN) maxWeightCapacityKg?: string;
   @IsOptional() @Amount(CAPACITY_PATTERN) maxVolumeCapacityM3?: string;
-  @IsOptional() @Amount(MONEY_PATTERN) commissionPerDrop?: string;
+  @IsOptional() @Amount() commissionPerDrop?: string;
   @RequiredText(64) licenseNumber!: string;
   @RequiredText(32) licenseClass!: string;
   @Day() licenseExpiryDate!: string;
@@ -75,7 +59,7 @@ export class CreateDriverDto {
 
 // Every field may be left out and keeps its value. The duty status and the account have their own endpoints.
 export class UpdateDriverDto {
-  @IsOmittable() @EmployeeCode() employeeCode?: string;
+  @IsOmittable() @Code(32) employeeCode?: string;
   @IsOmittable() @RequiredText(64) firstName?: string;
   @IsOmittable() @RequiredText(64) lastName?: string;
   @IsOmittable() @Phone() personalMobile?: string;
@@ -90,7 +74,7 @@ export class UpdateDriverDto {
   @IsOmittable() @IsIn(EMPLOYMENT_STATUSES) employmentStatus?: (typeof EMPLOYMENT_STATUSES)[number];
   @IsOmittable() @Day() hireDate?: string;
   @OptionalDay() terminationDate?: string | null;
-  @IsOmittable() @Amount(MONEY_PATTERN) baseSalary?: string;
+  @IsOmittable() @Amount() baseSalary?: string;
   @OptionalText(128) bankName?: string | null;
   @OptionalText(64) bankAccountIban?: string | null;
   @IsOmittable() @IsIn(DRIVER_CATEGORIES) driverCategory?: (typeof DRIVER_CATEGORIES)[number];
@@ -98,7 +82,7 @@ export class UpdateDriverDto {
   @OptionalText(64) assignedZone?: string | null;
   @IsOmittable() @Amount(CAPACITY_PATTERN) maxWeightCapacityKg?: string;
   @IsOmittable() @Amount(CAPACITY_PATTERN) maxVolumeCapacityM3?: string;
-  @IsOmittable() @Amount(MONEY_PATTERN) commissionPerDrop?: string;
+  @IsOmittable() @Amount() commissionPerDrop?: string;
   @IsOmittable() @RequiredText(64) licenseNumber?: string;
   @IsOmittable() @RequiredText(32) licenseClass?: string;
   @IsOmittable() @Day() licenseExpiryDate?: string;

@@ -1,7 +1,7 @@
-import { applyDecorators } from '@nestjs/common';
 import { Type } from 'class-transformer';
-import { IsIn, IsInt, IsISO8601, IsNotEmpty, IsOptional, IsString, Matches, MaxLength, Min } from 'class-validator';
-import { IsOmittable, Trim, TrimOrNull, TrimUpper } from '../../../common/decorators/trim.decorator';
+import { IsIn, IsInt, IsOptional, IsString, Matches, MaxLength, Min } from 'class-validator';
+import { Amount, Code, Day, OptionalDay, OptionalText, RequiredText } from '../../../common/decorators/field-rules.decorator';
+import { IsOmittable, Trim } from '../../../common/decorators/trim.decorator';
 import { ID_PATTERN } from '../../../common/ids';
 import { PAGE_SIZES } from '../../../common/paging';
 import {
@@ -10,31 +10,15 @@ import {
 } from '../constants';
 
 // The same rules as the asset forms (frontend assetSchema and maintenanceSchema) and the columns.
-// DECIMAL(12, 2): sent as a string, never as a JS number.
-const MONEY_PATTERN = /^\d{1,10}(\.\d{1,2})?$/;
-
-const RequiredText = (max: number) => applyDecorators(Trim(), IsString(), IsNotEmpty(), MaxLength(max));
-const OptionalText = (max: number) => applyDecorators(TrimOrNull(), IsOptional(), IsString(), MaxLength(max));
-// 'YYYY-MM-DD', like the DATE columns, and a real day (no 2026-02-30).
-const Day = () => applyDecorators(
-  IsString(), Matches(/^\d{4}-\d{2}-\d{2}$/, { message: '$property must be a YYYY-MM-DD date' }), IsISO8601({ strict: true }),
-);
-const OptionalDay = () => applyDecorators(TrimOrNull(), IsOptional(), Day());
-const Money = () => applyDecorators(
-  Trim(), IsString(), Matches(MONEY_PATTERN, { message: '$property must be an amount with at most 2 decimals' }),
-);
-const AssetTag = () => applyDecorators(
-  TrimUpper(), IsString(), Matches(/^[A-Z0-9-]{2,64}$/, { message: 'assetTag must be 2-64 capital letters, numbers or dashes' }),
-);
 
 export class CreateAssetDto {
-  @AssetTag() assetTag!: string;
+  @Code(64) assetTag!: string;
   @RequiredText(128) assetName!: string;
   @IsIn(ASSET_CATEGORIES) category!: AssetCategory;
   // Left out: good, at no cost.
   @IsOptional() @IsIn(ASSET_CONDITIONS) currentCondition?: AssetCondition;
-  @IsOptional() @Money() acquisitionCost?: string;
-  @IsOptional() @Money() currentBookValue?: string;
+  @IsOptional() @Amount() acquisitionCost?: string;
+  @IsOptional() @Amount() currentBookValue?: string;
   @OptionalText(32) licensePlate?: string | null;
   @OptionalText(64) vin?: string | null;
   @OptionalText(64) insurancePolicyNumber?: string | null;
@@ -44,12 +28,12 @@ export class CreateAssetDto {
 
 // Every field may be left out and keeps its value. Who has the asset changes only by checking it out and in.
 export class UpdateAssetDto {
-  @IsOmittable() @AssetTag() assetTag?: string;
+  @IsOmittable() @Code(64) assetTag?: string;
   @IsOmittable() @RequiredText(128) assetName?: string;
   @IsOmittable() @IsIn(ASSET_CATEGORIES) category?: AssetCategory;
   @IsOmittable() @IsIn(ASSET_CONDITIONS) currentCondition?: AssetCondition;
-  @IsOmittable() @Money() acquisitionCost?: string;
-  @IsOmittable() @Money() currentBookValue?: string;
+  @IsOmittable() @Amount() acquisitionCost?: string;
+  @IsOmittable() @Amount() currentBookValue?: string;
   @OptionalText(32) licensePlate?: string | null;
   @OptionalText(64) vin?: string | null;
   @OptionalText(64) insurancePolicyNumber?: string | null;
@@ -74,7 +58,7 @@ export class CheckInDto {
 export class MaintenanceDto {
   @Day() serviceDate!: string;
   @RequiredText(128) serviceType!: string;
-  @IsOptional() @Money() serviceCost?: string;
+  @IsOptional() @Amount() serviceCost?: string;
   @OptionalText(128) vendorServiceCenter?: string | null;
   @OptionalDay() nextServiceDue?: string | null;
   @OptionalText(NOTES_MAX_LENGTH) notes?: string | null;

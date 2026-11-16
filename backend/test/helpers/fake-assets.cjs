@@ -2,7 +2,8 @@
 // same results and refusals; the audit step gets a stand-in manager (the fake AuditService ignores it). The rules
 // are the module's own (asset-rules); the SQL is covered by test/db/assets.db.test.cjs.
 const { checkInRefusal, checkOutRefusal, maintenanceRefusal, planUpdate } = require('../../dist/modules/assets/asset-rules');
-const { EXPIRY_WARNING_DAYS, READY_CONDITIONS } = require('../../dist/modules/assets/constants');
+const { EXPIRY_WARNING_DAYS } = require('../../dist/common/expiry');
+const { READY_CONDITIONS } = require('../../dist/modules/assets/constants');
 
 function createFakeAssets() {
   const rows = [];
