@@ -21,4 +21,6 @@ export type LedgerPost = {
 
 export type LedgerResult =
   | { status: 'posted'; entries: MerchantLedgerEntry[]; currentBalance: string; pendingCodBalance: string }
+  // The pending change would take the in-transit balance below zero. Nothing was written; this is the balance as it stands.
+  | { status: 'pending_too_low'; pendingCodBalance: string }
   | { status: 'client_not_found' };
