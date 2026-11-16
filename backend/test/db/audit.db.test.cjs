@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const { createTestDatabase } = require('./test-database.cjs');
 const { AuditLog } = require('../../dist/modules/audit/entities/audit-log.entity');
 const { AuditService } = require('../../dist/modules/audit/audit.service');
+const { AuditRepository } = require('../../dist/modules/audit/audit.repository');
 const { Organization } = require('../../dist/modules/organizations/entities/organization.entity');
 const { Role } = require('../../dist/modules/rbac/entities/role.entity');
 const { User } = require('../../dist/modules/users/entities/user.entity');
@@ -145,4 +146,19 @@ test('history keeps the actor after the account is deleted', async () => {
 
 test('an unknown resource type is refused instead of stored without an allowlist', async () => {
 	await assert.rejects(audit.recordStandalone({ module: 'x', action: 'create', resourceType: 'mystery' }), /Unknown audit resource/);
+});
+
+test('reads of the trail and of the activity page are listed only when asked for, by module or by resource', async () => {
+	const company = (await database.getRepository(Organization).save({ name: 'Access Co', slug: 'access-co', contactEmail: 'ops@access.test' })).id;
+	const write = (entry) => audit.recordStandalone({ organizationId: company, actorId, ...entry });
+	await write({ module: 'audit', action: 'read', resourceType: 'audit_log' });
+	await write({ module: 'insights', action: 'read', resourceType: 'activity_insight' });
+	await write({ module: 'platform', action: 'update', resourceType: 'tenant', recordId: company, after: { name: 'Access Co' } });
+	const repository = new AuditRepository(database.getRepository(AuditLog));
+	const list = async (filter = {}) => (await repository.list({ kind: 'tenant', organizationId: company }, { page: 1, pageSize: 50, ...filter })).items.map((row) => row.module);
+	assert.deepEqual(await list(), ['platform']);
+	assert.deepEqual(await list({ module: 'audit' }), ['audit']);
+	assert.deepEqual(await list({ module: 'insights' }), ['insights']);
+	assert.deepEqual(await list({ resourceType: 'activity_insight' }), ['insights']);
+	assert.deepEqual(await list({ resourceType: 'audit_log' }), ['audit']);
 });
