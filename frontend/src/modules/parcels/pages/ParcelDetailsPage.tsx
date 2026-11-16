@@ -1,8 +1,12 @@
 import { lazy, Suspense, useState } from 'react';
 import type { ComponentType } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
 import { DetailItem, ModulePage, TipCard } from '@global-components';
 import { useCompanyPath } from '@hooks/useCompanyPath';
+import { useCan } from '@modules/auth';
+import { formatDate } from '@utils/format';
+import type { ParcelEvent, ParcelStatus } from '../api';
 import {
 	MarkInHubDialog,
 	MarkPickedUpDialog,
@@ -10,8 +14,13 @@ import {
 	ReturnToSenderDialog,
 } from '../components/ParcelDialogs';
 import type { ParcelDialogProps } from '../components/ParcelDialogs';
-import { findDriver, parcelStatusLabels, parcels } from '../data/sampleParcels';
-import type { ParcelStatus } from '../data/sampleParcels';
+import {
+	ASSIGNABLE_STATUSES,
+	failureReasonLabels,
+	parcelStatusLabels,
+	vehicleLabel,
+} from '../constants';
+import { useParcelDetails } from '../hooks/useParcels';
 
 // Only this page needs the barcode libraries; imported directly, every page would download them, public ones included.
 const WaybillCodes = lazy(() =>
@@ -21,7 +30,8 @@ const WaybillCodes = lazy(() =>
 const primaryAction = 'btn btn-primary md:px-8';
 const secondaryAction = 'btn border-0 bg-base-200';
 
-// The action each status offers through a dialog. Links to other pages sit next to it in the header.
+// The status move each status offers through a dialog (parcels.update_status). Links to other pages sit next to it
+// in the header.
 const dialogActions: Partial<
 	Record<
 		ParcelStatus,
@@ -46,12 +56,28 @@ const dialogActions: Partial<
 	},
 };
 
-export function ParcelDetailsPage() {
-	const { parcelId } = useParams();
-	const companyPath = useCompanyPath();
-	const [actionOpen, setActionOpen] = useState(false);
-	const parcel = parcels.find((item) => item.id === parcelId);
+// What a step records besides its status: where in the hub, who it went out with, why it failed, and the notes.
+function eventDetails(event: ParcelEvent) {
+	const parts: string[] = [];
+	if (event.hubLocation) parts.push(event.hubLocation);
+	if (event.status === 'out_for_delivery' && event.driver) {
+		parts.push(`Assigned to ${event.driver.name}`, vehicleLabel(event.vehicle));
+		if (event.run) parts.push(event.run.code);
+	} else if (event.driver) parts.push(event.driver.name);
+	if (event.reasonCode) parts.push(failureReasonLabels[event.reasonCode]);
+	if (event.notes) parts.push(event.notes);
+	return parts.join(' · ');
+}
 
+export function ParcelDetailsPage() {
+	const { parcelId = '' } = useParams();
+	const { i18n } = useTranslation();
+	const companyPath = useCompanyPath();
+	const can = useCan();
+	const [actionOpen, setActionOpen] = useState(false);
+	const { parcel, isParcelPending } = useParcelDetails(parcelId);
+
+	if (isParcelPending) return <span className="loading loading-spinner" aria-label="Loading" />;
 	if (!parcel) {
 		return (
 			<ModulePage
@@ -61,36 +87,55 @@ export function ParcelDetailsPage() {
 		);
 	}
 
-	const driver = findDriver(parcel.driverId);
+	const time = (value: string) =>
+		formatDate(value, i18n.language, { dateStyle: 'medium', timeStyle: 'short' });
 	const failed = parcel.status === 'failed_attempt';
-	const assignable = parcel.status === 'in_hub_sorted' && !driver;
-	const action = dialogActions[parcel.status];
+	const returned = parcel.status === 'returned_to_sender';
+	const assignable = can('parcels.dispatch') && ASSIGNABLE_STATUSES.includes(parcel.status);
+	const action = can('parcels.update_status') ? dialogActions[parcel.status] : undefined;
+	const deliverable = can('parcels.mark_delivered') && parcel.status === 'out_for_delivery';
+	const reason = parcel.failedReasonCode && failureReasonLabels[parcel.failedReasonCode];
 
 	const details = [
-		{ label: 'Recipient', value: parcel.recipient },
-		{ label: 'Recipient phone', value: parcel.recipientPhone },
-		{ label: 'Delivery address', value: parcel.address },
-		{ label: 'Delivery zone', value: `${parcel.zone} zone` },
-		{ label: 'Merchant', value: parcel.merchant },
-		{ label: 'Package', value: `${parcel.weightKg} kg${parcel.fragile ? ' · Fragile' : ''}` },
+		{ label: 'Recipient', value: parcel.recipientName },
+		{
+			label: 'Recipient phone',
+			value: [parcel.recipientPhone, parcel.recipientSecondaryPhone]
+				.filter(Boolean)
+				.join(' · '),
+			ltr: true,
+		},
+		{ label: 'Delivery address', value: parcel.deliveryAddress },
+		{
+			label: 'Delivery zone',
+			value: [`${parcel.deliveryCityZone} zone`, parcel.deliveryLandmark]
+				.filter(Boolean)
+				.join(' · '),
+		},
+		{ label: 'Merchant', value: `${parcel.client.name} · ${parcel.client.code}` },
+		{ label: 'Package', value: `${parcel.weightKg} kg${parcel.isFragile ? ' · Fragile' : ''}` },
 		{ label: 'COD amount', value: `${parcel.codAmount} CUR` },
 		{ label: 'Delivery fee', value: `${parcel.deliveryFee} CUR` },
 	];
 
 	const ownership = [
 		{ label: 'Status', value: parcelStatusLabels[parcel.status] },
-		{ label: 'Driver', value: driver?.name ?? 'Unassigned' },
-		{ label: 'Asset', value: driver?.vehicle ?? '—' },
-		{ label: 'Failed attempts', value: parcel.attempts },
+		{ label: 'Driver', value: parcel.driver?.name ?? 'Unassigned' },
+		{ label: 'Vehicle', value: parcel.driver ? vehicleLabel(parcel.vehicle) : '—' },
+		{ label: 'Run', value: parcel.run?.code ?? '—' },
+		{ label: 'Failed attempts', value: parcel.deliveryAttemptCount },
 	];
 
 	return (
 		<div className="flex flex-col gap-6">
+			<Link to={companyPath('parcels')} className="link link-hover w-fit text-sm">
+				Back to dispatch
+			</Link>
 			<ModulePage
-				title={parcel.tracking}
-				description={`${parcel.recipient} · ${parcel.merchant} · ${parcelStatusLabels[parcel.status]}`}
+				title={parcel.trackingNumber}
+				description={`${parcel.recipientName} · ${parcel.client.name} · ${parcelStatusLabels[parcel.status]}`}
 				actions={
-					(action || assignable) && (
+					(action || assignable || deliverable) && (
 						<div className="flex flex-col gap-2 sm:flex-row">
 							{action && (
 								<button
@@ -101,7 +146,7 @@ export function ParcelDetailsPage() {
 									{action.label}
 								</button>
 							)}
-							{(failed || assignable) && (
+							{assignable && (
 								<Link
 									to={companyPath(`parcels/assign?parcel=${parcel.id}`)}
 									className={primaryAction}
@@ -109,7 +154,7 @@ export function ParcelDetailsPage() {
 									{failed ? 'Reassign for reattempt' : 'Assign driver'}
 								</Link>
 							)}
-							{parcel.status === 'out_for_delivery' && (
+							{deliverable && (
 								<Link
 									to={companyPath(`parcels/${parcel.id}/deliver`)}
 									className={primaryAction}
@@ -122,11 +167,10 @@ export function ParcelDetailsPage() {
 				}
 			/>
 
-			{parcel.failedReason && (
+			{(failed || returned) && reason && (
 				<div role="status" className="rounded-box border border-base-300 p-4 text-sm">
 					<p className="font-medium">
-						{failed ? 'Delivery attempt failed' : 'Returned to sender'} ·{' '}
-						{parcel.failedReason}
+						{failed ? 'Delivery attempt failed' : 'Returned to sender'} · {reason}
 					</p>
 					<p className="mt-1 text-[var(--color-slate)]">
 						{failed
@@ -147,44 +191,12 @@ export function ParcelDetailsPage() {
 						</h2>
 						<dl className="mt-6 grid grid-cols-1 gap-5 md:grid-cols-2">
 							{details.map((item) => (
-								<div key={item.label} className="min-w-0">
-									<dt className="text-sm text-[var(--color-slate)]">
-										{item.label}
-									</dt>
-									<dd className="mt-1 font-medium break-words">{item.value}</dd>
-								</div>
+								<DetailItem key={item.label} label={item.label} ltr={item.ltr}>
+									{item.value}
+								</DetailItem>
 							))}
 						</dl>
 					</section>
-
-					{parcel.pod && (
-						<section
-							aria-labelledby="parcel-pod-title"
-							className="rounded-box border border-base-300 p-4 md:p-8"
-						>
-							<h2 id="parcel-pod-title" className="text-lg font-semibold">
-								Proof of delivery
-							</h2>
-							<dl className="mt-6 grid grid-cols-1 gap-5 md:grid-cols-2">
-								<DetailItem label="Delivered at">
-									{parcel.pod.deliveredAt}
-								</DetailItem>
-								<DetailItem label="Location" ltr>
-									{parcel.pod.latitude}, {parcel.pod.longitude}
-								</DetailItem>
-							</dl>
-							<div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
-								{['Signature', 'Doorstep photo'].map((label) => (
-									<div
-										key={label}
-										className="grid h-32 place-items-center rounded-box bg-base-200 text-sm text-[var(--color-slate)]"
-									>
-										{label}
-									</div>
-								))}
-							</div>
-						</section>
-					)}
 
 					<section
 						aria-labelledby="parcel-history-title"
@@ -197,69 +209,62 @@ export function ParcelDetailsPage() {
 							Every scan and handoff, newest first.
 						</p>
 						<ol className="mt-6 flex flex-col gap-3">
-							{[...parcel.events].reverse().map((event) => (
-								<li
-									key={`${event.status}-${event.time}`}
-									className="flex flex-col gap-1 rounded-box bg-base-200 p-4 sm:flex-row sm:justify-between"
-								>
-									<div>
-										<p className="font-medium">
-											{parcelStatusLabels[event.status]}
-										</p>
-										{event.notes && (
-											<p className="text-sm text-[var(--color-slate)]">
-												{event.notes}
+							{[...parcel.events].reverse().map((event) => {
+								const more = eventDetails(event);
+								return (
+									<li
+										key={event.id}
+										className="flex flex-col gap-1 rounded-box bg-base-200 p-4 sm:flex-row sm:justify-between"
+									>
+										<div className="min-w-0">
+											<p className="font-medium">
+												{parcelStatusLabels[event.status]}
 											</p>
-										)}
-									</div>
-									<p className="text-sm text-[var(--color-slate)] sm:text-end">
-										{event.time}
-										<br />
-										{event.actor}
-									</p>
-								</li>
-							))}
+											{more && (
+												<p className="text-sm break-words text-[var(--color-slate)]">
+													{more}
+												</p>
+											)}
+										</div>
+										<p className="shrink-0 text-sm text-[var(--color-slate)] sm:text-end">
+											{time(event.at)}
+											<br />
+											{event.actor?.name ?? 'Removed account'}
+										</p>
+									</li>
+								);
+							})}
 						</ol>
 					</section>
 				</div>
 
 				<aside className="flex flex-col gap-6">
 					<Suspense fallback={null}>
-						<WaybillCodes tracking={parcel.tracking} />
+						<WaybillCodes tracking={parcel.trackingNumber} />
 					</Suspense>
 					<section className="rounded-box bg-base-200 p-6 md:p-8">
 						<h2 className="text-lg font-semibold">Ownership</h2>
 						<dl className="mt-6 flex flex-col gap-5">
 							{ownership.map((item) => (
-								<div key={item.label}>
-									<dt className="text-sm text-[var(--color-slate)]">
-										{item.label}
-									</dt>
-									<dd className="mt-1 text-lg font-semibold">{item.value}</dd>
-								</div>
+								<DetailItem
+									key={item.label}
+									label={item.label}
+									valueClassName="text-lg font-semibold"
+								>
+									{item.value}
+								</DetailItem>
 							))}
 						</dl>
 					</section>
-					{parcel.status === 'delivered' ? (
-						<TipCard
-							title="Delivered with proof."
-							description="Signature, doorstep photo and delivery location are attached. The COD amount moves to the driver's cash sheet for finance review."
-						/>
-					) : (
-						<TipCard
-							title="Exceptions keep their outcome."
-							description="Failed attempts and returns stay in the delivery history with their reason. Reassigning starts a new attempt; it does not erase the last one."
-						/>
-					)}
+					<TipCard
+						title="Exceptions keep their outcome."
+						description="Failed attempts and returns stay in the delivery history with their reason. Reassigning starts a new attempt; it does not erase the last one."
+					/>
 				</aside>
 			</div>
 
-			{action && (
-				<action.Dialog
-					parcel={parcel}
-					open={actionOpen}
-					onClose={() => setActionOpen(false)}
-				/>
+			{actionOpen && action && (
+				<action.Dialog parcel={parcel} onClose={() => setActionOpen(false)} />
 			)}
 		</div>
 	);

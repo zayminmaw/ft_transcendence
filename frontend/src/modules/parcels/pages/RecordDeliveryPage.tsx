@@ -3,17 +3,19 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Button, ModulePage, Textarea, TipCard, useToast } from '@global-components';
 import { useCompanyPath } from '@hooks/useCompanyPath';
 import { SignaturePad } from '../components/SignaturePad';
-import { parcels } from '../data/sampleParcels';
+import { useParcelDetails } from '../hooks/useParcels';
 
-// /parcels/:parcelId/deliver. Sample data until the parcel endpoints exist: saving only shows the toast.
+// /parcels/:parcelId/deliver. The parcel is real; recording proof of delivery comes with the POD endpoint, so saving
+// only shows the toast for now.
 export function RecordDeliveryPage() {
-	const { parcelId } = useParams();
+	const { parcelId = '' } = useParams();
 	const navigate = useNavigate();
 	const companyPath = useCompanyPath();
 	const { toast } = useToast();
 	const [location, setLocation] = useState('Not captured');
-	const parcel = parcels.find((item) => item.id === parcelId);
+	const { parcel, isParcelPending } = useParcelDetails(parcelId);
 
+	if (isParcelPending) return <span className="loading loading-spinner" aria-label="Loading" />;
 	if (parcel?.status !== 'out_for_delivery') {
 		return (
 			<ModulePage
@@ -37,11 +39,11 @@ export function RecordDeliveryPage() {
 	return (
 		<div className="flex flex-col gap-6">
 			<Link to={detailsPath} className="link link-hover w-fit text-sm">
-				Back to {parcel.tracking}
+				Back to {parcel.trackingNumber}
 			</Link>
 			<ModulePage
-				title={`Record delivery of ${parcel.tracking}`}
-				description={`${parcel.recipient} · ${parcel.address} · Collect COD ${parcel.codAmount} CUR`}
+				title={`Record delivery of ${parcel.trackingNumber}`}
+				description={`${parcel.recipientName} · ${parcel.deliveryAddress} · Collect COD ${parcel.codAmount} CUR`}
 			/>
 			<div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
 				<form
@@ -50,7 +52,7 @@ export function RecordDeliveryPage() {
 						toast({
 							variant: 'success',
 							title: 'Delivery recorded',
-							description: `${parcel.tracking} is delivered with proof attached.`,
+							description: `${parcel.trackingNumber} is delivered with proof attached.`,
 						});
 						navigate(detailsPath);
 					}}

@@ -1,8 +1,9 @@
 import { useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button, Input } from '@global-components';
-import { parcelStatusLabels, parcels } from '../data/sampleParcels';
-import type { ParcelStatus } from '../data/sampleParcels';
+import type { ParcelStatus } from '../api';
+import { parcelStatusLabels } from '../constants';
+import { parcels } from '../data/sampleParcels';
 
 const publicStatusLabels: Record<ParcelStatus, string> = {
 	...parcelStatusLabels,
