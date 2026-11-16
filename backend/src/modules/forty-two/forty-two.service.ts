@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Environment } from '../../common/config/environment';
 import { AuthAuditRepository, type RequestMeta } from '../auth';
@@ -19,6 +19,8 @@ export interface FortyTwoCallback {
 // 42 login never creates an account: it signs in the active user whose email is the 42 account's email.
 @Injectable()
 export class FortyTwoService {
+  private readonly logger = new Logger(FortyTwoService.name);
+
   constructor(
     private readonly config: ConfigService<Environment, true>,
     private readonly api: FortyTwoApi,
@@ -43,14 +45,23 @@ export class FortyTwoService {
   async login(callback: FortyTwoCallback, meta: RequestMeta): Promise<FortyTwoOutcome> {
     const credentials = this.credentials();
     if (!credentials) return { failure: 'unavailable' };
-    if (callback.error !== undefined) return { failure: 'denied' };
+    if (callback.error !== undefined) {
+      if (callback.error === 'access_denied') return { failure: 'denied' };
+      // Anyone can put text in this URL value, so only something shaped like an OAuth error code reaches the log.
+      const reason = typeof callback.error === 'string' && /^[a-z_]{1,40}$/.test(callback.error) ? callback.error : 'unrecognized';
+      this.logger.warn(`42 answered with an error: ${reason}`);
+      return { failure: 'failed' };
+    }
     if (!stateMatches(callback.expectedState, callback.state) || typeof callback.code !== 'string' || !callback.code) {
       return { failure: 'failed' };
     }
     let email: string;
     try {
       email = await this.api.fetchEmail(await this.api.exchangeCode(callback.code, credentials));
-    } catch {
+    } catch (error) {
+      // A JSON parse error quotes the answer it couldn't read, so its message stays out of the log.
+      const reason = error instanceof SyntaxError ? 'unreadable answer' : error instanceof Error ? error.message : 'unknown error';
+      this.logger.warn(`42 login failed: ${reason}`);
       return { failure: 'failed' };
     }
     const user = await this.users.findByLogin(email.trim());
