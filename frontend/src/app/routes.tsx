@@ -9,6 +9,7 @@ import { billingRoutes } from '@modules/billing';
 import { rbacRoutes } from '@modules/rbac';
 import { contactsRoutes } from '@modules/contacts';
 import { auditRoutes } from '@modules/audit';
+import { insightsRoutes } from '@modules/insights';
 import { MarketingLayout, marketingRoutes } from '@modules/marketing';
 import { platformRoutes } from '@modules/platform';
 import {
@@ -45,6 +46,8 @@ const workspaceRoutes = [
 	...allowed('contacts', contactsRoutes),
 	// The audit page checks admin.audit_logs itself (see AuditLogPage).
 	...auditRoutes,
+	// Needs admin.audit_logs too, and the page shows its own "no access".
+	...insightsRoutes,
 ];
 
 export const router = createBrowserRouter([
