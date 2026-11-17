@@ -86,6 +86,7 @@
 		"tenant": "company",
 		"tenant_administrator": "company administrator",
 		"audit_log": "audit trail",
+		"activity_insight": "activity page",
 		"parcel": "parcel",
 		"client": "client",
 		"invoice": "invoice",
@@ -136,6 +137,7 @@
 		"staff": "Staff",
 		"drivers": "Drivers",
 		"assets": "Assets",
-		"audit": "Audit trail"
+		"audit": "Audit trail",
+		"insights": "Activity page"
 	}
 }
