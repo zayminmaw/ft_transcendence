@@ -1,4 +1,5 @@
 import { isDeniedKey } from '../../common/logging/redaction';
+import { FIELD_GROUPS } from '../drivers/constants';
 import type { AuditCategory } from './audit.types';
 
 // How a field is shown outside the company, i.e. to platform administrators. Values are stored as they are: a company
@@ -9,11 +10,20 @@ export interface FieldRules {
 	[field: string]: FieldRule | FieldRules;
 }
 
+// Who in the company may read the stored values, as the resource's own module decides: `values` to see any of them,
+// and a field listed in `fields` needs its own permission too. Other readers see only that a field changed.
+export interface ReadPermissions {
+	values: string;
+	fields: Record<string, string>;
+}
+
 export interface AuditResource {
 	category: AuditCategory;
 	fields: FieldRules;
 	// Who is told live about committed changes (notifications module); omit to tell no one.
 	viewPermission?: string;
+	// Omit when anyone with admin.audit_logs may read every value.
+	readPermissions?: ReadPermissions;
 }
 
 // The allowlist. A field that is not listed is never stored, so a new column cannot leak into the trail by accident.
@@ -143,11 +153,27 @@ export const AUDIT_RESOURCES: Record<string, AuditResource> = {
 			account: { userId: 'plain', username: 'plain' },
 		},
 		viewPermission: 'drivers.view',
+		readPermissions: { values: 'drivers.view', fields: driverFieldPermissions() },
 	},
 	audit_log: { category: 'access', fields: {} },
 	// Someone opened the activity insights page, or was refused. Only counts are shown there, so no fields are stored.
 	activity_insight: { category: 'access', fields: {} },
 };
+
+// The Drivers API's field groups (personal, payroll, compliance, earnings) by the names the snapshot uses, so the audit
+// log hides from a role exactly what that API hides.
+function driverFieldPermissions(): Record<string, string> {
+	const result: Record<string, string> = {};
+	for (const { permission, fields } of Object.values(FIELD_GROUPS)) {
+		for (const field of fields) result[field === 'backgroundCheckPassed' ? 'backgroundCheck' : field] = permission;
+	}
+	return result;
+}
+
+// Every permission some stored value needs, so a reader's are looked up once per request.
+export const READ_PERMISSIONS = [...new Set(Object.values(AUDIT_RESOURCES).flatMap((resource) => resource.readPermissions
+	? [resource.readPermissions.values, ...Object.values(resource.readPermissions.fields)]
+	: []))];
 
 export function auditResource(resourceType: string): AuditResource {
 	const resource = AUDIT_RESOURCES[resourceType];
@@ -162,4 +188,13 @@ function assertNoDeniedFields(rules: FieldRules, path: string) {
 		if (typeof rule === 'object') assertNoDeniedFields(rule, `${path}${field}.`);
 	}
 }
-for (const [type, resource] of Object.entries(AUDIT_RESOURCES)) assertNoDeniedFields(resource.fields, `${type}.`);
+// A restricted field must be one that is stored, so a renamed field can't slip out of its restriction unnoticed.
+function assertReadableFieldsStored(resource: AuditResource, type: string) {
+	for (const field of Object.keys(resource.readPermissions?.fields ?? {})) {
+		if (!(field in resource.fields)) throw new Error(`Audit field "${type}.${field}" is restricted but not stored.`);
+	}
+}
+for (const [type, resource] of Object.entries(AUDIT_RESOURCES)) {
+	assertNoDeniedFields(resource.fields, `${type}.`);
+	assertReadableFieldsStored(resource, type);
+}
