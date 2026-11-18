@@ -144,6 +144,12 @@ export const AUDIT_RESOURCES: Record<string, AuditResource> = {
 		},
 		viewPermission: 'drivers.view',
 	},
+	// A wire to a merchant. The amounts are the company's own money figures.
+	payout: {
+		category: 'data',
+		fields: { amount: 'plain', balanceAfter: 'plain' },
+		viewPermission: 'billing.view',
+	},
 	audit_log: { category: 'access', fields: {} },
 	// Someone opened the activity insights page, or was refused. Only counts are shown there, so no fields are stored.
 	activity_insight: { category: 'access', fields: {} },
