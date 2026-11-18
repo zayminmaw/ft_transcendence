@@ -1,0 +1,20 @@
+{
+	"ledger": {
+		"title": "Ledger",
+		"description": "Every change to the merchant's balance, newest first.",
+		"loading": "Loading the ledger",
+		"loadFailed": "The ledger could not be loaded",
+		"empty": "No ledger lines yet. COD credits, fees and payouts appear here.",
+		"date": "Date",
+		"entry": "Entry",
+		"amount": "Amount",
+		"balanceAfter": "Balance after",
+		"types": {
+			"cod_credit": "COD credit",
+			"delivery_fee_debit": "Delivery fee",
+			"payout_disbursement": "Payout",
+			"manual_adjustment": "Manual adjustment",
+			"invoice_offset": "Invoice offset"
+		}
+	}
+}

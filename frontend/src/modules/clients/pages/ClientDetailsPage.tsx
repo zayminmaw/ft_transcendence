@@ -4,6 +4,7 @@ import { Link, useParams } from 'react-router-dom';
 import { DetailItem, ModulePage, TipCard } from '@global-components';
 import { useCompanyPath } from '@hooks/useCompanyPath';
 import { useCan } from '@modules/auth';
+import { MerchantLedger } from '@modules/billing';
 import { formatDate } from '@utils/format';
 import { ArchiveClientDialog } from '../components/ArchiveClientDialog';
 import { ClientNotFound } from '../components/ClientNotFound';
@@ -147,6 +148,8 @@ export function ClientDetailsPage() {
 							{client.operationalNotes ?? t('details.noNotes')}
 						</p>
 					</section>
+
+					{can('clients.view_financials') && <MerchantLedger clientId={client.id} />}
 				</div>
 
 				<aside className="flex flex-col gap-6">
