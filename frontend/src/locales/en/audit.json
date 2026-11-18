@@ -89,6 +89,7 @@
 		"parcel": "parcel",
 		"client": "client",
 		"invoice": "invoice",
+		"payout": "payout",
 		"driver": "driver",
 		"employee": "employee",
 		"asset": "asset"
