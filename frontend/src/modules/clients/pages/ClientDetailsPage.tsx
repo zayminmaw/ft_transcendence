@@ -4,6 +4,7 @@ import { Link, useParams } from 'react-router-dom';
 import { DetailItem, ModulePage, TipCard } from '@global-components';
 import { useCompanyPath } from '@hooks/useCompanyPath';
 import { useCan } from '@modules/auth';
+import { PayoutDialog } from '@modules/billing';
 import { formatDate } from '@utils/format';
 import { ArchiveClientDialog } from '../components/ArchiveClientDialog';
 import { ClientNotFound } from '../components/ClientNotFound';
@@ -19,6 +20,7 @@ export function ClientDetailsPage() {
 	const can = useCan();
 	const { client, isClientPending, clientError } = useClientDetails(clientId);
 	const [confirmOpen, setConfirmOpen] = useState(false);
+	const [payoutOpen, setPayoutOpen] = useState(false);
 
 	if (isClientPending)
 		return <span className="loading loading-spinner" aria-label={t('page.loading')} />;
@@ -27,6 +29,8 @@ export function ClientDetailsPage() {
 	const none = t('details.none');
 	const balance = client.currentBalance;
 	const tier = client.rateProfileTier;
+	// Only what the merchant is owed can be paid out.
+	const owed = balance !== undefined && balance !== '0.00' && !balance.startsWith('-');
 
 	return (
 		<div className="flex flex-col gap-6">
@@ -185,6 +189,15 @@ export function ClientDetailsPage() {
 									{isRateTier(tier) ? t(`tiers.${tier}`) : (tier ?? none)}
 								</DetailItem>
 							</dl>
+							{owed && can('billing.adjust_balance') && (
+								<button
+									type="button"
+									className="btn btn-neutral mt-6 w-full"
+									onClick={() => setPayoutOpen(true)}
+								>
+									{t('details.payOut')}
+								</button>
+							)}
 						</section>
 					)}
 					<TipCard
@@ -194,6 +207,13 @@ export function ClientDetailsPage() {
 				</aside>
 			</div>
 
+			{owed && payoutOpen && (
+				<PayoutDialog
+					client={{ id: client.id, businessName: client.businessName, balance }}
+					open={payoutOpen}
+					onClose={() => setPayoutOpen(false)}
+				/>
+			)}
 			<ArchiveClientDialog
 				client={client}
 				open={confirmOpen}

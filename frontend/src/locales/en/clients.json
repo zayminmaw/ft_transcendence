@@ -79,6 +79,7 @@
 	"details": {
 		"since": "Client since {{date}}",
 		"edit": "Edit",
+		"payOut": "Pay out",
 		"contact": "Contact",
 		"addresses": "Addresses",
 		"financials": "Balance",
