@@ -2,7 +2,7 @@ import { Body, Controller, Get, HttpCode, Param, Post, Query, Req } from '@nestj
 import { requestMeta } from '../../common/context/request-meta';
 import { RequirePermission } from '../../common/decorators/require-permission.decorator';
 import type { AuthenticatedRequest } from '../../common/types/authenticated-request';
-import { AssignParcelDto, CreateParcelDto, ListParcelsQueryDto, StatusMoveDto } from './dto/parcel.dto';
+import { AssignParcelDto, CreateParcelDto, DeliverParcelDto, ListParcelsQueryDto, StatusMoveDto } from './dto/parcel.dto';
 import { type ParcelsActor, ParcelsService } from './parcels.service';
 
 const actor = (request: AuthenticatedRequest): ParcelsActor => ({
@@ -13,8 +13,8 @@ const actor = (request: AuthenticatedRequest): ParcelsActor => ({
 
 // The parcels of the company named by X-Organization-Id (checked by RolesGuard). Reading needs parcels.view; each
 // change needs its own permission, which replaces it: creating a waybill parcels.create, moving it through pickup,
-// hub and failure parcels.update_status, sending it out with a driver parcels.dispatch. The fixed paths come before
-// :parcelId.
+// hub and failure parcels.update_status, sending it out with a driver parcels.dispatch, recording its delivery
+// parcels.mark_delivered. The fixed paths come before :parcelId.
 @Controller('parcels')
 @RequirePermission('parcels.view')
 export class ParcelsController {
@@ -57,6 +57,14 @@ export class ParcelsController {
   @RequirePermission('parcels.update_status')
   move(@Param('parcelId') id: string, @Body() body: StatusMoveDto, @Req() request: AuthenticatedRequest) {
     return this.parcels.move(actor(request), id, body);
+  }
+
+  // The driver hands the parcel over and takes its cash. 200 like the other actions on a parcel.
+  @Post(':parcelId/delivery')
+  @HttpCode(200)
+  @RequirePermission('parcels.mark_delivered')
+  deliver(@Param('parcelId') id: string, @Body() body: DeliverParcelDto, @Req() request: AuthenticatedRequest) {
+    return this.parcels.deliver(actor(request), id, body);
   }
 
   @Post(':parcelId/assignment')

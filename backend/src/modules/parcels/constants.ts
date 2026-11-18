@@ -6,7 +6,8 @@ export const PARCEL_STATUSES = [
 export type ParcelStatus = (typeof PARCEL_STATUSES)[number];
 
 // The moves POST /parcels/:id/status makes (parcels.update_status), each from the one status it may follow. Out for
-// delivery comes only from an assignment (parcels.dispatch); delivered will come from proof of delivery.
+// delivery comes only from an assignment (parcels.dispatch); delivered comes only from recording the delivery
+// (parcels.mark_delivered), which also records the cash the driver collected.
 export const STATUS_MOVES = {
   picked_up: 'pickup_scheduled',
   in_hub_sorted: 'picked_up',
@@ -47,6 +48,14 @@ export const PARCEL_CLIENT_UNAVAILABLE = {
 export const PARCEL_DRIVER_UNAVAILABLE = {
   message: 'Choose a driver of this company who is on duty.',
   code: 'PARCEL_DRIVER_UNAVAILABLE',
+};
+export const PARCEL_COD_MISMATCH = {
+  message: "The cash collected isn't the amount due on the parcel, so the delivery was not recorded.",
+  code: 'PARCEL_COD_MISMATCH',
+};
+export const PARCEL_NOT_YOUR_PARCEL = {
+  message: 'This parcel is assigned to another driver.',
+  code: 'PARCEL_NOT_YOUR_PARCEL',
 };
 export const PARCEL_WRONG_STATUS = {
   message: 'The parcel has moved on since you opened it. Refresh to see where it is now.',

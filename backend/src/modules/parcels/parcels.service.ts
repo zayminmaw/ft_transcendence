@@ -1,11 +1,13 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import type { EntityManager } from 'typeorm';
 import type { RequestMeta } from '../../common/context/request-meta';
 import { ID_PATTERN } from '../../common/ids';
 import type { TenantContext } from '../../common/types/authenticated-request';
 import { type AuditAction, AuditService } from '../audit';
-import { PARCEL_CLIENT_UNAVAILABLE, PARCEL_DRIVER_UNAVAILABLE, PARCEL_NOT_FOUND, PARCEL_WRONG_STATUS } from './constants';
-import type { AssignParcelDto, CreateParcelDto, ListParcelsQueryDto, StatusMoveDto } from './dto/parcel.dto';
+import {
+  PARCEL_CLIENT_UNAVAILABLE, PARCEL_COD_MISMATCH, PARCEL_DRIVER_UNAVAILABLE, PARCEL_NOT_FOUND, PARCEL_NOT_YOUR_PARCEL, PARCEL_WRONG_STATUS,
+} from './constants';
+import type { AssignParcelDto, CreateParcelDto, DeliverParcelDto, ListParcelsQueryDto, StatusMoveDto } from './dto/parcel.dto';
 import { type AuditStep, type ParcelResult, ParcelsRepository, type Refusal } from './parcels.repository';
 import type { ParcelRecord } from './types/parcel';
 
@@ -21,6 +23,8 @@ const REFUSALS: Record<Refusal, () => Error> = {
   client_unavailable: () => new BadRequestException(PARCEL_CLIENT_UNAVAILABLE),
   driver_unavailable: () => new ConflictException(PARCEL_DRIVER_UNAVAILABLE),
   wrong_status: () => new ConflictException(PARCEL_WRONG_STATUS),
+  not_assigned_driver: () => new ForbiddenException(PARCEL_NOT_YOUR_PARCEL),
+  cod_mismatch: () => new ConflictException(PARCEL_COD_MISMATCH),
 };
 
 function savedParcel(result: ParcelResult): ParcelRecord {
@@ -97,6 +101,16 @@ export class ParcelsService {
   async move(actor: ParcelsActor, id: string, body: StatusMoveDto) {
     requireId(id);
     const result = await this.parcels.move(actor.tenant.organizationId, id, actor.userId, body, this.auditStep(actor, 'status_change'));
+    return savedParcel(result);
+  }
+
+  // The cash is compared as saved ("120.5" is 120.50), so how it was typed doesn't matter.
+  async deliver(actor: ParcelsActor, id: string, body: DeliverParcelDto) {
+    requireId(id);
+    const result = await this.parcels.deliver(
+      actor.tenant.organizationId, id, actor.userId,
+      { collected: Number(body.collectedAmount).toFixed(2), notes: body.notes ?? null }, this.auditStep(actor, 'status_change'),
+    );
     return savedParcel(result);
   }
 
