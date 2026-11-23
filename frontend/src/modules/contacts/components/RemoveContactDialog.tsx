@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { Dialog, useToast } from '@global-components';
 import { shownName } from '@modules/auth';
-import { ApiError } from '@services/api-client';
+import { errorCode } from '@services/api-client';
 import type { Contact } from '../api';
 import { useRemoveContact } from '../hooks/useContactMutations';
 
@@ -18,8 +18,7 @@ export function RemoveContactDialog({
 	const { toast } = useToast();
 	const remove = useRemoveContact();
 	const name = shownName(contact);
-	const alreadyGone =
-		remove.error instanceof ApiError && remove.error.code === 'CONTACT_NOT_FOUND';
+	const alreadyGone = errorCode(remove.error) === 'CONTACT_NOT_FOUND';
 
 	return (
 		<Dialog

@@ -8,10 +8,12 @@ import { z } from 'zod';
 import { Button, Input, ModulePage, PasswordInput, TipCard } from '@global-components';
 import { useCompanyPath } from '@hooks/useCompanyPath';
 import { useCurrentWorkspace, useRoleName } from '@modules/auth';
+import { fromErrorCode } from '@services/api-client';
+import { ACCOUNT_EMAIL_PATTERN, EMAIL_MAX_LENGTH } from '@utils/form-rules';
 import { generatePassword, meetsPasswordRule } from '@utils/password';
 import type { Member, NewMember } from '../api';
 import { UserCreatedDialog } from '../components/UserCreatedDialog';
-import { errorCode, memberErrorKey } from '../errors';
+import { memberErrorKey } from '../errors';
 import { useAssignableRoles, useCreateMember } from '../hooks';
 
 // The same checks as the API (users/accounts.ts), so most mistakes are caught before sending. The messages are
@@ -24,11 +26,8 @@ const schema = z.object({
 	email: z
 		.string()
 		.trim()
-		.max(191, 'errors.invalidEmail' satisfies ParseKeys<'rbac'>)
-		.regex(
-			/^[\x21-\x3F\x41-\x7E]+@[\x21-\x3F\x41-\x7E]+\.[\x21-\x3F\x41-\x7E]+$/,
-			'errors.invalidEmail' satisfies ParseKeys<'rbac'>,
-		),
+		.max(EMAIL_MAX_LENGTH, 'errors.invalidEmail' satisfies ParseKeys<'rbac'>)
+		.regex(ACCOUNT_EMAIL_PATTERN, 'errors.invalidEmail' satisfies ParseKeys<'rbac'>),
 	password: z
 		.string()
 		.refine(meetsPasswordRule, 'errors.passwordRule' satisfies ParseKeys<'rbac'>),
@@ -70,8 +69,7 @@ export function CreateUserPage() {
 	const [username, roleCode] = useWatch({ control, name: ['username', 'roleCode'] });
 	const chosenRole = roles.data?.find((role) => role.code === roleCode);
 	const fieldError = (key?: string) => key && t(key as ParseKeys<'rbac'>);
-	const code = errorCode(create.error);
-	const formError = create.isError && !(code && code in FIELD_CODES);
+	const formError = create.isError && !fromErrorCode(FIELD_CODES, create.error);
 	const backToList = () => navigate(companyPath('rbac'));
 
 	const review = [
@@ -98,11 +96,8 @@ export function CreateUserPage() {
 						create.mutate(values, {
 							onSuccess: setCreated,
 							onError: (error) => {
-								const known = errorCode(error);
-								if (known && known in FIELD_CODES)
-									setError(FIELD_CODES[known as keyof typeof FIELD_CODES], {
-										message: memberErrorKey(error),
-									});
+								const field = fromErrorCode(FIELD_CODES, error);
+								if (field) setError(field, { message: memberErrorKey(error) });
 							},
 						}),
 					)}

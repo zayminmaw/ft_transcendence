@@ -1,17 +1,8 @@
 import type { ParseKeys } from 'i18next';
 import { z } from 'zod';
+import { code, email, optional, phone, required } from '@utils/form-rules';
 
 const key = (value: ParseKeys<'clients'>) => value;
-
-const required = (max: number) =>
-	z.string().trim().min(1, key('errors.required')).max(max, key('errors.tooLong'));
-
-const optional = (max: number) => z.string().trim().max(max, key('errors.tooLong'));
-
-const phone = z
-	.string()
-	.trim()
-	.regex(/^\+?[0-9 ()-]{6,32}$/, key('errors.invalidPhone'));
 
 const coordinate = (limit: number) =>
 	z
@@ -27,22 +18,14 @@ const coordinate = (limit: number) =>
 // The same limits as the `clients` columns. Messages are translation keys, translated when shown.
 export const clientSchema = z
 	.object({
-		clientCode: z
-			.string()
-			.trim()
-			.toUpperCase()
-			.regex(/^[A-Z0-9-]{2,32}$/, key('errors.invalidCode')),
+		clientCode: code(32),
 		businessName: required(191),
 		tradeLicenseNo: optional(128),
 		contactPersonName: required(128),
 		contactTitle: optional(64),
 		mobile1: phone,
 		mobile2: z.union([z.literal(''), phone]),
-		email: z
-			.string()
-			.trim()
-			.max(191, key('errors.tooLong'))
-			.regex(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, key('errors.invalidEmail')),
+		email,
 		billingAddress: required(2000),
 		defaultPickupAddress: required(2000),
 		pickupLatitude: coordinate(90),

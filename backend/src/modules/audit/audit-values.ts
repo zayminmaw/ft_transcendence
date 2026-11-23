@@ -1,5 +1,5 @@
 import { maskEmail, maskPhone, REDACTED, redact } from '../../common/logging/redaction';
-import type { FieldRule, FieldRules } from './audit-resources';
+import type { FieldRule, FieldRules, ReadPermissions } from './audit-resources';
 
 export interface AuditValues {
 	oldValues: Record<string, unknown> | null;
@@ -57,6 +57,20 @@ function mask(rule: FieldRule | FieldRules | undefined, value: unknown): unknown
 export function maskForPlatform(rules: FieldRules, values: Record<string, unknown>): Record<string, unknown> {
 	const result: Record<string, unknown> = {};
 	for (const [field, value] of Object.entries(values)) result[field] = mask(rules[field], value);
+	return result;
+}
+
+// Stored values as one company reader may see them: a value the resource's module would not show their role is hidden.
+export function hideUnreadable(
+	read: ReadPermissions, granted: ReadonlySet<string>, values: Record<string, unknown>,
+): Record<string, unknown> {
+	const seesValues = granted.has(read.values);
+	const result: Record<string, unknown> = {};
+	for (const [field, value] of Object.entries(values)) {
+		const permission = read.fields[field];
+		// Even an empty value is hidden: that a field was blank is part of what the reader may not see.
+		result[field] = seesValues && (!permission || granted.has(permission)) ? value : REDACTED;
+	}
 	return result;
 }
 
