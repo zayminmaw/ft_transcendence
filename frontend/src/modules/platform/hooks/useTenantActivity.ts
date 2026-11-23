@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { useToast, type TableSort } from '@global-components';
 import { useDebounced } from '@hooks/useDebounced';
 import { apiRequest } from '@services/api-client';
@@ -10,6 +11,7 @@ import type { ActivityFilter, ActivitySortKey, TenantActivity, TenantActivityPar
 // useTenants, changing anything but the page goes back to page 1. The key sits under tenantsQueryKey, so every
 // tenant change refreshes it.
 export function useTenantActivity() {
+	const { t } = useTranslation('platform');
 	const { toast } = useToast();
 	const [search, setSearchValue] = useState('');
 	const [action, setActionValue] = useState<ActivityFilter>('all');
@@ -48,10 +50,10 @@ export function useTenantActivity() {
 		if (error)
 			toast({
 				variant: 'error',
-				title: "Couldn't load tenant activity",
+				title: t('errors.loadActivity'),
 				description: error.message,
 			});
-	}, [error, errorUpdatedAt, toast]);
+	}, [error, errorUpdatedAt, toast, t]);
 
 	const firstPage =
 		<T>(set: (value: T) => void) =>

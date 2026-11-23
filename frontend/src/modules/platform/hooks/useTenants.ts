@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { useToast, type TableSort } from '@global-components';
 import { useDebounced } from '@hooks/useDebounced';
 import { apiRequest } from '@services/api-client';
@@ -46,12 +47,13 @@ export function useTenants() {
 	});
 
 	// One toast per failed load: errorUpdatedAt changes only when a new failure arrives.
+	const { t } = useTranslation('platform');
 	const { toast } = useToast();
 	const { error, errorUpdatedAt } = query;
 	useEffect(() => {
 		if (error)
-			toast({ variant: 'error', title: "Couldn't load tenants", description: error.message });
-	}, [error, errorUpdatedAt, toast]);
+			toast({ variant: 'error', title: t('errors.loadTenants'), description: error.message });
+	}, [error, errorUpdatedAt, toast, t]);
 
 	const firstPage =
 		<T>(set: (value: T) => void) =>

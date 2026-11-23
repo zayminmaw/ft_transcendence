@@ -1,5 +1,7 @@
 import { useState } from 'react';
+import type { ParseKeys } from 'i18next';
 import { useForm } from 'react-hook-form';
+import { useTranslation } from 'react-i18next';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Dialog, Input, PasswordInput, useToast } from '@global-components';
 import { useDebounced } from '@hooks/useDebounced';
@@ -19,6 +21,7 @@ export function AssignAdministratorDialog({
 	tenant: TenantDetails;
 	onClose: () => void;
 }) {
+	const { t } = useTranslation('platform');
 	const { toast } = useToast();
 	const { assignAdministrator, isAssigning } = useTenantMutations();
 	const [mode, setMode] = useState<'new' | 'existing'>('new');
@@ -42,6 +45,7 @@ export function AssignAdministratorDialog({
 		resolver: zodResolver(administratorAccountSchema),
 		defaultValues: NEW_ADMINISTRATOR_DEFAULT_VALUES,
 	});
+	const fieldError = (message?: string) => message && t(message as ParseKeys<'platform'>);
 
 	const assign = (values: AssignAdministratorValues) => {
 		setError(null);
@@ -52,8 +56,11 @@ export function AssignAdministratorDialog({
 					onClose();
 					toast({
 						variant: 'success',
-						title: 'Administrator assigned',
-						description: `${administrator.username} now administers ${tenant.name}.`,
+						title: t('assign.assigned'),
+						description: t('assign.assignedText', {
+							username: administrator.username,
+							tenant: tenant.name,
+						}),
 					});
 				},
 				onError: (failure) => {
@@ -64,7 +71,7 @@ export function AssignAdministratorDialog({
 					// The account may be a removed member, who comes back through "Existing member" instead.
 					const hint =
 						field === 'username' || field === 'email'
-							? ` If they were in ${tenant.name} before, choose them under Existing member.`
+							? ` ${t('assign.wasMember', { name: tenant.name })}`
 							: '';
 					if (field)
 						setFieldError(
@@ -87,8 +94,8 @@ export function AssignAdministratorDialog({
 		<Dialog
 			open
 			onClose={onClose}
-			title="Assign administrator"
-			description={`The administrator gets tenant permissions in ${tenant.name} only. No platform access is granted.`}
+			title={t('administrators.assign')}
+			description={t('assign.description', { name: tenant.name })}
 			onSubmit={(event) => {
 				if (mode === 'new')
 					return handleSubmit((account) => assign({ mode: 'new', account }))(event);
@@ -98,14 +105,14 @@ export function AssignAdministratorDialog({
 			actions={
 				<>
 					<button type="button" className="btn border-0 bg-base-200" onClick={onClose}>
-						Cancel
+						{t('common.cancel')}
 					</button>
 					<button
 						type="submit"
 						className="btn btn-primary"
 						disabled={isAssigning || (mode === 'existing' && !chosenId)}
 					>
-						Assign administrator
+						{t('administrators.assign')}
 					</button>
 				</>
 			}
@@ -115,7 +122,7 @@ export function AssignAdministratorDialog({
 					{error}
 				</p>
 			)}
-			<div role="tablist" aria-label="Administrator source" className="tabs tabs-box">
+			<div role="tablist" aria-label={t('assign.source')} className="tabs tabs-box">
 				<button
 					type="button"
 					role="tab"
@@ -123,7 +130,7 @@ export function AssignAdministratorDialog({
 					className={`tab flex-1 ${mode === 'new' ? 'tab-active' : ''}`}
 					onClick={() => chooseMode('new')}
 				>
-					New account
+					{t('assign.newAccount')}
 				</button>
 				<button
 					type="button"
@@ -132,7 +139,7 @@ export function AssignAdministratorDialog({
 					className={`tab flex-1 ${mode === 'existing' ? 'tab-active' : ''}`}
 					onClick={() => chooseMode('existing')}
 				>
-					Existing member
+					{t('assign.existingMember')}
 				</button>
 			</div>
 
@@ -140,32 +147,32 @@ export function AssignAdministratorDialog({
 			{mode === 'new' ? (
 				<div key="new" className="flex flex-col gap-4">
 					<Input
-						label="Username"
+						label={t('fields.username')}
 						required
 						autoComplete="off"
 						autoCapitalize="none"
 						spellCheck={false}
-						error={errors.username?.message}
+						dir="ltr"
+						error={fieldError(errors.username?.message)}
 						{...register('username')}
 					/>
 					<Input
-						label="Login email"
+						label={t('fields.loginEmail')}
 						type="email"
 						required
 						autoComplete="off"
-						error={errors.email?.message}
+						error={fieldError(errors.email?.message)}
 						{...register('email')}
 					/>
 					<PasswordInput
-						label="Initial password"
+						label={t('fields.initialPassword')}
 						required
 						autoComplete="new-password"
-						error={errors.password?.message}
+						error={fieldError(errors.password?.message)}
 						{...register('password')}
 					/>
 					<p className="text-xs text-[var(--color-slate)]">
-						Hand over credentials securely. Passwords are hidden from confirmation and
-						audit records.
+						{t('assign.credentialsNote')}
 					</p>
 				</div>
 			) : (

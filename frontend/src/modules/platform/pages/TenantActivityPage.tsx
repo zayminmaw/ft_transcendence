@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import type { TFunction } from 'i18next';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { AnalyticsCard, Dialog, ModulePage, Table } from '@global-components';
@@ -7,76 +8,74 @@ import { formatDate, formatNumber } from '@utils/format';
 import type { ActivityDetails, ActivityFilter, TenantActivityEvent } from '../api';
 import { useTenantActivity } from '../hooks/useTenantActivity';
 
-const actionFilters = [
-	{ value: 'all', label: 'All actions' },
-	{ value: 'created', label: 'Tenants created' },
-	{ value: 'details', label: 'Details updated' },
-	{ value: 'status', label: 'Status changes' },
-	{ value: 'administrators', label: 'Administrator changes' },
-];
+const actionFilters = ['all', 'created', 'details', 'status', 'administrators'] as const;
+const actionKeys = ['create', 'update', 'suspend', 'reactivate', 'assign', 'revoke'] as const;
+const fieldKeys = ['name', 'contactEmail', 'contactPhone', 'address'] as const;
 
-const actionLabels: Record<string, string> = {
-	'tenant.create': 'Tenant created',
-	'tenant.update': 'Details updated',
-	'tenant.suspend': 'Tenant suspended',
-	'tenant.reactivate': 'Tenant reactivated',
-	'tenant.administrator.assign': 'Administrator assigned',
-	'tenant.administrator.revoke': 'Administrator revoked',
-};
-
-const fieldLabels: Record<string, string> = {
-	name: 'name',
-	contactEmail: 'contact email',
-	contactPhone: 'contact phone',
-	address: 'address',
-};
-
-const actionLabel = (event: TenantActivityEvent) => actionLabels[event.action] ?? event.action;
-// Role codes (dispatcher, org_admin) as words.
-const roleLabel = (code: string) => code.replaceAll('_', ' ');
-
-function listOf(words: string[]) {
-	if (words.length <= 1) return words.join('');
-	return `${words.slice(0, -1).join(', ')} and ${words[words.length - 1]}`;
-}
+// "tenant.administrator.assign" → "assign"; the six actions differ in their last word.
+const actionKey = (action: string) => actionKeys.find((key) => action.endsWith(`.${key}`));
 
 // One sentence on what changed, from the event's details.
-function summary({ action, details }: { action: string; details: ActivityDetails }): string {
-	const administrator = details.administrator ?? 'An administrator';
+function summary(
+	t: TFunction<'platform'>,
+	language: string,
+	roleLabel: (code: string) => string,
+	{ action, details }: { action: string; details: ActivityDetails },
+): string {
+	const administrator = details.administrator ?? t('activity.anAdministrator');
 	switch (action) {
 		case 'tenant.create':
 			return details.administrator
-				? `Tenant created with first administrator ${details.administrator}.`
-				: 'Tenant created.';
+				? t('activity.summary.createdWith', { administrator })
+				: t('activity.summary.created');
 		case 'tenant.update': {
-			const fields = listOf(
-				(details.fields ?? []).map((field) => fieldLabels[field] ?? field),
+			const fields = new Intl.ListFormat(language, { type: 'conjunction' }).format(
+				(details.fields ?? []).map((field) =>
+					fieldKeys.includes(field as (typeof fieldKeys)[number])
+						? t(`activity.fields.${field as (typeof fieldKeys)[number]}`)
+						: field,
+				),
 			);
-			return fields ? `Changed the ${fields}.` : 'Tenant details changed.';
+			return fields
+				? t('activity.summary.changed', { fields })
+				: t('activity.summary.detailsChanged');
 		}
 		case 'tenant.suspend':
 			return details.cause === 'last_administrator_revoked'
-				? `Suspended when its last administrator, ${administrator}, was revoked. Records retained.`
-				: 'Portal and API access suspended. Records retained.';
+				? t('activity.summary.suspendedLast', { administrator })
+				: t('activity.summary.suspended');
 		case 'tenant.reactivate':
-			return 'Portal and API access restored.';
+			return t('activity.summary.reactivated');
 		case 'tenant.administrator.assign':
 			if (details.account === 'new')
-				return `New account ${administrator} created as tenant administrator.`;
+				return t('activity.summary.newAccount', { administrator });
 			return details.previousRole
-				? `${administrator} promoted from ${roleLabel(details.previousRole)} to tenant administrator.`
-				: `Existing member ${administrator} promoted to tenant administrator.`;
+				? t('activity.summary.promotedFrom', {
+						administrator,
+						role: roleLabel(details.previousRole),
+					})
+				: t('activity.summary.promoted', { administrator });
 		case 'tenant.administrator.revoke':
 			return details.revoke === 'change_role' && details.role
-				? `${administrator} moved to the ${roleLabel(details.role)} role.`
-				: `${administrator} removed from the company.`;
+				? t('activity.summary.movedRole', { administrator, role: roleLabel(details.role) })
+				: t('activity.summary.removed', { administrator });
 		default:
-			return 'Tenant changed.';
+			return t('activity.summary.other');
 	}
 }
 
 export function TenantActivityPage() {
-	const { i18n } = useTranslation();
+	const { t, i18n } = useTranslation('platform');
+	const actionLabel = (event: TenantActivityEvent) => {
+		const key = actionKey(event.action);
+		return key ? t(`activity.actions.${key}`) : event.action;
+	};
+	// Role codes (dispatcher, org_admin) as the audit log names them, or as words.
+	const roleLabel = (code: string) =>
+		i18n.exists(`audit:roles.${code}`)
+			? t(`roles.${code}` as 'roles.driver', { ns: 'audit' })
+			: code.replaceAll('_', ' ');
+	const describe = (event: TenantActivityEvent) => summary(t, i18n.language, roleLabel, event);
 	const {
 		events,
 		total,
@@ -100,59 +99,59 @@ export function TenantActivityPage() {
 
 	const activityStats: AnalyticsItem[] = [
 		{
-			label: 'Events',
+			label: t('activity.stats.events'),
 			value: formatNumber(counts?.events, i18n.language),
-			description: 'In the last 7 days',
+			description: t('activity.stats.eventsNote'),
 		},
 		{
-			label: 'Status changes',
+			label: t('activity.stats.status'),
 			value: formatNumber(counts?.status, i18n.language),
-			description: 'Suspensions and reactivations, last 7 days',
+			description: t('activity.stats.statusNote'),
 		},
 		{
-			label: 'Admin changes',
+			label: t('activity.stats.administrators'),
 			value: formatNumber(counts?.administrators, i18n.language),
-			description: 'Assignments and revocations, last 7 days',
+			description: t('activity.stats.administratorsNote'),
 		},
 		{
-			label: 'Tenant records',
+			label: t('activity.stats.records'),
 			value: formatNumber(counts && counts.created + counts.details, i18n.language),
-			description: 'Tenants created or edited, last 7 days',
+			description: t('activity.stats.recordsNote'),
 		},
 	];
 
 	const columns: TableColumn<TenantActivityEvent>[] = [
 		{
 			key: 'createdAt',
-			header: 'Time',
+			header: t('activity.columns.time'),
 			sortable: true,
 			className: 'whitespace-nowrap',
 			cell: time,
 		},
 		{
 			key: 'tenant',
-			header: 'Tenant',
+			header: t('activity.columns.tenant'),
 			sortable: true,
 			className: 'font-medium',
 			cell: (event) =>
 				event.tenant ? (
 					<Link to={`/platform/tenants/${event.tenant.id}`}>{event.tenant.name}</Link>
 				) : (
-					'Deleted tenant'
+					t('common.deletedTenant')
 				),
 		},
-		{ key: 'action', header: 'Action', cell: actionLabel },
+		{ key: 'action', header: t('activity.columns.action'), cell: actionLabel },
 		{
 			key: 'actor',
-			header: 'Platform actor',
-			cell: (event) => event.actor ?? 'Deleted account',
+			header: t('activity.columns.actor'),
+			cell: (event) => event.actor ?? t('common.deletedAccount'),
 		},
 		{
 			key: 'details',
-			header: 'Details',
+			header: t('activity.columns.details'),
 			cell: (event) => (
 				<button type="button" className="link" onClick={() => setSelected(event)}>
-					View
+					{t('activity.view')}
 				</button>
 			),
 		},
@@ -160,22 +159,19 @@ export function TenantActivityPage() {
 
 	return (
 		<div className="flex flex-col gap-4">
-			<ModulePage
-				title="Tenant activity"
-				description="Tenant status changes and auditable management events."
-			/>
+			<ModulePage title={t('activity.title')} description={t('activity.description')} />
 			<AnalyticsCard items={activityStats} />
 			<section aria-labelledby="activity-table-title" className="mt-4 flex flex-col gap-4">
 				<div>
 					<h2 id="activity-table-title" className="font-medium">
-						Management events
+						{t('activity.heading')}
 					</h2>
 					<p className="mt-1 text-xs text-[var(--color-slate)]">
-						Who changed which tenant, and when
+						{t('activity.subheading')}
 					</p>
 				</div>
 				<Table
-					caption="Tenant management events"
+					caption={t('activity.caption')}
 					columns={columns}
 					rows={events}
 					getRowKey={(event) => event.id}
@@ -183,12 +179,15 @@ export function TenantActivityPage() {
 					onSortChange={setSort}
 					search={{
 						value: search,
-						placeholder: 'Search by tenant or actor',
+						placeholder: t('activity.search'),
 						onChange: setSearch,
 					}}
 					filter={{
-						label: 'Action',
-						options: actionFilters,
+						label: t('activity.columns.action'),
+						options: actionFilters.map((value) => ({
+							value,
+							label: t(`activity.filters.${value}`),
+						})),
 						value: action,
 						onChange: (value) => setAction(value as ActivityFilter),
 					}}
@@ -199,7 +198,7 @@ export function TenantActivityPage() {
 						onPageChange: setPage,
 						onPageSizeChange: setPageSize,
 					}}
-					emptyMessage={isPending ? 'Loading activity…' : 'No events match this search.'}
+					emptyMessage={isPending ? t('activity.loading') : t('activity.empty')}
 				/>
 			</section>
 
@@ -207,21 +206,32 @@ export function TenantActivityPage() {
 				open={selected !== null}
 				onClose={() => setSelected(null)}
 				title={selected ? actionLabel(selected) : ''}
-				description={selected ? summary(selected) : undefined}
+				description={selected ? describe(selected) : undefined}
 				actions={
 					<button type="button" className="btn" onClick={() => setSelected(null)}>
-						Close
+						{t('common.close')}
 					</button>
 				}
 			>
 				{selected && (
 					<dl className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
 						{[
-							{ label: 'Tenant', value: selected.tenant?.name ?? 'Deleted tenant' },
-							{ label: 'Platform actor', value: selected.actor ?? 'Deleted account' },
-							{ label: 'Time', value: time(selected) },
+							{
+								label: t('activity.columns.tenant'),
+								value: selected.tenant?.name ?? t('common.deletedTenant'),
+							},
+							{
+								label: t('activity.columns.actor'),
+								value: selected.actor ?? t('common.deletedAccount'),
+							},
+							{ label: t('activity.columns.time'), value: time(selected) },
 							...(selected.details.reason
-								? [{ label: 'Reason', value: selected.details.reason }]
+								? [
+										{
+											label: t('activity.columns.reason'),
+											value: selected.details.reason,
+										},
+									]
 								: []),
 						].map((item) => (
 							<div key={item.label} className="min-w-0">
