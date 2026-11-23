@@ -1,0 +1,285 @@
+{
+	"layout": {
+		"skipToContent": "Skip to content",
+		"banner": "Introducing Transcend · A workspace blueprint for accounting and delivery",
+		"home": "Transcend home",
+		"websiteNavigation": "Website navigation",
+		"footerNavigation": "Footer navigation",
+		"legalNavigation": "Legal navigation",
+		"workspacePreview": "Workspace preview",
+		"tagline": "A connected workspace for last-mile logistics.",
+		"nav": {
+			"product": "Product",
+			"solutions": "Solutions",
+			"contact": "Plan your rollout",
+			"track": "Track a parcel"
+		},
+		"legal": {
+			"privacy": "Privacy Policy",
+			"terms": "Terms of Service"
+		},
+		"titles": {
+			"home": "Transcend — From first pickup to final payout",
+			"page": "{{page}} — Transcend"
+		}
+	},
+	"workflow": {
+		"heading": "Every handoff, connected",
+		"badge": "Illustrative workflow",
+		"label": "Workflow preview",
+		"steps": "{{workflow}} steps",
+		"footnote": "An overview of the workflows Transcend is designed to bring together.",
+		"delivery": {
+			"name": "Delivery",
+			"pickup": {
+				"title": "Pickup scheduled",
+				"detail": "Merchant and recipient details connected to one waybill."
+			},
+			"sorted": {
+				"title": "Sorted at the hub",
+				"detail": "Ready for the next route and assigned courier."
+			},
+			"outForDelivery": {
+				"title": "Out for delivery",
+				"detail": "A clear handoff from the dispatch desk to the field."
+			},
+			"delivered": {
+				"title": "Delivered",
+				"detail": "Proof of delivery closes the operational journey."
+			}
+		},
+		"settlement": {
+			"name": "Settlement",
+			"collected": {
+				"title": "COD collected",
+				"detail": "The courier records the recipient payment."
+			},
+			"handedOver": {
+				"title": "Cash handed over",
+				"detail": "Finance checks expected collections against cash received."
+			},
+			"posted": {
+				"title": "Ledger posted",
+				"detail": "Reconciled COD and charges update the merchant ledger together."
+			},
+			"settled": {
+				"title": "Merchant settled",
+				"detail": "A payout or invoice closes the billing cycle."
+			}
+		}
+	},
+	"landing": {
+		"eyebrow": "Last-mile delivery. The whole picture.",
+		"headlineStart": "From first pickup",
+		"headlineEnd": "to final payout.",
+		"intro": "Your parcels, people, and finances belong in the same conversation. Meet a logistics workspace designed to connect them.",
+		"explore": "Explore the product",
+		"viewPreview": "View workspace preview",
+		"builtAround": "Built around courier operations, merchant accounts, and COD reconciliation.",
+		"partsStart": "One operation.",
+		"partsEnd": "Many moving parts.",
+		"parts": {
+			"desk": {
+				"title": "At the desk",
+				"text": "Merchant profiles, parcel intake, and dispatch coordination."
+			},
+			"road": {
+				"title": "On the road",
+				"text": "Drivers, fleet assignments, and delivery milestones."
+			},
+			"books": {
+				"title": "In the books",
+				"text": "Cash handovers, delivery charges, and merchant ledgers."
+			}
+		},
+		"handoffsEyebrow": "Designed for the handoffs",
+		"handoffsStart": "The delivery ends.",
+		"handoffsEnd": "The responsibility doesn’t.",
+		"handoffsText": "A delivered parcel is only part of the job. Cash still needs to be checked, charges accounted for, and merchants settled. Transcend’s blueprint follows that entire journey.",
+		"seeTeams": "See how the teams connect",
+		"points": {
+			"merchant": {
+				"title": "Keep the merchant in view",
+				"text": "Connect each shipment to the account, agreed rates, and recipient details behind it."
+			},
+			"roles": {
+				"title": "Make responsibilities clear",
+				"text": "Bring dispatch, couriers, finance, HR, and fleet management into defined roles."
+			},
+			"loop": {
+				"title": "Close the financial loop",
+				"text": "Design reconciliation around a transaction-backed ledger, from collection to settlement."
+			}
+		},
+		"ctaTitle": "Start with your operation.",
+		"ctaText": "Outline your team, your fleet, and the handoffs you want to improve.",
+		"ctaButton": "Plan your rollout"
+	},
+	"product": {
+		"eyebrow": "The product blueprint",
+		"title": "One workspace, from intake to settlement.",
+		"description": "Transcend is being built around the distinct responsibilities of a courier business, with shared context between each team.",
+		"domains": {
+			"merchants": {
+				"title": "Merchants & organizations",
+				"text": "A foundation for account details, memberships, and clearly separated organizations."
+			},
+			"parcels": {
+				"title": "Parcels & dispatch",
+				"text": "A shipment journey covering waybills, route assignments, status changes, and proof of delivery."
+			},
+			"people": {
+				"title": "People & fleet",
+				"text": "Connected profiles for office staff and drivers, alongside vehicles, equipment, and maintenance."
+			},
+			"billing": {
+				"title": "Billing & reconciliation",
+				"text": "A ledger-centered design for COD handovers, delivery charges, invoices, and merchant settlements."
+			}
+		},
+		"previewTitle": "Explore the workspace preview",
+		"previewText": "The preview introduces the module structure. Operational features and account access are still in development.",
+		"openPreview": "Open preview"
+	},
+	"solutions": {
+		"eyebrow": "Built around your teams",
+		"title": "Different roles. A shared direction.",
+		"description": "Every team sees a different part of the delivery. The blueprint brings those responsibilities together without losing the boundaries between them.",
+		"teams": {
+			"dispatch": {
+				"name": "Dispatch & hub operations",
+				"question": "What needs to move next?",
+				"text": "Shape a workflow for merchant intake, sorting, courier assignment, and parcel exceptions.",
+				"modules": "Clients · Parcels · Drivers · Assets"
+			},
+			"couriers": {
+				"name": "Couriers & fleet leads",
+				"question": "Who is taking it there?",
+				"text": "Connect the people on the road with their vehicles, duty status, compliance records, and delivery responsibilities.",
+				"modules": "Drivers · Assets · Parcels"
+			},
+			"finance": {
+				"name": "Finance & merchant accounts",
+				"question": "Has the money been reconciled?",
+				"text": "Plan cash handovers, discrepancies, delivery fees, and settlements around a clear merchant ledger.",
+				"modules": "Clients · Billing · Parcels"
+			},
+			"people": {
+				"name": "People & administration",
+				"question": "Does everyone have the right access?",
+				"text": "Separate office staff and driver profiles, then define membership and permissions around each role.",
+				"modules": "Organizations · Staff · Access control"
+			}
+		},
+		"ctaText": "Map the handoffs that matter to your team.",
+		"ctaButton": "Create an operations brief"
+	},
+	"contact": {
+		"eyebrow": "Plan your rollout",
+		"title": "Start with the way you work.",
+		"description": "Create a simple operations brief to help your team discuss what comes next. Your details stay in this browser; nothing is sent or saved to a server.",
+		"formTitle": "Your operations brief",
+		"company": "Company name",
+		"drivers": "Number of drivers",
+		"priority": "First priority",
+		"priorities": {
+			"dispatch": "Dispatch coordination",
+			"cod": "COD reconciliation",
+			"fleet": "Fleet and people",
+			"merchants": "Merchant accounts"
+		},
+		"preparing": "Preparing…",
+		"create": "Create brief",
+		"conversationTitle": "A useful starting conversation.",
+		"questions": {
+			"flow": "How does a parcel move from merchant intake to its assigned driver?",
+			"cash": "Where are cash handovers and discrepancies recorded today?",
+			"access": "Which teams need access to each part of the operation?"
+		},
+		"ready": "Brief ready",
+		"summary": "{{drivers}} drivers · {{priority}}",
+		"download": "Download your brief",
+		"file": {
+			"name": "transcend-operations-brief.txt",
+			"text": "Transcend operations brief\n\nCompany: {{company}}\nDrivers: {{drivers}}\nPriority: {{priority}}\n\nNext: document your current workflow, the teams involved, and the handoffs to improve.\n"
+		},
+		"errors": {
+			"company": "Enter a company name with at least 2 characters.",
+			"drivers": "Enter the number of drivers, starting from 1.",
+			"driversMax": "Enter a number up to 100,000."
+		}
+	},
+	"legal": {
+		"eyebrow": "Legal & Compliance",
+		"privacy": {
+			"title": "Privacy Policy",
+			"description": "How Transcend collects, safeguards, and handles organizational and personal data across our courier logistics workspace.",
+			"sections": {
+				"collect": {
+					"title": "1. Information We Collect",
+					"content": "Transcend collects information required to provide multi-tenant courier and logistics management services. This includes account credentials (such as 42 Intra login credentials and email), profile details, organization memberships, parcel waybill data, recipient contact information, driver assignments, and vehicle asset records."
+				},
+				"telemetry": {
+					"title": "2. Operational & Telemetry Data",
+					"content": "To facilitate accurate dispatch and proof of delivery, our platform may process operational telemetry such as delivery timestamps, status update events, and geographic coordinates associated with parcel handoffs."
+				},
+				"security": {
+					"title": "3. Data Security & Tenant Isolation",
+					"content": "We implement strict organizational boundaries to protect tenant data. Data is protected in transit using HTTPS (TLS encryption) and access is strictly governed by role-based access control (RBAC). Data belonging to one organization is logically isolated and inaccessible to unauthorized tenants."
+				},
+				"oauth": {
+					"title": "4. Third-Party Services & OAuth",
+					"content": "Transcend integrates with third-party authentication providers, including the 42 School OAuth 2.0 API. When you authenticate using 42, we only retrieve authorized profile information necessary to verify your identity and manage workspace membership."
+				},
+				"retention": {
+					"title": "5. Retention & Your Rights",
+					"content": "Logistics and financial ledger records are retained in accordance with operational and audit requirements. Users have the right to inspect their personal information, request corrections, or request account deactivation through their organization administrator."
+				},
+				"updates": {
+					"title": "6. Updates & Contact",
+					"content": "We may update this Privacy Policy from time to time. If you have questions regarding data privacy or compliance, please reach out to the Transcend platform team via the contact form or through your system administrator."
+				}
+			}
+		},
+		"terms": {
+			"title": "Terms of Service",
+			"description": "The guidelines and conditions governing access to and use of the Transcend platform and services.",
+			"sections": {
+				"acceptance": {
+					"title": "1. Acceptance of Terms",
+					"content": "By accessing or using the Transcend platform, you agree to be bound by these Terms of Service. If you are using the service on behalf of an organization or courier enterprise, you represent that you have authority to bind that entity to these terms."
+				},
+				"service": {
+					"title": "2. Description of Service",
+					"content": "Transcend provides a multi-tenant logistics ERP platform encompassing parcel tracking, fleet management, driver dispatch, staff administration, and financial reconciliation ledgers."
+				},
+				"accounts": {
+					"title": "3. Account Responsibilities & Security",
+					"content": "Users are responsible for maintaining the confidentiality of their login credentials and session tokens. You must notify your system administrator immediately if you suspect unauthorized access to your account or organizational workspace."
+				},
+				"use": {
+					"title": "4. Acceptable Use",
+					"content": "You agree not to misuse the platform, interfere with platform operations, attempt unauthorized penetration testing, reverse engineer private services, or submit fraudulent parcel and ledger entries."
+				},
+				"financial": {
+					"title": "5. Financial & Settlement Disclaimer",
+					"content": "Financial ledgers, fee estimates, and merchant cash-on-delivery calculations provided within the platform are operational tools intended to assist organizational reconciliation. Organizations are ultimately responsible for auditing their own books and commercial settlements."
+				},
+				"availability": {
+					"title": "6. Service Availability & Changes",
+					"content": "We continuously improve the platform and reserve the right to deploy updates, perform scheduled maintenance, or modify available features. While we strive for high uptime, the service is provided on an \"as is\" and \"as available\" basis."
+				},
+				"termination": {
+					"title": "7. Termination",
+					"content": "We reserve the right to suspend or terminate access to accounts that violate these Terms or present operational and security risks to other tenants."
+				}
+			}
+		}
+	},
+	"notFound": {
+		"title": "This route leads nowhere.",
+		"description": "Head back to the homepage to explore Transcend.",
+		"pageTitle": "Page not found — Transcend",
+		"back": "Back to home"
+	}
+}
