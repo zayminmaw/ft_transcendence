@@ -4,6 +4,7 @@ import { Dialog, Input, Select, Textarea, useToast } from '@global-components';
 import type { FailureReason, Parcel, StatusMove } from '../api';
 import { FAILURE_REASONS } from '../constants';
 import { useParcelMutations } from '../hooks/useParcelMutations';
+import { parcelErrorKey } from '../errors';
 
 // Mounted only while open, so each opening starts with an empty form and no earlier refusal.
 export type ParcelDialogProps = {
@@ -66,7 +67,7 @@ function ParcelActionDialog({
 		>
 			{moveError && (
 				<p role="alert" className="rounded-box bg-error/10 p-4 text-sm text-error">
-					{moveError.message}
+					{t(parcelErrorKey(moveError))}
 				</p>
 			)}
 			{children}

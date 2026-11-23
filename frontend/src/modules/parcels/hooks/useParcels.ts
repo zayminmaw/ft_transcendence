@@ -5,6 +5,7 @@ import { useToast, type TableSort } from '@global-components';
 import { useDebounced } from '@hooks/useDebounced';
 import { tenantQueryKey } from '@utils/query-keys';
 import { apiRequest } from '@services/api-client';
+import { parcelErrorKey } from '../errors';
 import {
 	parcelPath,
 	type DispatchDriver,
@@ -61,7 +62,7 @@ export function useParcels() {
 			toast({
 				variant: 'error',
 				title: t('common.loadFailed'),
-				description: error.message,
+				description: t(parcelErrorKey(error)),
 			});
 	}, [error, errorUpdatedAt, toast, t]);
 

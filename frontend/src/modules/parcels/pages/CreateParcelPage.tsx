@@ -6,6 +6,7 @@ import { useCompanyPath } from '@hooks/useCompanyPath';
 import type { NewParcelValues } from '../api';
 import { useParcelMutations } from '../hooks/useParcelMutations';
 import { useParcelFormOptions } from '../hooks/useParcels';
+import { parcelFormError } from '../errors';
 
 // The fields as typed: the API trims them and clears an optional one left empty. The checkbox is sent only when
 // ticked, so it becomes a boolean here.
@@ -41,7 +42,7 @@ export function CreateParcelPage() {
 				});
 				navigate(companyPath(`parcels/${parcel.id}`));
 			},
-			onError: (failure) => setError(failure.message),
+			onError: (failure) => setError(parcelFormError(t, failure)),
 		});
 	};
 

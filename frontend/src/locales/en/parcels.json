@@ -223,5 +223,12 @@
 		"updated": "Updated {{time}}",
 		"progress": "Delivery progress",
 		"history": "Tracking history"
+	},
+	"errors": {
+		"notFound": "That parcel isn't in this company.",
+		"clientUnavailable": "Choose an active merchant of this company.",
+		"driverUnavailable": "Choose a driver of this company who is on duty.",
+		"wrongStatus": "The parcel has moved on since you opened it. Refresh to see where it is now.",
+		"unknown": "Something went wrong. Try again."
 	}
 }

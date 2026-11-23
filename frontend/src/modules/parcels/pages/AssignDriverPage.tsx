@@ -6,6 +6,7 @@ import { useCompanyPath } from '@hooks/useCompanyPath';
 import { ASSIGNABLE_STATUSES, vehicleLabel } from '../constants';
 import { useParcelMutations } from '../hooks/useParcelMutations';
 import { useAssignableParcels, useDispatchDrivers, useParcelDetails } from '../hooks/useParcels';
+import { parcelErrorKey } from '../errors';
 
 // /parcels/assign?parcel=<id>: send a sorted parcel, or a failed attempt again, out with a driver on duty. The parcel
 // travels in the vehicle the driver has checked out and joins their run for today.
@@ -112,7 +113,7 @@ export function AssignDriverPage() {
 									});
 									navigate(companyPath(`parcels/${saved.id}`));
 								},
-								onError: (failure) => setError(failure.message),
+								onError: (failure) => setError(t(parcelErrorKey(failure))),
 							},
 						);
 					}}
