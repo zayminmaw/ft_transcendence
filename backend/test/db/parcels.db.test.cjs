@@ -354,42 +354,50 @@ test('two deliveries at once record one delivery, and a failing audit undoes it'
   assert.deepEqual([after.status, after.deliveredAt, steps(after).at(-1)], ['out_for_delivery', null, 'out_for_delivery']);
 });
 
-// The service adds the merchant's pending COD to the dispatch and return transactions; the repository alone doesn't.
+// The service adds the cash recorded as collected to the merchant's pending COD in the delivery's transaction; the
+// repository alone doesn't.
 const serviceWith = (audit) => new ParcelsService(parcels, audit, new PendingCodService(new LedgerService(new LedgerRepository())));
 const actor = () => ({ tenant: { organizationId: meridian }, userId: clerk, meta: {} });
 const pending = async (clientId) => (await database.getRepository(Client).findOneByOrFail({ id: clientId })).pendingCodBalance;
 
-test('a first dispatch puts the cash in transit, a reattempt leaves it, a return takes it out', async () => {
+test('dispatching and returning never touch the pending COD, only a recorded delivery does', async () => {
   const service = serviceWith({ record: async () => {} });
   const merchant = await insertClient(meridian, 'HOOK1', 'Hook One', true);
-  const parcel = await sortedParcel({ clientId: merchant, codAmount: '120.50' });
+  const returned = await sortedParcel({ clientId: merchant, codAmount: '40.00' });
+  await service.assign(actor(), returned.id, { driverId: drivers.leen });
+  await service.move(actor(), returned.id, { status: 'failed_attempt', reasonCode: 'recipient_unavailable' });
+  await service.assign(actor(), returned.id, { driverId: drivers.samir });
+  await service.move(actor(), returned.id, { status: 'failed_attempt', reasonCode: 'refused' });
+  await service.move(actor(), returned.id, { status: 'returned_to_sender' });
   assert.equal(await pending(merchant), '0.00');
 
+  const parcel = await sortedParcel({ clientId: merchant, codAmount: '120.50' });
   await service.assign(actor(), parcel.id, { driverId: drivers.leen });
-  assert.equal(await pending(merchant), '120.50');
-  await service.move(actor(), parcel.id, { status: 'failed_attempt', reasonCode: 'recipient_unavailable' });
-  await service.assign(actor(), parcel.id, { driverId: drivers.samir });
-  assert.equal(await pending(merchant), '120.50');
-  await service.move(actor(), parcel.id, { status: 'failed_attempt', reasonCode: 'refused' });
-  await service.move(actor(), parcel.id, { status: 'returned_to_sender' });
   assert.equal(await pending(merchant), '0.00');
+  await service.deliver(actor(), parcel.id, { collectedAmount: '120.5' });
+  assert.equal(await pending(merchant), '120.50');
   assert.equal(await database.getRepository(MerchantLedgerEntry).countBy({ clientId: merchant }), 0);
 });
 
-test('two parcels of one merchant add up, and a parcel with no cash changes nothing', async () => {
+test('two delivered parcels of one merchant add up, and a parcel with no cash changes nothing', async () => {
   const service = serviceWith({ record: async () => {} });
   const merchant = await insertClient(meridian, 'HOOK2', 'Hook Two', true);
   for (const codAmount of ['10.00', '0.00', '5.25']) {
-    await service.assign(actor(), (await sortedParcel({ clientId: merchant, codAmount })).id, { driverId: drivers.leen });
+    const parcel = await sortedParcel({ clientId: merchant, codAmount });
+    await service.assign(actor(), parcel.id, { driverId: drivers.leen });
+    await service.deliver(actor(), parcel.id, { collectedAmount: codAmount });
   }
   assert.equal(await pending(merchant), '15.25');
 });
 
-test('when the audit fails the parcel and the pending balance both stay as they were', async () => {
+test('a refused delivery or a failed audit leaves the parcel and the pending balance as they were', async () => {
   const merchant = await insertClient(meridian, 'HOOK3', 'Hook Three', true);
   const parcel = await sortedParcel({ clientId: merchant, codAmount: '40.00' });
-  const failing = serviceWith({ record: async () => { throw new Error('audit down'); } });
-  await assert.rejects(failing.assign(actor(), parcel.id, { driverId: drivers.leen }), /audit down/);
+  await serviceWith({ record: async () => {} }).assign(actor(), parcel.id, { driverId: drivers.leen });
+  await assert.rejects(serviceWith({ record: async () => {} }).deliver(actor(), parcel.id, { collectedAmount: '39.00' }), (error) => error.getStatus() === 409);
   assert.equal(await pending(merchant), '0.00');
-  assert.equal((await parcels.find(meridian, parcel.id)).status, 'in_hub_sorted');
+  const failing = serviceWith({ record: async () => { throw new Error('audit down'); } });
+  await assert.rejects(failing.deliver(actor(), parcel.id, { collectedAmount: '40.00' }), /audit down/);
+  assert.equal(await pending(merchant), '0.00');
+  assert.equal((await parcels.find(meridian, parcel.id)).status, 'out_for_delivery');
 });

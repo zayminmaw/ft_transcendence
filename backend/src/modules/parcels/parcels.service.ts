@@ -103,17 +103,19 @@ export class ParcelsService {
   async move(actor: ParcelsActor, id: string, body: StatusMoveDto) {
     requireId(id);
     const result = await this.parcels.move(
-      actor.tenant.organizationId, id, actor.userId, body, this.withPendingCod(actor, this.auditStep(actor, 'status_change')),
+      actor.tenant.organizationId, id, actor.userId, body, this.auditStep(actor, 'status_change'),
     );
     return savedParcel(result);
   }
 
-  // The cash is compared as saved ("120.5" is 120.50), so how it was typed doesn't matter.
+  // The cash is compared as saved ("120.5" is 120.50), so how it was typed doesn't matter. The cash recorded as collected
+  // joins the merchant's pending COD in the same transaction.
   async deliver(actor: ParcelsActor, id: string, body: DeliverParcelDto) {
     requireId(id);
+    const collected = Number(body.collectedAmount).toFixed(2);
     const result = await this.parcels.deliver(
       actor.tenant.organizationId, id, actor.userId,
-      { collected: Number(body.collectedAmount).toFixed(2), notes: body.notes ?? null }, this.auditStep(actor, 'status_change'),
+      { collected, notes: body.notes ?? null }, this.withPendingCod(actor, collected, this.auditStep(actor, 'status_change')),
     );
     return savedParcel(result);
   }
@@ -122,19 +124,19 @@ export class ParcelsService {
     requireId(id);
     const result = await this.parcels.assign(
       actor.tenant.organizationId, id, actor.userId, body.driverId, body.notes ?? null,
-      this.withPendingCod(actor, this.auditStep(actor, 'assign')),
+      this.auditStep(actor, 'assign'),
     );
     return savedParcel(result);
   }
 
-  // Runs in the change's transaction before its audit row. A first dispatch puts the parcel's cash in transit; a return
-  // to the merchant takes it out, since it will never be collected. A reattempt after a failed attempt changes nothing,
-  // the cash is already in transit.
-  private withPendingCod(actor: ParcelsActor, audit: AuditStep): AuditStep {
+  // Runs in the delivery's transaction before its audit row. The cash the driver recorded as collected becomes the
+  // merchant's pending COD, until the cashier takes it over. Dispatching or returning a parcel never touches it, since no
+  // cash has been collected yet (or ever will be).
+  private withPendingCod(actor: ParcelsActor, collected: string, audit: AuditStep): AuditStep {
     return async (manager, before, after) => {
-      const change = { organizationId: actor.tenant.organizationId, clientId: after.client.id, codAmount: after.codAmount, userId: actor.userId };
-      if (before?.status === 'in_hub_sorted' && after.status === 'out_for_delivery') await this.pendingCod.hold(manager, change);
-      if (before?.status === 'failed_attempt' && after.status === 'returned_to_sender') await this.pendingCod.release(manager, change);
+      await this.pendingCod.hold(manager, {
+        organizationId: actor.tenant.organizationId, clientId: after.client.id, codAmount: collected, userId: actor.userId,
+      });
       await audit(manager, before, after);
     };
   }
