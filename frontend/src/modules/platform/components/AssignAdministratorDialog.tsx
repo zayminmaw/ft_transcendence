@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Dialog, Input, PasswordInput, useToast } from '@global-components';
 import { useDebounced } from '@hooks/useDebounced';
-import { ApiError } from '@services/api-client';
+import { fromErrorCode } from '@services/api-client';
 import type { AssignAdministratorValues, NewAdministratorValues, TenantDetails } from '../api';
 import { NEW_ADMINISTRATOR_DEFAULT_VALUES, NEW_ADMINISTRATOR_FIELD_ERRORS } from '../constants';
 import { useTenantMembers } from '../hooks/useTenantAdministrators';
@@ -58,10 +58,8 @@ export function AssignAdministratorDialog({
 				},
 				onError: (failure) => {
 					const field =
-						values.mode === 'new' && failure instanceof ApiError && failure.code
-							? NEW_ADMINISTRATOR_FIELD_ERRORS[
-									failure.code as keyof typeof NEW_ADMINISTRATOR_FIELD_ERRORS
-								]
+						values.mode === 'new'
+							? fromErrorCode(NEW_ADMINISTRATOR_FIELD_ERRORS, failure)
 							: undefined;
 					// The account may be a removed member, who comes back through "Existing member" instead.
 					const hint =

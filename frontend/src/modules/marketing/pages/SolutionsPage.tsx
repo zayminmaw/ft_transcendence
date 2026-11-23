@@ -55,7 +55,7 @@ export function SolutionsPage() {
 						</div>
 					</article>
 				))}
-				<div className="mt-8 flex flex-wrap items-center justify-between gap-6 rounded-xl bg-base-100 p-8">
+				<div className="mt-4 flex flex-wrap items-center justify-between gap-6 rounded-2xl bg-base-200 p-6 sm:p-8">
 					<p className="text-lg font-semibold">
 						Map the handoffs that matter to your team.
 					</p>

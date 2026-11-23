@@ -3,8 +3,10 @@ import { Authenticated } from '../../common/decorators/authenticated.decorator';
 import { PlatformAdmin } from '../../common/decorators/platform-admin.decorator';
 import { RequirePermission } from '../../common/decorators/require-permission.decorator';
 import type { AuthenticatedRequest } from '../../common/types/authenticated-request';
+import { PermissionPolicyService } from '../rbac';
 import { auditLogView } from './audit-log.view';
 import { AuditReadDeniedFilter, PlatformAuditReadDeniedFilter } from './audit-read-denied.filter';
+import { READ_PERMISSIONS } from './audit-resources';
 import { type AuditScope, AuditRepository } from './audit.repository';
 import { AuditService } from './audit.service';
 import { ListAuditLogsDto } from './dto/list-audit-logs.dto';
@@ -14,16 +16,22 @@ const NOT_FOUND = { message: 'Audit entry not found.', code: 'AUDIT_NOT_FOUND' }
 const FILTER_KEYS = ['module', 'resourceType', 'recordId', 'action', 'userId', 'from', 'to'] as const;
 
 // The same endpoints serve every module: the company log, one record's history ("Inspect changes") and the
-// details of one entry. Every read is audited too.
+// details of one entry. Every read is audited too. A company reader sees only the values their role could see in the
+// record's own module (e.g. a driver's national id needs drivers.manage).
 @Controller()
 export class AuditController {
-	constructor(private readonly audit: AuditService, private readonly logs: AuditRepository) {}
+	constructor(
+		private readonly audit: AuditService,
+		private readonly logs: AuditRepository,
+		private readonly policy: PermissionPolicyService,
+	) {}
 
 	@Get('audit-logs')
 	@RequirePermission('admin.audit_logs')
 	@UseFilters(AuditReadDeniedFilter)
-	list(@Query() query: ListAuditLogsDto, @Req() request: AuthenticatedRequest) {
-		return this.page({ kind: 'tenant', organizationId: request.tenant!.organizationId }, query, true);
+	async list(@Query() query: ListAuditLogsDto, @Req() request: AuthenticatedRequest) {
+		const { organizationId, roleId } = request.tenant!;
+		return this.page({ kind: 'tenant', organizationId }, query, true, await this.readable(roleId));
 	}
 
 	// Lets the interface show audit buttons only to people who may use them. Refusing this check is not an attempt
@@ -34,36 +42,43 @@ export class AuditController {
 		return { canRead: true };
 	}
 
-	// These two come before :id, so "access" and "mine" are never read as ids.
+	// "My activity" spans companies, where the reader may hold different roles: values a module restricts are shown
+	// only in the company log, read with one role. These two come before :id, so "access" and "mine" are never ids.
 	@Get('audit-logs/mine')
 	@Authenticated()
 	@UseFilters(AuditReadDeniedFilter)
 	mine(@Query() query: ListAuditLogsDto, @Req() request: AuthenticatedRequest) {
-		return this.page({ kind: 'actor', userId: request.user!.id }, query, true);
+		return this.page({ kind: 'actor', userId: request.user!.id }, query, true, new Set());
 	}
 
 	@Get('audit-logs/:id')
 	@RequirePermission('admin.audit_logs')
 	@UseFilters(AuditReadDeniedFilter)
-	detail(@Param('id') id: string, @Req() request: AuthenticatedRequest) {
-		return this.one({ kind: 'tenant', organizationId: request.tenant!.organizationId }, id);
+	async detail(@Param('id') id: string, @Req() request: AuthenticatedRequest) {
+		const { organizationId, roleId } = request.tenant!;
+		return this.one({ kind: 'tenant', organizationId }, id, await this.readable(roleId));
 	}
 
 	@Get('platform/audit-logs')
 	@PlatformAdmin()
 	@UseFilters(PlatformAuditReadDeniedFilter)
 	platformList(@Query() query: ListAuditLogsDto) {
-		return this.page({ kind: 'platform' }, query, false);
+		return this.page({ kind: 'platform' }, query, false, new Set());
 	}
 
 	@Get('platform/audit-logs/:id')
 	@PlatformAdmin()
 	@UseFilters(PlatformAuditReadDeniedFilter)
 	platformDetail(@Param('id') id: string) {
-		return this.one({ kind: 'platform' }, id);
+		return this.one({ kind: 'platform' }, id, new Set());
 	}
 
-	private async page(scope: AuditScope, query: ListAuditLogsDto, tenantView: boolean) {
+	// Which of the permissions stored values need this role holds, in one lookup.
+	private readable(roleId: string): Promise<ReadonlySet<string>> {
+		return this.policy.allowedOf(roleId, READ_PERMISSIONS);
+	}
+
+	private async page(scope: AuditScope, query: ListAuditLogsDto, tenantView: boolean, permissions: ReadonlySet<string>) {
 		const result = await this.logs.list(scope, query);
 		await this.audit.recordStandalone({
 			module: 'audit', action: 'read', resourceType: 'audit_log',
@@ -73,10 +88,11 @@ export class AuditController {
 			withChanges: tenantView || !isTenantData(row),
 			withNetwork: showsNetwork(scope, row),
 			forPlatform: scope.kind === 'platform',
+			permissions,
 		})) };
 	}
 
-	private async one(scope: AuditScope, id: string) {
+	private async one(scope: AuditScope, id: string, permissions: ReadonlySet<string>) {
 		const row = /^[1-9]\d*$/.test(id) ? await this.logs.find(scope, id) : null;
 		if (!row) throw new NotFoundException(NOT_FOUND);
 		await this.audit.recordStandalone({
@@ -87,6 +103,7 @@ export class AuditController {
 			withUserAgent: true,
 			withNetwork: showsNetwork(scope, row),
 			forPlatform: scope.kind === 'platform',
+			permissions,
 		});
 	}
 }

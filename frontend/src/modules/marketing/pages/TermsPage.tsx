@@ -68,8 +68,8 @@ export function TermsPage() {
 				title="Terms of Service"
 				description={pageDescription}
 			/>
-			<section className="mx-auto max-w-4xl px-6 pb-24 md:px-10">
-				<div className="space-y-10">
+			<section className="mx-auto max-w-7xl px-6 pb-24 md:px-10">
+				<div className="max-w-4xl space-y-10">
 					{terms.map(({ title, content }) => (
 						<article key={title} className="border-t border-base-300 pt-8">
 							<h2 className="text-xl font-semibold tracking-tight text-base-content">

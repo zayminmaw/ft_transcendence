@@ -8,6 +8,7 @@ import { Role } from '../../modules/rbac/entities/role.entity';
 import { UserRole } from '../../modules/rbac/entities/user-role.entity';
 import { PlatformRolesRepository } from '../../modules/rbac/platform-roles.repository';
 import { User } from '../../modules/users/entities/user.entity';
+import { seedDemoAssets } from './demo-assets.seed';
 import { seedDemoDrivers } from './demo-drivers.seed';
 
 // Every demo account uses this password. It is written in the README, so never load demo data on a real deployment.
@@ -104,6 +105,7 @@ export interface DemoSeedResult {
   accountsCreated: number;
   accountsSkipped: string[];
   driversCreated: number;
+  assetsCreated: number;
   clientsCreated: number;
 }
 
@@ -112,7 +114,7 @@ export async function seedDemo(database: DataSource): Promise<DemoSeedResult> {
   const passwordHash = await hashPassword(DEMO_PASSWORD);
   const platformRoles = new PlatformRolesRepository(database.getRepository(UserRole));
   return database.transaction(async (manager) => {
-    const result: DemoSeedResult = { companiesCreated: 0, accountsCreated: 0, accountsSkipped: [], clientsCreated: 0, driversCreated: 0 };
+    const result: DemoSeedResult = { companiesCreated: 0, accountsCreated: 0, accountsSkipped: [], clientsCreated: 0, driversCreated: 0, assetsCreated: 0 };
     const companyIds = new Map<string, string>();
     for (const company of COMPANIES) {
       let organization = await manager.findOneBy(Organization, { slug: company.slug });
@@ -146,6 +148,7 @@ export async function seedDemo(database: DataSource): Promise<DemoSeedResult> {
       result.accountsCreated += 1;
     }
     result.driversCreated = await seedDemoDrivers(manager, companyIds);
+    result.assetsCreated = await seedDemoAssets(manager, companyIds);
     return result;
   });
 }

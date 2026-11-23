@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { RbacModule } from '../rbac';
 import { AuditReadDeniedFilter, PlatformAuditReadDeniedFilter } from './audit-read-denied.filter';
 import { AuditController } from './audit.controller';
 import { AuditRepository } from './audit.repository';
@@ -8,7 +9,7 @@ import { AuditLog } from './entities/audit-log.entity';
 
 // The audit trail: one writer (AuditService) and one set of read endpoints for every module.
 @Module({
-	imports: [TypeOrmModule.forFeature([AuditLog])],
+	imports: [TypeOrmModule.forFeature([AuditLog]), RbacModule],
 	controllers: [AuditController],
 	providers: [AuditService, AuditRepository, AuditReadDeniedFilter, PlatformAuditReadDeniedFilter],
 	exports: [AuditService],
