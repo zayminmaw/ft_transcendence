@@ -12,6 +12,7 @@ import { useTenantMembers } from '../hooks/useTenantAdministrators';
 import { useTenantMutations } from '../hooks/useTenantMutations';
 import { administratorAccountSchema } from '../schemas/administratorAccountSchema';
 import { MemberPicker } from './MemberPicker';
+import { platformErrorKey } from '../errors';
 
 // Mount only while open, so the form and the typed password are gone once it closes.
 export function AssignAdministratorDialog({
@@ -76,10 +77,10 @@ export function AssignAdministratorDialog({
 					if (field)
 						setFieldError(
 							field,
-							{ message: failure.message + hint },
+							{ message: t(platformErrorKey(failure)) + hint },
 							{ shouldFocus: true },
 						);
-					else setError(failure.message);
+					else setError(t(platformErrorKey(failure)));
 				},
 			},
 		);

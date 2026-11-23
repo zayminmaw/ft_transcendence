@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Dialog, useToast } from '@global-components';
 import type { TenantDetails } from '../api';
 import { useTenantMutations } from '../hooks/useTenantMutations';
+import { platformErrorKey } from '../errors';
 
 export function StatusDialog({
 	tenant,
@@ -75,7 +76,7 @@ export function StatusDialog({
 			)}
 			{setActiveError && (
 				<p role="alert" className="alert alert-error alert-soft text-sm">
-					{setActiveError.message}
+					{t(platformErrorKey(setActiveError))}
 				</p>
 			)}
 			<dl className="grid grid-cols-3 gap-4 rounded-box bg-base-200 p-4">

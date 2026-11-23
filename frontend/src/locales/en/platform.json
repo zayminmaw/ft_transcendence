@@ -49,7 +49,22 @@
 		"phoneMax": "Use at most 32 characters.",
 		"addressMax": "Use at most 1000 characters.",
 		"loadTenants": "Couldn't load tenants",
-		"loadActivity": "Couldn't load tenant activity"
+		"loadActivity": "Couldn't load tenant activity",
+		"slugTaken": "Another company already uses that slug.",
+		"usernameTaken": "That username already belongs to an account.",
+		"emailTaken": "That email already belongs to an account.",
+		"passwordRule": "Use 8-128 characters with an upper-case letter, a lower-case letter, a number and a symbol.",
+		"tenantNotFound": "Tenant not found.",
+		"alreadyActive": "The tenant is already active.",
+		"alreadySuspended": "The tenant is already suspended.",
+		"noAdministrator": "Assign an administrator before reactivating the tenant.",
+		"memberNotFound": "That person is not a member of this company.",
+		"alreadyAdministrator": "That person is already an administrator of this company.",
+		"administratorNotFound": "That person is not an administrator of this company.",
+		"lastAdministrator": "This is the company's last administrator. Revoking them suspends the tenant.",
+		"roleNotAvailable": "That role is not available in this company.",
+		"notLastAdministrator": "Other administrators remain, so the tenant is not suspended. Choose what happens to this administrator.",
+		"unknown": "Something went wrong. Try again."
 	},
 	"tenants": {
 		"title": "Tenant administration",

@@ -6,6 +6,7 @@ import { Dialog, Input, useToast } from '@global-components';
 import type { TenantDetails, UpdateTenantValues } from '../api';
 import { useTenantMutations } from '../hooks/useTenantMutations';
 import { editOrganizationSchema } from '../schemas/editOrganizationSchema';
+import { platformErrorKey } from '../errors';
 
 export function EditDialog({ tenant, onClose }: { tenant: TenantDetails; onClose: () => void }) {
 	const { t } = useTranslation('platform');
@@ -56,7 +57,7 @@ export function EditDialog({ tenant, onClose }: { tenant: TenantDetails; onClose
 		>
 			{updateError && (
 				<p role="alert" className="alert alert-error alert-soft text-sm">
-					{updateError.message}
+					{t(platformErrorKey(updateError))}
 				</p>
 			)}
 			<div className="flex flex-col gap-4">

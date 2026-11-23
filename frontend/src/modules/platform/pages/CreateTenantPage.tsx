@@ -10,6 +10,7 @@ import type { CreateTenantValues } from '../api';
 import { CREATE_TENANT_DEFAULT_VALUES, CREATE_TENANT_FIELD_ERRORS } from '../constants';
 import { useTenantMutations } from '../hooks/useTenantMutations';
 import { createTenantSchema } from '../schemas/createTenantSchema';
+import { platformErrorKey } from '../errors';
 
 export function CreateTenantPage() {
 	const { t } = useTranslation('platform');
@@ -56,12 +57,13 @@ export function CreateTenantPage() {
 			},
 			onError: (error) => {
 				const field = fromErrorCode(CREATE_TENANT_FIELD_ERRORS, error);
-				if (field) setError(field, { message: error.message }, { shouldFocus: true });
+				if (field)
+					setError(field, { message: t(platformErrorKey(error)) }, { shouldFocus: true });
 				else
 					toast({
 						variant: 'error',
 						title: t('create.failed'),
-						description: error.message,
+						description: t(platformErrorKey(error)),
 					});
 			},
 		}),

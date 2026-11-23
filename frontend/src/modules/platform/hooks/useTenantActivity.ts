@@ -6,6 +6,7 @@ import { useDebounced } from '@hooks/useDebounced';
 import { apiRequest } from '@services/api-client';
 import { tenantsQueryKey } from '@utils/query-keys';
 import type { ActivityFilter, ActivitySortKey, TenantActivity, TenantActivityParams } from '../api';
+import { platformErrorKey } from '../errors';
 
 // The tenant management events with their search, action filter, sort and paging, newest first by default. Like
 // useTenants, changing anything but the page goes back to page 1. The key sits under tenantsQueryKey, so every
@@ -51,7 +52,7 @@ export function useTenantActivity() {
 			toast({
 				variant: 'error',
 				title: t('errors.loadActivity'),
-				description: error.message,
+				description: t(platformErrorKey(error)),
 			});
 	}, [error, errorUpdatedAt, toast, t]);
 

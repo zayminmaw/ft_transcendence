@@ -4,6 +4,7 @@ import { Dialog, useToast } from '@global-components';
 import type { RevokeAdministratorValues, TenantAdministrator, TenantDetails } from '../api';
 import { useMemberRoles } from '../hooks/useTenantAdministrators';
 import { useTenantMutations } from '../hooks/useTenantMutations';
+import { platformErrorKey } from '../errors';
 
 // Mount only while open, so each revoke starts with an empty reason. Revoking the last administrator who can still
 // sign in suspends the tenant; otherwise the platform admin chooses whether they keep another role or leave.
@@ -75,7 +76,7 @@ export function RevokeAdministratorDialog({
 		>
 			{revokeError && (
 				<p role="alert" className="alert alert-error alert-soft text-sm">
-					{revokeError.message}
+					{t(platformErrorKey(revokeError))}
 				</p>
 			)}
 
