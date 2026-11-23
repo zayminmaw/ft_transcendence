@@ -22,13 +22,13 @@ export function AssignAdministratorDialog({
 	tenant: TenantDetails;
 	onClose: () => void;
 }) {
-	const { t, i18n } = useTranslation('platform');
+	const { t } = useTranslation('platform');
 	const { toast } = useToast();
 	const { assignAdministrator, isAssigning } = useTenantMutations();
 	const [mode, setMode] = useState<'new' | 'existing'>('new');
 	const [search, setSearch] = useState('');
 	const [userId, setUserId] = useState('');
-	const [error, setError] = useState<string | null>(null);
+	const [error, setError] = useState<ReturnType<typeof platformErrorKey> | null>(null);
 	const debouncedSearch = useDebounced(search);
 	const { members, isMembersPending, isMembersError } = useTenantMembers(
 		tenant.id,
@@ -46,10 +46,9 @@ export function AssignAdministratorDialog({
 		resolver: zodResolver(administratorAccountSchema),
 		defaultValues: NEW_ADMINISTRATOR_DEFAULT_VALUES,
 	});
-	// Zod messages are translation keys; a server refusal arrives already translated, so it is shown as it is.
+	// Every message is a translation key, translated here so it follows a language switch.
 	const fieldError = (message?: string) =>
-		message &&
-		(i18n.exists(message, { ns: 'platform' }) ? t(message as ParseKeys<'platform'>) : message);
+		message && t(message as ParseKeys<'platform'>, { name: tenant.name });
 
 	const assign = (values: AssignAdministratorValues) => {
 		setError(null);
@@ -72,18 +71,13 @@ export function AssignAdministratorDialog({
 						values.mode === 'new'
 							? fromErrorCode(NEW_ADMINISTRATOR_FIELD_ERRORS, failure)
 							: undefined;
-					// The account may be a removed member, who comes back through "Existing member" instead.
-					const hint =
+					// A taken username or email may be a removed member, who comes back through "Existing member".
+					const message =
 						field === 'username' || field === 'email'
-							? ` ${t('assign.wasMember', { name: tenant.name })}`
-							: '';
-					if (field)
-						setFieldError(
-							field,
-							{ message: t(platformErrorKey(failure)) + hint },
-							{ shouldFocus: true },
-						);
-					else setError(t(platformErrorKey(failure)));
+							? (`assign.${field}Taken` as const)
+							: platformErrorKey(failure);
+					if (field) setFieldError(field, { message }, { shouldFocus: true });
+					else setError(platformErrorKey(failure));
 				},
 			},
 		);
@@ -123,7 +117,7 @@ export function AssignAdministratorDialog({
 		>
 			{error && (
 				<p role="alert" className="alert alert-error alert-soft text-sm">
-					{error}
+					{t(error)}
 				</p>
 			)}
 			<div role="tablist" aria-label={t('assign.source')} className="tabs tabs-box">

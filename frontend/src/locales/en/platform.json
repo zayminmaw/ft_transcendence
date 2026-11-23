@@ -184,11 +184,12 @@
 		"description": "The administrator gets tenant permissions in {{name}} only. No platform access is granted.",
 		"assigned": "Administrator assigned",
 		"assignedText": "{{username}} now administers {{tenant}}.",
-		"wasMember": "If they were in {{name}} before, choose them under Existing member.",
 		"source": "Administrator source",
 		"newAccount": "New account",
 		"existingMember": "Existing member",
-		"credentialsNote": "Hand over credentials securely. Passwords are hidden from confirmation and audit records."
+		"credentialsNote": "Hand over credentials securely. Passwords are hidden from confirmation and audit records.",
+		"usernameTaken": "That username already belongs to an account. If they were in {{name}} before, choose them under Existing member.",
+		"emailTaken": "That email already belongs to an account. If they were in {{name}} before, choose them under Existing member."
 	},
 	"picker": {
 		"noMembers": "{{name}} has no members to choose.",

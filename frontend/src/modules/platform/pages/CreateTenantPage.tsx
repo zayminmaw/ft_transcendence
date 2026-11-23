@@ -13,7 +13,7 @@ import { createTenantSchema } from '../schemas/createTenantSchema';
 import { platformErrorKey } from '../errors';
 
 export function CreateTenantPage() {
-	const { t, i18n } = useTranslation('platform');
+	const { t } = useTranslation('platform');
 	const navigate = useNavigate();
 	const { toast } = useToast();
 	const { createTenant, isCreating } = useTenantMutations();
@@ -33,10 +33,8 @@ export function CreateTenantPage() {
 		control,
 		name: ['organization.name', 'administrator.username'],
 	});
-	// Zod messages are translation keys; a server refusal arrives already translated, so it is shown as it is.
-	const fieldError = (message?: string) =>
-		message &&
-		(i18n.exists(message, { ns: 'platform' }) ? t(message as ParseKeys<'platform'>) : message);
+	// Every message is a translation key, translated here so it follows a language switch.
+	const fieldError = (message?: string) => message && t(message as ParseKeys<'platform'>);
 
 	const review = [
 		{ label: t('create.reviewCompany'), value: orgName.trim() || '—' },
@@ -61,7 +59,7 @@ export function CreateTenantPage() {
 			onError: (error) => {
 				const field = fromErrorCode(CREATE_TENANT_FIELD_ERRORS, error);
 				if (field)
-					setError(field, { message: t(platformErrorKey(error)) }, { shouldFocus: true });
+					setError(field, { message: platformErrorKey(error) }, { shouldFocus: true });
 				else
 					toast({
 						variant: 'error',
