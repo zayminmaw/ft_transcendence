@@ -1,4 +1,9 @@
 services:
+  # Host development and `test:db` reach MariaDB through this loopback-only port.
+  mariadb:
+    ports:
+      - "127.0.0.1:${DB_PUBLIC_PORT:-3306}:3306"
+
   backend:
     build:
       target: development
