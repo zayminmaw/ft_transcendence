@@ -11,6 +11,22 @@ export class ApiError extends Error {
 	}
 }
 
+// The API's code for a refusal, e.g. CLIENT_CODE_TAKEN; undefined for anything else.
+export function errorCode(error: unknown) {
+	return error instanceof ApiError ? error.code : undefined;
+}
+
+// What a code → value map gives a refusal, e.g. the form field it belongs to; undefined when its code isn't there.
+export function fromErrorCode<T>(map: Record<string, T>, error: unknown): T | undefined {
+	const code = errorCode(error);
+	return code !== undefined && Object.hasOwn(map, code) ? map[code] : undefined;
+}
+
+// A refusal as a translation key: its own message when the map knows its code, the general one otherwise.
+export function errorKey<K extends string>(map: Record<string, K>, error: unknown) {
+	return fromErrorCode(map, error) ?? 'errors.unknown';
+}
+
 export async function apiRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
 	// The retry reuses this company, so a request never moves to a company opened while it waited.
 	const { accessToken, activeOrganizationId } = sessionStore.getSnapshot();

@@ -4,6 +4,7 @@ import type { RequestMeta } from '../../common/context/request-meta';
 import { ID_PATTERN } from '../../common/ids';
 import type { TenantContext } from '../../common/types/authenticated-request';
 import { type AuditAction, AuditService } from '../audit';
+import { PendingCodService } from '../billing';
 import { PARCEL_CLIENT_UNAVAILABLE, PARCEL_DRIVER_UNAVAILABLE, PARCEL_NOT_FOUND, PARCEL_WRONG_STATUS } from './constants';
 import type { AssignParcelDto, CreateParcelDto, ListParcelsQueryDto, StatusMoveDto } from './dto/parcel.dto';
 import { type AuditStep, type ParcelResult, ParcelsRepository, type Refusal } from './parcels.repository';
@@ -48,6 +49,7 @@ export class ParcelsService {
   constructor(
     private readonly parcels: ParcelsRepository,
     private readonly audit: AuditService,
+    private readonly pendingCod: PendingCodService,
   ) {}
 
   async list(tenant: TenantContext, query: ListParcelsQueryDto) {
@@ -96,16 +98,31 @@ export class ParcelsService {
 
   async move(actor: ParcelsActor, id: string, body: StatusMoveDto) {
     requireId(id);
-    const result = await this.parcels.move(actor.tenant.organizationId, id, actor.userId, body, this.auditStep(actor, 'status_change'));
+    const result = await this.parcels.move(
+      actor.tenant.organizationId, id, actor.userId, body, this.withPendingCod(actor, this.auditStep(actor, 'status_change')),
+    );
     return savedParcel(result);
   }
 
   async assign(actor: ParcelsActor, id: string, body: AssignParcelDto) {
     requireId(id);
     const result = await this.parcels.assign(
-      actor.tenant.organizationId, id, actor.userId, body.driverId, body.notes ?? null, this.auditStep(actor, 'assign'),
+      actor.tenant.organizationId, id, actor.userId, body.driverId, body.notes ?? null,
+      this.withPendingCod(actor, this.auditStep(actor, 'assign')),
     );
     return savedParcel(result);
+  }
+
+  // Runs in the change's transaction before its audit row. A first dispatch puts the parcel's cash in transit; a return
+  // to the merchant takes it out, since it will never be collected. A reattempt after a failed attempt changes nothing,
+  // the cash is already in transit.
+  private withPendingCod(actor: ParcelsActor, audit: AuditStep): AuditStep {
+    return async (manager, before, after) => {
+      const change = { organizationId: actor.tenant.organizationId, clientId: after.client.id, codAmount: after.codAmount, userId: actor.userId };
+      if (before?.status === 'in_hub_sorted' && after.status === 'out_for_delivery') await this.pendingCod.hold(manager, change);
+      if (before?.status === 'failed_attempt' && after.status === 'returned_to_sender') await this.pendingCod.release(manager, change);
+      await audit(manager, before, after);
+    };
   }
 
   // The audit row for a change, written in the change's transaction. It also tells everyone viewing parcels to
