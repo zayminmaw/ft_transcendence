@@ -29,7 +29,6 @@ export function CheckOutDialog({ asset, onClose }: { asset: Asset; onClose: () =
 					{
 						assetId: asset.id,
 						values: { driverId: driver.id, notes: notes.trim() || null },
-						driverName: driver.name,
 					},
 					{
 						onSuccess: () => {
