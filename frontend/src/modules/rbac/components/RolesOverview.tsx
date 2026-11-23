@@ -53,7 +53,7 @@ export function RolesOverview() {
 													? label(code)
 													: t('roles.ownOnly', { action: label(code) }),
 											)
-											.join(', ')}
+											.join(t('list.separator', { ns: 'common' }))}
 									</dd>
 								</Fragment>
 							))}
