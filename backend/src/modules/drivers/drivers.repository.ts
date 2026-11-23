@@ -1,8 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { Brackets, DataSource, type EntityManager } from 'typeorm';
 import { isDuplicateKey } from '../../common/database-errors';
+import { EXPIRY_WARNING_DAYS } from '../../common/expiry';
 import { containsPattern } from '../../common/like-pattern';
-import { COURIER_FIELDS, DRIVER_ROLE, EMPLOYEE_FIELDS, EXPIRY_WARNING_DAYS } from './constants';
+import { COURIER_FIELDS, DRIVER_ROLE, EMPLOYEE_FIELDS } from './constants';
 import { planUpdate, type RuleRefusal } from './driver-rules';
 import { DeliveryDriver, type DispatchStatus } from './entities/delivery-driver.entity';
 import { Employee } from './entities/employee.entity';

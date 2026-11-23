@@ -2,9 +2,10 @@ import { useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button, Dialog } from '@global-components';
 import { useRoleName } from '@modules/auth';
+import { errorCode } from '@services/api-client';
 import { formatDate } from '@utils/format';
 import type { Member } from '../api';
-import { errorCode, memberErrorKey } from '../errors';
+import { memberErrorKey } from '../errors';
 import {
 	useAssignableRoles,
 	useChangeMemberRole,
