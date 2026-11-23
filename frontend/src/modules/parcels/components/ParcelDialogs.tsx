@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Dialog, Input, Select, Textarea, useToast } from '@global-components';
 import type { FailureReason, Parcel, StatusMove } from '../api';
-import { failureReasonLabels, failureReasons } from '../constants';
+import { FAILURE_REASONS } from '../constants';
 import { useParcelMutations } from '../hooks/useParcelMutations';
 
 // Mounted only while open, so each opening starts with an empty form and no earlier refusal.
@@ -29,6 +30,7 @@ function ParcelActionDialog({
 	move: (field: (name: string) => string) => StatusMove;
 	children: ReactNode;
 }) {
+	const { t } = useTranslation('parcels');
 	const { toast } = useToast();
 	const { moveParcel, isMoving, moveError } = useParcelMutations();
 	return (
@@ -54,7 +56,7 @@ function ParcelActionDialog({
 			actions={
 				<>
 					<button type="button" className="btn border-0 bg-base-200" onClick={onClose}>
-						Cancel
+						{t('common.cancel')}
 					</button>
 					<button type="submit" className="btn btn-neutral" disabled={isMoving}>
 						{submitLabel}
@@ -73,28 +75,30 @@ function ParcelActionDialog({
 }
 
 export function MarkPickedUpDialog(props: ParcelDialogProps) {
+	const { t } = useTranslation('parcels');
 	return (
 		<ParcelActionDialog
 			{...props}
-			title={`Mark ${props.parcel.trackingNumber} as picked up?`}
-			description={`Records that the parcel was collected from ${props.parcel.client.name}.`}
-			submitLabel="Mark picked up"
-			toastTitle="Parcel marked as picked up"
+			title={t('dialogs.pickedUp.title', { tracking: props.parcel.trackingNumber })}
+			description={t('dialogs.pickedUp.description', { merchant: props.parcel.client.name })}
+			submitLabel={t('dialogs.pickedUp.action')}
+			toastTitle={t('dialogs.pickedUp.done')}
 			move={(field) => ({ status: 'picked_up', notes: field('notes') })}
 		>
-			<Textarea name="notes" label="Notes" maxLength={2000} />
+			<Textarea name="notes" label={t('common.notes')} maxLength={2000} />
 		</ParcelActionDialog>
 	);
 }
 
 export function MarkInHubDialog(props: ParcelDialogProps) {
+	const { t } = useTranslation('parcels');
 	return (
 		<ParcelActionDialog
 			{...props}
-			title={`Mark ${props.parcel.trackingNumber} as in hub?`}
-			description="The parcel is sorted and becomes ready for driver assignment."
-			submitLabel="Mark in hub"
-			toastTitle="Parcel marked as in hub"
+			title={t('dialogs.inHub.title', { tracking: props.parcel.trackingNumber })}
+			description={t('dialogs.inHub.description')}
+			submitLabel={t('dialogs.inHub.action')}
+			toastTitle={t('dialogs.inHub.done')}
 			move={(field) => ({
 				status: 'in_hub_sorted',
 				hubLocation: field('hubLocation'),
@@ -103,57 +107,67 @@ export function MarkInHubDialog(props: ParcelDialogProps) {
 		>
 			<Input
 				name="hubLocation"
-				label="Hub location"
+				label={t('dialogs.inHub.location')}
 				required
 				maxLength={128}
-				placeholder="Central hub · Bay 3"
+				placeholder={t('dialogs.inHub.placeholder')}
 			/>
-			<Textarea name="notes" label="Notes" maxLength={2000} />
+			<Textarea name="notes" label={t('common.notes')} maxLength={2000} />
 		</ParcelActionDialog>
 	);
 }
 
 export function RecordFailureDialog(props: ParcelDialogProps) {
+	const { t } = useTranslation('parcels');
 	return (
 		<ParcelActionDialog
 			{...props}
-			title={`Record a failed attempt for ${props.parcel.trackingNumber}?`}
-			description="The parcel can then be reassigned for another attempt or returned to the merchant."
-			submitLabel="Record failure"
-			toastTitle="Failed attempt recorded"
+			title={t('dialogs.failure.title', { tracking: props.parcel.trackingNumber })}
+			description={t('dialogs.failure.description')}
+			submitLabel={t('dialogs.failure.action')}
+			toastTitle={t('dialogs.failure.done')}
 			move={(field) => ({
 				status: 'failed_attempt',
 				reasonCode: field('reasonCode') as FailureReason,
 				notes: field('notes'),
 			})}
 		>
-			<Select name="reasonCode" label="Failure reason" required options={failureReasons} />
-			<Textarea name="notes" label="Notes" maxLength={2000} />
+			<Select
+				name="reasonCode"
+				label={t('dialogs.failure.reason')}
+				required
+				options={FAILURE_REASONS.map((value) => ({
+					value,
+					label: t(`failureReasons.${value}`),
+				}))}
+			/>
+			<Textarea name="notes" label={t('common.notes')} maxLength={2000} />
 		</ParcelActionDialog>
 	);
 }
 
 export function ReturnToSenderDialog(props: ParcelDialogProps) {
+	const { t } = useTranslation('parcels');
 	const { failedReasonCode } = props.parcel;
 	return (
 		<ParcelActionDialog
 			{...props}
-			title={`Return ${props.parcel.trackingNumber} to sender?`}
-			description={`The parcel goes back to ${props.parcel.client.name}. COD is not collected and the return is recorded in the delivery history.`}
-			submitLabel="Return to sender"
-			toastTitle="Parcel marked for return"
+			title={t('dialogs.return.title', { tracking: props.parcel.trackingNumber })}
+			description={t('dialogs.return.description', { merchant: props.parcel.client.name })}
+			submitLabel={t('dialogs.return.action')}
+			toastTitle={t('dialogs.return.done')}
 			move={(field) => ({ status: 'returned_to_sender', notes: field('notes') })}
 		>
 			<div>
 				<Textarea
 					name="notes"
-					label="Reason"
+					label={t('dialogs.return.reason')}
 					required
 					maxLength={2000}
-					defaultValue={failedReasonCode ? failureReasonLabels[failedReasonCode] : ''}
+					defaultValue={failedReasonCode ? t(`failureReasons.${failedReasonCode}`) : ''}
 				/>
 				<p className="mt-1 text-xs text-[var(--color-slate)]">
-					Recorded on the parcel with your account.
+					{t('dialogs.return.recorded')}
 				</p>
 			</div>
 		</ParcelActionDialog>

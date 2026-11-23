@@ -1,19 +1,16 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Input, ModulePage, Textarea, TipCard, useToast } from '@global-components';
 import { useCompanyPath } from '@hooks/useCompanyPath';
-import {
-	ASSIGNABLE_STATUSES,
-	dispatchStatusLabels,
-	parcelStatusLabels,
-	vehicleLabel,
-} from '../constants';
+import { ASSIGNABLE_STATUSES, vehicleLabel } from '../constants';
 import { useParcelMutations } from '../hooks/useParcelMutations';
 import { useAssignableParcels, useDispatchDrivers, useParcelDetails } from '../hooks/useParcels';
 
 // /parcels/assign?parcel=<id>: send a sorted parcel, or a failed attempt again, out with a driver on duty. The parcel
 // travels in the vehicle the driver has checked out and joins their run for today.
 export function AssignDriverPage() {
+	const { t } = useTranslation('parcels');
 	const navigate = useNavigate();
 	const companyPath = useCompanyPath();
 	const { toast } = useToast();
@@ -32,7 +29,7 @@ export function AssignDriverPage() {
 	const [error, setError] = useState<string | null>(null);
 
 	if (isAssignablePending || isParcelPending || isDriversPending)
-		return <span className="loading loading-spinner" aria-label="Loading" />;
+		return <span className="loading loading-spinner" aria-label={t('common.loading')} />;
 
 	const requestedCanGo = requested && ASSIGNABLE_STATUSES.includes(requested.status);
 	const choices =
@@ -50,14 +47,17 @@ export function AssignDriverPage() {
 					to={companyPath(requested ? `parcels/${requested.id}` : 'parcels')}
 					className="link link-hover w-fit text-sm"
 				>
-					{requested ? 'Back to the parcel' : 'Back to dispatch'}
+					{requested ? t('assign.backToParcel') : t('common.backToDispatch')}
 				</Link>
 				<ModulePage
-					title="This parcel can't be assigned right now"
+					title={t('assign.cantTitle')}
 					description={
 						requested
-							? `${requested.trackingNumber} is ${parcelStatusLabels[requested.status].toLowerCase()}. Only parcels sorted in the hub or waiting for another attempt can go out with a driver.`
-							: 'This parcel was not found.'
+							? t('assign.cantStatus', {
+									tracking: requested.trackingNumber,
+									status: t(`status.${requested.status}`),
+								})
+							: t('assign.notFound')
 					}
 				/>
 			</div>
@@ -68,34 +68,27 @@ export function AssignDriverPage() {
 		return (
 			<div className="flex flex-col gap-6">
 				<Link to={companyPath('parcels')} className="link link-hover w-fit text-sm">
-					Back to dispatch
+					{t('common.backToDispatch')}
 				</Link>
 				<ModulePage
-					title="Nothing to assign right now"
-					description={
-						parcel
-							? 'No driver is on duty. Set a driver available on the drivers page.'
-							: 'No parcel is sorted in the hub or waiting for another attempt.'
-					}
+					title={t('assign.nothingTitle')}
+					description={parcel ? t('common.noDriverOnDuty') : t('assign.noParcel')}
 				/>
 			</div>
 		);
 	}
 
 	const review = [
-		{ label: 'Parcel stage', value: parcelStatusLabels[parcel.status] },
-		...(parcel.driver ? [{ label: 'Previous owner', value: parcel.driver.name }] : []),
-		{ label: 'New owner', value: driver.name },
-		{ label: 'Vehicle', value: vehicleLabel(driver.vehicle) },
-		{ label: 'Run', value: driver.run?.code ?? 'Opens a new run for today' },
+		{ label: t('assign.stage'), value: t(`status.${parcel.status}`) },
+		...(parcel.driver ? [{ label: t('assign.previousOwner'), value: parcel.driver.name }] : []),
+		{ label: t('assign.newOwner'), value: driver.name },
+		{ label: t('common.vehicle'), value: vehicleLabel(t, driver.vehicle) },
+		{ label: t('common.run'), value: driver.run?.code ?? t('assign.newRun') },
 	];
 
 	return (
 		<div className="flex flex-col gap-6">
-			<ModulePage
-				title="Assign a delivery driver"
-				description="Review parcel ownership and vehicle pairing before dispatch."
-			/>
+			<ModulePage title={t('assign.title')} description={t('assign.description')} />
 			<div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
 				<form
 					id="assign-driver-form"
@@ -110,8 +103,12 @@ export function AssignDriverPage() {
 								onSuccess: (saved) => {
 									toast({
 										variant: 'success',
-										title: 'Driver assigned',
-										description: `${saved.trackingNumber} is out with ${driver.name} on ${saved.run?.code}.`,
+										title: t('assign.assigned'),
+										description: t('assign.assignedText', {
+											tracking: saved.trackingNumber,
+											driver: driver.name,
+											run: saved.run?.code,
+										}),
 									});
 									navigate(companyPath(`parcels/${saved.id}`));
 								},
@@ -128,7 +125,7 @@ export function AssignDriverPage() {
 					)}
 					<div>
 						<label htmlFor="parcel" className="mb-2 block text-sm font-medium">
-							Parcel *
+							{t('assign.parcel')}
 						</label>
 						<select
 							id="parcel"
@@ -139,28 +136,28 @@ export function AssignDriverPage() {
 							{choices.map((item) => (
 								<option key={item.id} value={item.id}>
 									{item.trackingNumber} · {item.recipientName} ·{' '}
-									{parcelStatusLabels[item.status]}
+									{t(`status.${item.status}`)}
 								</option>
 							))}
 						</select>
 					</div>
 					<Input
 						id="merchant"
-						label="Merchant"
+						label={t('common.merchant')}
 						value={parcel.client.name}
 						readOnly
 						className="border-0 bg-base-200"
 					/>
 					<Input
 						id="zone"
-						label="Delivery zone"
-						value={`${parcel.deliveryCityZone} zone`}
+						label={t('common.deliveryZone')}
+						value={t('common.zone', { zone: parcel.deliveryCityZone })}
 						readOnly
 						className="border-0 bg-base-200"
 					/>
 					<div>
 						<label htmlFor="driver" className="mb-2 block text-sm font-medium">
-							Selected driver *
+							{t('assign.driver')}
 						</label>
 						<select
 							id="driver"
@@ -170,46 +167,49 @@ export function AssignDriverPage() {
 						>
 							{dispatchDrivers.map((item) => (
 								<option key={item.id} value={item.id}>
-									{item.name} · {dispatchStatusLabels[item.dispatchStatus]}
-									{item.zone && ` · ${item.zone} zone`}
+									{item.name} · {t(`dispatchStatus.${item.dispatchStatus}`)}
+									{item.zone && ` · ${t('common.zone', { zone: item.zone })}`}
 								</option>
 							))}
 						</select>
 						<p className="mt-1 text-xs text-[var(--color-slate)]">
-							Only drivers who are on duty are listed.
+							{t('assign.driverNote')}
 						</p>
 					</div>
 					<Input
 						id="asset"
-						label="Assigned vehicle"
-						value={vehicleLabel(driver.vehicle)}
+						label={t('assign.vehicle')}
+						value={vehicleLabel(t, driver.vehicle)}
 						readOnly
 						className="border-0 bg-base-200"
 					/>
 					<Input
 						id="deliveryDetails"
-						label="Delivery details"
-						value={`COD ${parcel.codAmount} CUR · Delivery fee ${parcel.deliveryFee} CUR`}
+						label={t('assign.deliveryDetails')}
+						value={t('assign.deliveryDetailsValue', {
+							cod: parcel.codAmount,
+							fee: parcel.deliveryFee,
+						})}
 						className="border-0 bg-base-200"
 						readOnly
 					/>
-					<Textarea name="notes" label="Notes for the driver" rows={2} maxLength={2000} />
+					<Textarea name="notes" label={t('assign.notes')} rows={2} maxLength={2000} />
 					<div className="mt-2 flex flex-col gap-2 sm:flex-row">
 						<button
 							type="button"
 							className="btn border-0 bg-base-200"
 							onClick={() => navigate(-1)}
 						>
-							Cancel
+							{t('common.cancel')}
 						</button>
 						<button type="submit" className="btn btn-primary" disabled={isAssigning}>
-							{isAssigning ? 'Assigning…' : 'Confirm assignment'}
+							{isAssigning ? t('assign.assigning') : t('assign.confirm')}
 						</button>
 					</div>
 				</form>
 				<aside className="flex flex-col gap-6">
 					<section className="rounded-box bg-base-200 p-6 md:p-8">
-						<h2 className="text-lg font-semibold">Review this change</h2>
+						<h2 className="text-lg font-semibold">{t('assign.review')}</h2>
 						<dl className="mt-6 flex flex-col gap-5">
 							{review.map((item) => (
 								<div key={item.label}>
@@ -223,10 +223,7 @@ export function AssignDriverPage() {
 							))}
 						</dl>
 					</section>
-					<TipCard
-						title="A clear handoff to the field."
-						description="The parcel joins the driver's run for today, with the vehicle they have checked out. Reassigning a failed attempt keeps the previous owner in the history."
-					/>
+					<TipCard title={t('assign.tipTitle')} description={t('assign.tipText')} />
 				</aside>
 			</div>
 		</div>

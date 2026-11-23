@@ -1,7 +1,9 @@
 import { useRef, type PointerEvent } from 'react';
+import { useTranslation } from 'react-i18next';
 
 // Draws with a mouse, finger or stylus. White with a dark line in every theme, so the signature is always readable.
 export function SignaturePad() {
+	const { t } = useTranslation('parcels');
 	const canvas = useRef<HTMLCanvasElement>(null);
 
 	const position = (event: PointerEvent<HTMLCanvasElement>) => {
@@ -45,9 +47,9 @@ export function SignaturePad() {
 	return (
 		<div>
 			<div className="mb-2 flex items-center justify-between gap-2">
-				<p className="text-sm font-medium">Recipient signature *</p>
+				<p className="text-sm font-medium">{t('deliver.signature')}</p>
 				<button type="button" className="link link-hover text-sm" onClick={clear}>
-					Clear
+					{t('deliver.clear')}
 				</button>
 			</div>
 			<canvas
@@ -55,7 +57,7 @@ export function SignaturePad() {
 				width={600}
 				height={200}
 				role="img"
-				aria-label="Recipient signature pad"
+				aria-label={t('deliver.signaturePad')}
 				className="h-40 w-full cursor-crosshair touch-none rounded-box border border-base-300 bg-white"
 				onPointerDown={start}
 				onPointerMove={draw}

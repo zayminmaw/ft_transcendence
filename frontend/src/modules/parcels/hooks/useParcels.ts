@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useToast, type TableSort } from '@global-components';
 import { useDebounced } from '@hooks/useDebounced';
@@ -52,16 +53,17 @@ export function useParcels() {
 	});
 
 	// One toast per failed load: errorUpdatedAt changes only when a new failure arrives.
+	const { t } = useTranslation('parcels');
 	const { toast } = useToast();
 	const { error, errorUpdatedAt } = query;
 	useEffect(() => {
 		if (error)
 			toast({
 				variant: 'error',
-				title: "Parcels couldn't be loaded",
+				title: t('common.loadFailed'),
 				description: error.message,
 			});
-	}, [error, errorUpdatedAt, toast]);
+	}, [error, errorUpdatedAt, toast, t]);
 
 	const firstPage =
 		<T>(set: (value: T) => void) =>
