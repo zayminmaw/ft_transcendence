@@ -225,6 +225,33 @@ test('a failed attempt counts, keeps its reason and driver, and goes out again o
   ]);
 });
 
+test('tracking finds any company\'s parcel by its number, with only its status and times', async () => {
+  const parcel = await sortedParcel();
+  const tracked = await parcels.track(parcel.trackingNumber);
+  assert.deepEqual(Object.keys(tracked).sort(), ['company', 'events', 'status', 'trackingNumber']);
+  assert.deepEqual([tracked.trackingNumber, tracked.status, tracked.company], [parcel.trackingNumber, 'in_hub_sorted', 'Parcels Meridian']);
+  assert.deepEqual(tracked.events.map((event) => event.status), ['pickup_scheduled', 'picked_up', 'in_hub_sorted']);
+  assert.deepEqual(Object.keys(tracked.events[0]).sort(), ['at', 'status']);
+  assert.ok(tracked.events.every((event) => event.at instanceof Date));
+
+  const elsewhere = await newParcel({ clientId: clients.harbor }, harbor);
+  assert.equal((await parcels.track(elsewhere.trackingNumber)).company, 'Parcels Harbor');
+  assert.equal(await parcels.track('TRC-NOSUCHPARC'), null);
+});
+
+test('tracking hides a draft and the parcels of a suspended company', async () => {
+  const draft = await newParcel();
+  await database.query("UPDATE parcels SET lifecycle_status = 'draft' WHERE id = ?", [draft.id]);
+  assert.equal(await parcels.track(draft.trackingNumber), null);
+
+  const closed = (await database.getRepository(Organization).save({
+    name: 'Parcels Closed', slug: 'parcels-closed', contactEmail: 'ops@closed.db.test', isActive: false,
+  })).id;
+  const merchant = await insertClient(closed, 'SHUT', 'Shut Shop', true);
+  const hidden = await newParcel({ clientId: merchant }, closed);
+  assert.equal(await parcels.track(hidden.trackingNumber), null);
+});
+
 test('the list searches, filters by queue or status, sorts and pages within one company; the counts cover the company', async () => {
   await newParcel({ recipientName: 'Omar 100% T.', clientId: clients.field }, meridian);
   await newParcel({ recipientName: 'Harbor only', clientId: clients.harbor }, harbor);

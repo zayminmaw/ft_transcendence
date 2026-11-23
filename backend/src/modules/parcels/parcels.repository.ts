@@ -11,7 +11,7 @@ import { Parcel } from './entities/parcel.entity';
 import { ParcelEvent } from './entities/parcel-event.entity';
 import type {
   DispatchDriver, NewParcel, ParcelCounts, ParcelDetails, ParcelDriver, ParcelEventRecord, ParcelFormOptions, ParcelRecord,
-  ParcelRun, ParcelVehicle,
+  ParcelRun, ParcelTracking, ParcelVehicle,
 } from './types/parcel';
 
 // Writes its audit row with the change's own manager, so both are saved or neither.
@@ -341,6 +341,29 @@ export class ParcelsRepository {
         if (!isDuplicateKey(error) || attempt === TRACKING_ATTEMPTS) throw error;
       }
     }
+  }
+
+  // Any company's parcel, by its tracking number alone (unique across companies), for the public tracking page. A
+  // draft hasn't been handed over yet, and a suspended company's parcels aren't shown.
+  async track(trackingNumber: string): Promise<ParcelTracking | null> {
+    const [parcel]: Row[] = await this.database.query(
+      `SELECT parcel.id, parcel.tracking_number AS trackingNumber, parcel.lifecycle_status AS status, company.name AS company
+         FROM parcels parcel
+         JOIN organizations company ON company.id = parcel.organization_id
+        WHERE parcel.tracking_number = ? AND parcel.lifecycle_status <> 'draft' AND company.is_active = TRUE`,
+      [trackingNumber],
+    );
+    if (!parcel) return null;
+    const events: Row[] = await this.database.query(
+      `SELECT status, event_timestamp AS at FROM parcel_events WHERE parcel_id = ? ORDER BY event_timestamp, id`,
+      [parcel.id],
+    );
+    return {
+      trackingNumber: String(parcel.trackingNumber),
+      status: parcel.status as ParcelStatus,
+      company: String(parcel.company),
+      events: events.map((event) => ({ status: event.status as ParcelStatus, at: event.at as Date })),
+    };
   }
 
   private async events(parcelId: string): Promise<ParcelEventRecord[]> {
