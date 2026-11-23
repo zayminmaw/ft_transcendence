@@ -29,7 +29,7 @@ export function MarketingLayout() {
 	}, [pathname]);
 
 	return (
-		<div className="min-h-screen bg-base-100 text-base-content">
+		<div className="flex min-h-screen flex-col bg-base-100 text-base-content">
 			<a
 				href="#main-content"
 				className="btn btn-neutral fixed inset-s-4 top-4 z-50 -translate-y-24 focus:translate-y-0"
@@ -75,11 +75,12 @@ export function MarketingLayout() {
 					</Link>
 				</div>
 			</header>
-			<main id="main-content">
+			{/* Grows on short pages (tracking, not found), so the footer stays at the bottom of the screen. */}
+			<main id="main-content" className="flex-1">
 				<Outlet />
 			</main>
 			<footer className="border-t border-base-300">
-				<div className="mx-auto flex max-w-7xl flex-col justify-between gap-6 px-6 py-10 text-sm md:flex-row md:px-10">
+				<div className="mx-auto flex max-w-7xl flex-col justify-between gap-6 px-6 py-10 text-sm md:flex-row md:items-center md:px-10">
 					<div>
 						<Link to="/" className="font-bold">
 							transcend
