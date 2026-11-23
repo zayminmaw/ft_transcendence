@@ -49,16 +49,28 @@ export function useWebSocket({
 			auth: { token: accessToken, organizationId: activeOrganizationId },
 		});
 		let active = true;
+		let retryTimer: ReturnType<typeof setTimeout> | undefined;
+		let attempt = 0;
+		// 1 s, 2 s, 4 s… up to 30 s, randomized so clients don't all return at once after an outage.
+		const later = (retry: () => void) => {
+			const delay = Math.min(30_000, 1_000 * 2 ** attempt++) * (0.5 + Math.random() / 2);
+			retryTimer = setTimeout(() => active && retry(), delay);
+		};
 
 		// A new access token changes accessToken, which opens a new socket.
 		const renew = () => {
 			void refreshSession().then((result) => {
-				if (result === 'ended' && sessionStore.getSnapshot().accessToken === accessToken)
+				if (result === 'unavailable' && active) later(renew);
+				else if (
+					result === 'ended' &&
+					sessionStore.getSnapshot().accessToken === accessToken
+				)
 					endSession('expired');
 			});
 		};
 
 		socket.on('connect', () => {
+			attempt = 0;
 			if (active && connectedBefore.current) handlers.current.onReconnect?.();
 			connectedBefore.current = true;
 		});
@@ -80,14 +92,17 @@ export function useWebSocket({
 			if (active && reason === 'io server disconnect') renew();
 		});
 
-		// A reconnect after a long network drop still carries the expired token. The server names only that refusal
-		// (TokenExpired); every other one would stay refused with a new token, and network errors retry by themselves.
+		// A reconnect after a long network drop still carries the expired token. A refused handshake doesn't retry by
+		// itself: Unavailable (a server fault) is retried, Unauthorized would stay refused, network errors retry alone.
 		socket.on('connect_error', (error) => {
-			if (active && error.message === 'TokenExpired') renew();
+			if (!active) return;
+			if (error.message === 'TokenExpired') renew();
+			else if (error.message === 'Unavailable') later(() => socket.connect());
 		});
 
 		return () => {
 			active = false;
+			clearTimeout(retryTimer);
 			socket.disconnect();
 		};
 	}, [accessToken, activeOrganizationId]);
