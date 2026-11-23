@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button, Input } from '@global-components';
+import { formatDate } from '@utils/format';
 import type { ParcelStatus } from '../api';
 import { parcels } from '../data/sampleParcels';
 
@@ -85,7 +86,12 @@ export function TrackParcelPage() {
 }
 
 function TrackingResult({ parcel }: { parcel: (typeof parcels)[number] }) {
-	const { t } = useTranslation('parcels');
+	const { t, i18n } = useTranslation('parcels');
+	const time = (value: string) =>
+		formatDate(value, i18n.resolvedLanguage ?? 'en', {
+			dateStyle: 'medium',
+			timeStyle: 'short',
+		});
 	// The public page says "Delivered", without the POD abbreviation.
 	const statusLabel = (status: ParcelStatus) =>
 		status === 'delivered' ? t('track.delivered') : t(`status.${status}`);
@@ -108,7 +114,7 @@ function TrackingResult({ parcel }: { parcel: (typeof parcels)[number] }) {
 						aria-hidden="true"
 						className="size-2 rounded-full bg-primary ring-2 ring-primary/40"
 					/>
-					{t('track.updated', { time: events[0].time })}
+					{t('track.updated', { time: time(events[0].time) })}
 				</p>
 			</div>
 
@@ -147,9 +153,7 @@ function TrackingResult({ parcel }: { parcel: (typeof parcels)[number] }) {
 							<p className={index === 0 ? 'font-semibold' : 'font-medium opacity-80'}>
 								{statusLabel(event.status)}
 							</p>
-							<p dir="ltr" className="font-mono text-sm opacity-60">
-								{event.time}
-							</p>
+							<p className="text-sm opacity-60">{time(event.time)}</p>
 						</div>
 					</li>
 				))}

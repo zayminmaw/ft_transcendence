@@ -5,6 +5,7 @@ import type { ParcelStatus } from '../api';
 export type TrackedParcel = {
 	tracking: string;
 	status: ParcelStatus;
+	// Times are local ISO dates, formatted for the reader's language.
 	events: { status: ParcelStatus; time: string }[];
 };
 
@@ -13,19 +14,19 @@ export const parcels: TrackedParcel[] = [
 		tracking: 'TRC-10474',
 		status: 'out_for_delivery',
 		events: [
-			{ status: 'pickup_scheduled', time: '12 Oct 2026, 16:10' },
-			{ status: 'picked_up', time: '13 Oct 2026, 08:05' },
-			{ status: 'in_hub_sorted', time: '13 Oct 2026, 08:50' },
-			{ status: 'out_for_delivery', time: '13 Oct 2026, 12:20' },
+			{ status: 'pickup_scheduled', time: '2026-10-12T16:10:00' },
+			{ status: 'picked_up', time: '2026-10-13T08:05:00' },
+			{ status: 'in_hub_sorted', time: '2026-10-13T08:50:00' },
+			{ status: 'out_for_delivery', time: '2026-10-13T12:20:00' },
 		],
 	},
 	{
 		tracking: 'TRC-10472',
 		status: 'delivered',
 		events: [
-			{ status: 'in_hub_sorted', time: '13 Oct 2026, 07:55' },
-			{ status: 'out_for_delivery', time: '13 Oct 2026, 08:40' },
-			{ status: 'delivered', time: '13 Oct 2026, 10:05' },
+			{ status: 'in_hub_sorted', time: '2026-10-13T07:55:00' },
+			{ status: 'out_for_delivery', time: '2026-10-13T08:40:00' },
+			{ status: 'delivered', time: '2026-10-13T10:05:00' },
 		],
 	},
 ];

@@ -27,7 +27,7 @@ export function AssignDriverPage() {
 	const { assignParcel, isAssigning } = useParcelMutations();
 	const [parcelId, setParcelId] = useState(requestedId);
 	const [driverId, setDriverId] = useState('');
-	const [error, setError] = useState<string | null>(null);
+	const [error, setError] = useState<ReturnType<typeof parcelErrorKey> | null>(null);
 
 	if (isAssignablePending || isParcelPending || isDriversPending)
 		return <span className="loading loading-spinner" aria-label={t('common.loading')} />;
@@ -113,7 +113,7 @@ export function AssignDriverPage() {
 									});
 									navigate(companyPath(`parcels/${saved.id}`));
 								},
-								onError: (failure) => setError(t(parcelErrorKey(failure))),
+								onError: (failure) => setError(parcelErrorKey(failure)),
 							},
 						);
 					}}
@@ -121,7 +121,7 @@ export function AssignDriverPage() {
 				>
 					{error && (
 						<p role="alert" className="rounded-box bg-error/10 p-4 text-sm text-error">
-							{error}
+							{t(error)}
 						</p>
 					)}
 					<div>

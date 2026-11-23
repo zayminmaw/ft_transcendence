@@ -14,7 +14,13 @@ export function RecordDeliveryPage() {
 	const companyPath = useCompanyPath();
 	const { t } = useTranslation('parcels');
 	const { toast } = useToast();
-	const [location, setLocation] = useState<string>(t('deliver.notCaptured'));
+	// A status to translate, or the captured coordinates.
+	const [location, setLocation] = useState<
+		| 'deliver.notCaptured'
+		| 'deliver.locating'
+		| 'deliver.locationUnavailable'
+		| { coords: string }
+	>('deliver.notCaptured');
 	const { parcel, isParcelPending } = useParcelDetails(parcelId);
 
 	if (isParcelPending)
@@ -26,11 +32,13 @@ export function RecordDeliveryPage() {
 	const detailsPath = companyPath(`parcels/${parcel.id}`);
 
 	const captureLocation = () => {
-		setLocation(t('deliver.locating'));
+		setLocation('deliver.locating');
 		navigator.geolocation.getCurrentPosition(
 			({ coords }) =>
-				setLocation(`${coords.latitude.toFixed(6)}, ${coords.longitude.toFixed(6)}`),
-			() => setLocation(t('deliver.locationUnavailable')),
+				setLocation({
+					coords: `${coords.latitude.toFixed(6)}, ${coords.longitude.toFixed(6)}`,
+				}),
+			() => setLocation('deliver.locationUnavailable'),
 		);
 	};
 
@@ -87,7 +95,12 @@ export function RecordDeliveryPage() {
 								{t('deliver.capture')}
 							</button>
 							<p role="status" className="text-sm text-[var(--color-slate)]">
-								{location}
+								{typeof location === 'string' ? (
+									t(location)
+								) : (
+									// Latitude first, also on an Arabic page.
+									<span dir="ltr">{location.coords}</span>
+								)}
 							</p>
 						</div>
 					</div>

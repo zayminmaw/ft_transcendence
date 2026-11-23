@@ -27,7 +27,7 @@ export function CreateParcelPage() {
 	const { toast } = useToast();
 	const { options, isOptionsPending } = useParcelFormOptions();
 	const { createParcel, isCreating } = useParcelMutations();
-	const [error, setError] = useState<string | null>(null);
+	const [error, setError] = useState<Error | null>(null);
 	const clients = options?.clients ?? [];
 
 	const onSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -42,7 +42,7 @@ export function CreateParcelPage() {
 				});
 				navigate(companyPath(`parcels/${parcel.id}`));
 			},
-			onError: (failure) => setError(parcelFormError(t, failure)),
+			onError: setError,
 		});
 	};
 
@@ -59,7 +59,7 @@ export function CreateParcelPage() {
 				>
 					{error && (
 						<p role="alert" className="rounded-box bg-error/10 p-4 text-sm text-error">
-							{error}
+							{parcelFormError(t, error)}
 						</p>
 					)}
 					<div>
