@@ -211,6 +211,7 @@
 	},
 	"legal": {
 		"eyebrow": "Legal & Compliance",
+		"updated": "Last updated: {{date}}",
 		"privacy": {
 			"title": "Privacy Policy",
 			"description": "How Transcend collects, safeguards, and handles organizational and personal data across our courier logistics workspace.",
@@ -243,8 +244,7 @@
 					"title": "7. Updates & Contact",
 					"content": "We may update this Privacy Policy from time to time; the date at the top shows the latest version. For questions about data privacy or compliance, email privacy@transcend.com or contact your organization administrator."
 				}
-			},
-			"updated": "Last updated: {{date}}"
+			}
 		},
 		"terms": {
 			"title": "Terms of Service",

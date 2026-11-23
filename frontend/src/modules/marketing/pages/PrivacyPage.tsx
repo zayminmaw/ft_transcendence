@@ -26,7 +26,7 @@ export function PrivacyPage() {
 			<section className="mx-auto max-w-7xl px-6 pb-24 md:px-10">
 				<div className="max-w-4xl space-y-10">
 					<p className="text-sm opacity-65">
-						{t('legal.privacy.updated', {
+						{t('legal.updated', {
 							date: formatDate(LAST_UPDATED, i18n.resolvedLanguage ?? 'en', {
 								dateStyle: 'long',
 							}),

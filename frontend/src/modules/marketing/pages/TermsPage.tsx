@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { formatDate } from '@utils/format';
 import { PageIntro } from '../components/PageIntro';
 
 const sections = [
@@ -10,9 +11,11 @@ const sections = [
 	'availability',
 	'termination',
 ] as const;
+// Change this whenever the terms change.
+const LAST_UPDATED = '2026-11-23';
 
 export function TermsPage() {
-	const { t } = useTranslation('marketing');
+	const { t, i18n } = useTranslation('marketing');
 	return (
 		<>
 			<PageIntro
@@ -22,6 +25,13 @@ export function TermsPage() {
 			/>
 			<section className="mx-auto max-w-7xl px-6 pb-24 md:px-10">
 				<div className="max-w-4xl space-y-10">
+					<p className="text-sm opacity-65">
+						{t('legal.updated', {
+							date: formatDate(LAST_UPDATED, i18n.resolvedLanguage ?? 'en', {
+								dateStyle: 'long',
+							}),
+						})}
+					</p>
 					{sections.map((section) => (
 						<article key={section} className="border-t border-base-300 pt-8">
 							<h2 className="text-xl font-semibold tracking-tight text-base-content">
