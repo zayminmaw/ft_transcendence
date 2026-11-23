@@ -40,8 +40,6 @@ export const DRIVER_STATUS_FILTERS = [...DISPATCH_STATUSES, 'all'] as const;
 export const DRIVER_SORTS = ['lastName', 'employeeCode', 'hireDate'] as const;
 // The duty statuses a person sets by hand. On pickup and out for delivery will come from dispatch.
 export const MANUAL_DISPATCH_STATUSES = ['available', 'off_duty', 'suspended'] as const satisfies readonly DispatchStatus[];
-// A license counts as expiring this many days ahead, like the frontend's EXPIRY_WARNING_DAYS.
-export const EXPIRY_WARNING_DAYS = 30;
 // The role an account needs to be linked to a driver.
 export const DRIVER_ROLE = 'driver';
 

@@ -1,11 +1,16 @@
 import { z } from 'zod';
+import { ACCOUNT_EMAIL_PATTERN, EMAIL_MAX_LENGTH } from '@utils/form-rules';
 
-// The same rules as the API, so most mistakes are caught before sending.
-export const emailSchema = z
+// A login account's email: the API's stricter account check (users/accounts).
+const emailSchema = z
 	.string()
 	.trim()
 	.min(1, 'Enter an email address.')
-	.email('Enter a valid email address.');
+	.max(EMAIL_MAX_LENGTH, 'Use at most 191 characters.')
+	.regex(
+		ACCOUNT_EMAIL_PATTERN,
+		'Enter a valid email address without spaces or accented letters.',
+	);
 
 // A new tenant administrator's account, on the create tenant page and the assign administrator dialog.
 export const administratorAccountSchema = z.object({

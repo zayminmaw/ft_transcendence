@@ -78,5 +78,7 @@ export const ASSET_ERROR_MESSAGES = {
 	ASSET_ALREADY_CHECKED_OUT: 'errors.alreadyCheckedOut',
 	ASSET_NOT_CHECKED_OUT: 'errors.notCheckedOut',
 	ASSET_DECOMMISSIONED: 'errors.decommissioned',
+	ASSET_DRIVER_UNAVAILABLE: 'errors.driverUnavailable',
 	ASSET_NOT_FOUND: 'errors.notFound',
+	SERVICE_DUE_BEFORE_SERVICE: 'errors.dueBeforeService',
 } as const satisfies Record<string, ParseKeys<'assets'>>;

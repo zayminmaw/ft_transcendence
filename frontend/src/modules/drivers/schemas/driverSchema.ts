@@ -1,6 +1,16 @@
 import type { ParseKeys } from 'i18next';
 import { z } from 'zod';
 import {
+	code,
+	date,
+	email,
+	money,
+	optional,
+	optionalDate,
+	phone,
+	required,
+} from '@utils/form-rules';
+import {
 	COMPENSATION_TYPES,
 	DRIVER_CATEGORIES,
 	EMPLOYMENT_CLASSIFICATIONS,
@@ -9,21 +19,7 @@ import {
 } from '../constants';
 
 const key = (value: ParseKeys<'drivers'>) => value;
-const required = (max: number) =>
-	z.string().trim().min(1, key('errors.required')).max(max, key('errors.tooLong'));
-const optional = (max: number) => z.string().trim().max(max, key('errors.tooLong'));
-const phone = z
-	.string()
-	.trim()
-	.regex(/^\+?[0-9 ()-]{6,32}$/, key('errors.invalidPhone'));
-// <input type="date"> gives 'YYYY-MM-DD', the same as the DATE columns.
-const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, key('errors.invalidDate'));
-const optionalDate = z.union([z.literal(''), date]);
-// DECIMAL(12, 2) for money, DECIMAL(8, 2) for capacities; kept as strings, never JS numbers.
-const money = z
-	.string()
-	.trim()
-	.regex(/^\d{1,10}(\.\d{1,2})?$/, key('errors.invalidAmount'));
+// DECIMAL(8, 2), kept as a string like money, never a JS number.
 const capacity = z
 	.string()
 	.trim()
@@ -32,19 +28,11 @@ const capacity = z
 // The same limits as the `employees` and `delivery_drivers` columns. Messages are translation keys, translated when
 // shown.
 const driverFields = z.object({
-	employeeCode: z
-		.string()
-		.trim()
-		.toUpperCase()
-		.regex(/^[A-Z0-9-]{2,32}$/, key('errors.invalidCode')),
+	employeeCode: code(32),
 	firstName: required(64),
 	lastName: required(64),
 	personalMobile: phone,
-	personalEmail: z
-		.string()
-		.trim()
-		.max(191, key('errors.tooLong'))
-		.regex(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, key('errors.invalidEmail')),
+	personalEmail: email,
 	nationalId: required(64),
 	dateOfBirth: date,
 	residentialAddress: required(2000),

@@ -162,6 +162,7 @@
 		"alreadyCheckedOut": "Someone checked this asset out first.",
 		"notCheckedOut": "This asset was already checked in.",
 		"decommissioned": "This asset is decommissioned.",
+		"driverUnavailable": "That driver no longer works here. Choose another driver.",
 		"notFound": "This asset doesn't exist in this company.",
 		"unknown": "Something went wrong. Try again."
 	}

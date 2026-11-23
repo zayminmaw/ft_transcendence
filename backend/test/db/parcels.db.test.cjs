@@ -4,7 +4,13 @@ const { createTestDatabase } = require('./test-database.cjs');
 const { recordAudit } = require('../../dist/modules/audit');
 const { AuditLog } = require('../../dist/modules/audit/entities/audit-log.entity');
 const { Organization } = require('../../dist/modules/organizations/entities/organization.entity');
+const { Client } = require('../../dist/modules/clients/entities/client.entity');
+const { LedgerRepository } = require('../../dist/modules/billing/ledger.repository');
+const { LedgerService } = require('../../dist/modules/billing/ledger.service');
+const { PendingCodService } = require('../../dist/modules/billing/pending-cod.service');
+const { MerchantLedgerEntry } = require('../../dist/modules/billing/entities/merchant-ledger-entry.entity');
 const { ParcelsRepository } = require('../../dist/modules/parcels/parcels.repository');
+const { ParcelsService } = require('../../dist/modules/parcels/parcels.service');
 const { User } = require('../../dist/modules/users/entities/user.entity');
 
 let database;
@@ -282,4 +288,44 @@ test('the audit row is written in the change and a failed audit undoes the chang
   const before = (await parcels.list(meridian, query())).total;
   await assert.rejects(parcels.create(meridian, clerk, values(), null, failing), /audit down/);
   assert.equal((await parcels.list(meridian, query())).total, before);
+});
+
+// The service adds the merchant's pending COD to the dispatch and return transactions; the repository alone doesn't.
+const serviceWith = (audit) => new ParcelsService(parcels, audit, new PendingCodService(new LedgerService(new LedgerRepository())));
+const actor = () => ({ tenant: { organizationId: meridian }, userId: clerk, meta: {} });
+const pending = async (clientId) => (await database.getRepository(Client).findOneByOrFail({ id: clientId })).pendingCodBalance;
+
+test('a first dispatch puts the cash in transit, a reattempt leaves it, a return takes it out', async () => {
+  const service = serviceWith({ record: async () => {} });
+  const merchant = await insertClient(meridian, 'HOOK1', 'Hook One', true);
+  const parcel = await sortedParcel({ clientId: merchant, codAmount: '120.50' });
+  assert.equal(await pending(merchant), '0.00');
+
+  await service.assign(actor(), parcel.id, { driverId: drivers.leen });
+  assert.equal(await pending(merchant), '120.50');
+  await service.move(actor(), parcel.id, { status: 'failed_attempt', reasonCode: 'recipient_unavailable' });
+  await service.assign(actor(), parcel.id, { driverId: drivers.samir });
+  assert.equal(await pending(merchant), '120.50');
+  await service.move(actor(), parcel.id, { status: 'failed_attempt', reasonCode: 'refused' });
+  await service.move(actor(), parcel.id, { status: 'returned_to_sender' });
+  assert.equal(await pending(merchant), '0.00');
+  assert.equal(await database.getRepository(MerchantLedgerEntry).countBy({ clientId: merchant }), 0);
+});
+
+test('two parcels of one merchant add up, and a parcel with no cash changes nothing', async () => {
+  const service = serviceWith({ record: async () => {} });
+  const merchant = await insertClient(meridian, 'HOOK2', 'Hook Two', true);
+  for (const codAmount of ['10.00', '0.00', '5.25']) {
+    await service.assign(actor(), (await sortedParcel({ clientId: merchant, codAmount })).id, { driverId: drivers.leen });
+  }
+  assert.equal(await pending(merchant), '15.25');
+});
+
+test('when the audit fails the parcel and the pending balance both stay as they were', async () => {
+  const merchant = await insertClient(meridian, 'HOOK3', 'Hook Three', true);
+  const parcel = await sortedParcel({ clientId: merchant, codAmount: '40.00' });
+  const failing = serviceWith({ record: async () => { throw new Error('audit down'); } });
+  await assert.rejects(failing.assign(actor(), parcel.id, { driverId: drivers.leen }), /audit down/);
+  assert.equal(await pending(merchant), '0.00');
+  assert.equal((await parcels.find(meridian, parcel.id)).status, 'in_hub_sorted');
 });

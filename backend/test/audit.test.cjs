@@ -130,6 +130,80 @@ test('the company sees the details of its people; the platform sees them masked'
 	assert.equal(forPlatform.changes.role.after, 'org_admin');
 });
 
+// A driver change as the trail stores it: one field of each group the Drivers API keeps to its own permission.
+function driverRow(id, fields) {
+	const before = {
+		firstName: 'Aung', nationalId: '12/ABC(N)123456', dateOfBirth: '1990-01-01', residentialAddress: '1 Main St',
+		baseSalary: '500.00', bankAccountIban: 'MM00 1234', backgroundCheck: false, licenseNumber: 'L-1',
+		commissionPerDrop: '1.00', terminationDate: null,
+	};
+	const after = {
+		firstName: 'Aung Aung', nationalId: '12/ABC(N)654321', dateOfBirth: '1990-02-02', residentialAddress: '2 Main St',
+		baseSalary: '600.00', bankAccountIban: 'MM00 5678', backgroundCheck: true, licenseNumber: 'L-2',
+		commissionPerDrop: '2.00', terminationDate: null,
+	};
+	return row(id, {
+		module: 'drivers', action: 'update', resourceType: 'driver', recordId: '3', resourceLabel: 'DRV-003',
+		oldValues: before, newValues: after, ...fields,
+	});
+}
+
+const after = (entry) => Object.fromEntries(Object.entries(entry.changes).map(([field, change]) => [field, change.after]));
+
+test('a driver change shows each reader only the fields their role sees in the Drivers API', async (t) => {
+	const { server, store } = await auditApp(t);
+	// rania is Finance, as seeded: no drivers.manage (personal) or drivers.view_compliance. hana sees every group.
+	store.rolePermissions.set('3', new Set(['admin.audit_logs', 'drivers.view', 'drivers.view_earnings', 'staff.view_payroll']));
+	store.rolePermissions.set('4', new Set([
+		'admin.audit_logs', 'drivers.view', 'drivers.manage', 'drivers.view_compliance', 'drivers.view_earnings', 'staff.view_payroll',
+	]));
+	const passwordHash = store.users[0].passwordHash;
+	for (const [id, username, roleId] of [['16', 'rania', '3'], ['17', 'hana', '4']]) {
+		store.users.push({ id, username, email: `${username}@demo.example.test`, passwordHash, isActive: true });
+		store.memberships.push({ organizationId: '1', userId: id, roleId, isActive: true });
+	}
+	store.auditRows.push(driverRow('8'));
+
+	const rania = await tokenFor(server, 'rania');
+	const forFinance = (await as(request(server).get('/api/audit-logs/8'), rania).expect(200)).body;
+	assert.deepEqual(after(forFinance), {
+		firstName: 'Aung Aung', nationalId: '[REDACTED]', dateOfBirth: '[REDACTED]', residentialAddress: '[REDACTED]',
+		baseSalary: '600.00', bankAccountIban: 'MM00 5678', backgroundCheck: '[REDACTED]', licenseNumber: '[REDACTED]',
+		commissionPerDrop: '2.00', terminationDate: null,
+	});
+	assert.equal(forFinance.changes.nationalId.before, '[REDACTED]');
+	// The list applies the same rules.
+	const page = (await as(request(server).get('/api/audit-logs?resourceType=driver'), rania).expect(200)).body;
+	assert.deepEqual(page.items[0].changes, forFinance.changes);
+
+	const hana = await tokenFor(server, 'hana');
+	const forHr = (await as(request(server).get('/api/audit-logs/8'), hana).expect(200)).body;
+	assert.deepEqual(forHr.changes.nationalId, { before: '12/ABC(N)123456', after: '12/ABC(N)654321' });
+	assert.equal(forHr.changes.backgroundCheck.after, true);
+
+	// lina, the tenant admin, has no drivers.view: the Drivers API refuses her, so she sees only what changed.
+	const lina = await tokenFor(server, 'lina');
+	const forAdmin = (await as(request(server).get('/api/audit-logs/8'), lina).expect(200)).body;
+	assert.deepEqual(Object.keys(forAdmin.changes), Object.keys(forHr.changes));
+	// Even empty values: that a field was blank is not hers to see either.
+	assert.ok(Object.values(forAdmin.changes).every((change) => change.before === '[REDACTED]' && change.after === '[REDACTED]'));
+	// Other resources are unchanged for her.
+	assert.deepEqual((await as(request(server).get('/api/audit-logs/1'), lina).expect(200)).body.changes, {
+		status: { before: 'draft', after: 'void' },
+	});
+});
+
+test('"my activity" hides the values a module restricts, since it spans companies and roles', async (t) => {
+	const { server, store } = await auditApp(t);
+	store.auditRows.push(driverRow('8', { userId: '12', actorName: 'dana' }));
+	const dana = await tokenFor(server, 'dana');
+	const page = (await request(server).get('/api/audit-logs/mine').set('Authorization', `Bearer ${dana}`).expect(200)).body;
+	const driver = page.items.find((item) => item.id === '8');
+	assert.equal(driver.changes.firstName.after, '[REDACTED]');
+	assert.equal(driver.changes.nationalId.after, '[REDACTED]');
+	assert.deepEqual(page.items.find((item) => item.id === '4').changes, { status: { before: 'draft', after: 'void' } });
+});
+
 test('the access check answers without adding to the trail', async (t) => {
 	const { server, store } = await auditApp(t);
 	const lina = await tokenFor(server, 'lina');
