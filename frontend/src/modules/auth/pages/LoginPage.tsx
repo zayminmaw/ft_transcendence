@@ -10,6 +10,7 @@ import { useAuth } from '@hooks/useAuth';
 import { useSessionCheck } from '@hooks/useSessionCheck';
 import { ApiError, errorKey } from '@services/api-client';
 import type { SessionEnd } from '@app/store/session';
+import { LegalLinks } from '../components/LegalLinks';
 import { LoadingScreen } from '../components/LoadingScreen';
 import { useLogin } from '../hooks';
 import type { LoginValues } from '../api';
@@ -170,6 +171,7 @@ export function LoginPage() {
 							{t('login.backToWebsite')}
 						</Link>
 					</div>
+					<LegalLinks />
 				</main>
 			</div>
 		</div>
