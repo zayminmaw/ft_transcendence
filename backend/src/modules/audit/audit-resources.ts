@@ -144,6 +144,34 @@ export const AUDIT_RESOURCES: Record<string, AuditResource> = {
 		},
 		viewPermission: 'drivers.view',
 	},
+	// A vehicle or piece of equipment, who has it (check-out and check-in) and its services. Notes are free text that
+	// may hold anything.
+	asset: {
+		category: 'data',
+		fields: {
+			assetTag: 'plain',
+			assetName: 'plain',
+			category: 'plain',
+			acquisitionCost: 'plain',
+			currentBookValue: 'plain',
+			licensePlate: 'plain',
+			vin: 'plain',
+			insurancePolicyNumber: 'plain',
+			roadTaxExpiry: 'plain',
+			currentCondition: 'plain',
+			notes: 'redact',
+			holder: { driverId: 'plain', driverName: 'plain' },
+			service: {
+				serviceDate: 'plain',
+				serviceType: 'plain',
+				serviceCost: 'plain',
+				vendorServiceCenter: 'plain',
+				nextServiceDue: 'plain',
+				notes: 'redact',
+			},
+		},
+		viewPermission: 'assets.view',
+	},
 	audit_log: { category: 'access', fields: {} },
 	// Someone opened the activity insights page, or was refused. Only counts are shown there, so no fields are stored.
 	activity_insight: { category: 'access', fields: {} },

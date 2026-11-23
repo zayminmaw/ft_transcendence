@@ -1,14 +1,11 @@
+import type { ParseKeys } from 'i18next';
 import { z } from 'zod';
+import { code, money, optional, optionalDate, required } from '@utils/form-rules';
 import { ASSET_CATEGORIES, ASSET_CONDITIONS } from '../constants';
-import { key, money, optional, optionalDate, required } from './fields';
 
 // The same limits as the `assets` columns. Messages are translation keys, translated when shown.
 export const assetSchema = z.object({
-	assetTag: z
-		.string()
-		.trim()
-		.toUpperCase()
-		.regex(/^[A-Z0-9-]{2,64}$/, key('errors.invalidTag')),
+	assetTag: code(64, 'errors.invalidTag' satisfies ParseKeys<'assets'>),
 	assetName: required(128),
 	category: z.enum(ASSET_CATEGORIES),
 	currentCondition: z.enum(ASSET_CONDITIONS),

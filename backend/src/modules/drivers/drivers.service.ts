@@ -2,6 +2,7 @@ import { BadRequestException, ConflictException, ForbiddenException, Injectable,
 import type { EntityManager } from 'typeorm';
 import type { RequestMeta } from '../../common/context/request-meta';
 import { ID_PATTERN } from '../../common/ids';
+import { sentValues } from '../../common/sent-values';
 import type { TenantContext } from '../../common/types/authenticated-request';
 import { type AuditAction, AuditService } from '../audit';
 import { PermissionPolicyService } from '../rbac';
@@ -54,15 +55,6 @@ function publicDriver(driver: DriverRecord, seen: Seen): DriverView {
 }
 
 const AMOUNT_FIELDS = ['baseSalary', 'maxWeightCapacityKg', 'maxVolumeCapacityM3', 'commissionPerDrop'] as const;
-
-// The fields sent, without the ones left out (a DTO instance holds them as undefined), and the amounts as saved
-// however they were typed ("1.5" is saved as 1.50), so an unchanged amount isn't a change.
-function sentValues<T extends object>(body: T): Partial<T> {
-  const amounts: readonly string[] = AMOUNT_FIELDS;
-  return Object.fromEntries(Object.entries(body)
-    .filter(([, value]) => value !== undefined)
-    .map(([field, value]) => [field, amounts.includes(field) ? Number(value).toFixed(2) : value])) as Partial<T>;
-}
 
 // What a new driver gets for each optional field left out: active, no pay, no zone or capacity, not yet checked.
 const CREATE_DEFAULTS = {
@@ -118,7 +110,7 @@ export class DriversService {
 
   async create(actor: DriversActor, body: CreateDriverDto) {
     const seen = await this.requirePayrollAccess(actor.tenant, body);
-    const values = { ...CREATE_DEFAULTS, ...sentValues(body) } as DriverValues;
+    const values = { ...CREATE_DEFAULTS, ...sentValues(body, AMOUNT_FIELDS) } as DriverValues;
     if (missingTerminationDate(values)) throw REFUSALS.termination_date_required();
     const result = await this.drivers.create(actor.tenant.organizationId, values, this.auditStep(actor, 'create'));
     return publicDriver(savedDriver(result), seen);
@@ -128,7 +120,7 @@ export class DriversService {
   async update(actor: DriversActor, id: string, body: UpdateDriverDto) {
     requireId(id);
     const seen = await this.requirePayrollAccess(actor.tenant, body);
-    const result = await this.drivers.update(actor.tenant.organizationId, id, sentValues(body), this.auditStep(actor, 'update'));
+    const result = await this.drivers.update(actor.tenant.organizationId, id, sentValues(body, AMOUNT_FIELDS), this.auditStep(actor, 'update'));
     return publicDriver(savedDriver(result), seen);
   }
 
