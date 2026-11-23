@@ -107,6 +107,27 @@ test('a balance may go below zero, and the pending balance moves without a line'
   assert.equal((await chain(client)).length, 1);
 });
 
+test('a post that would take the pending balance below zero is refused and writes nothing', async () => {
+  const client = await merchant(meridian);
+  await post(meridian, client, [], { pendingChange: '30.00' });
+  const refused = await post(meridian, client, [line('credit', '50.00')], { pendingChange: '-30.01' });
+  assert.deepEqual(refused, { status: 'pending_too_low', pendingCodBalance: '30.00' });
+  assert.deepEqual(await balances(client), ['0.00', '30.00']);
+  assert.equal((await chain(client)).length, 0);
+  // Exactly empty is fine.
+  const emptied = await post(meridian, client, [line('credit', '50.00')], { pendingChange: '-30.00' });
+  assert.deepEqual([emptied.status, emptied.pendingCodBalance], ['posted', '0.00']);
+});
+
+test('a description counts characters the way the column does, so an emoji is one', async () => {
+  const client = await merchant(meridian);
+  const fits = `${'a'.repeat(254)}\u{1F600}`;
+  const result = await post(meridian, client, [line('credit', '1.00', { description: fits })]);
+  assert.equal(result.status, 'posted');
+  assert.equal(result.entries[0].description, fits);
+  await assert.rejects(post(meridian, client, [line('credit', '1.00', { description: `${fits}b` })]), /description/);
+});
+
 test('bad input throws and writes nothing', async () => {
   const client = await merchant(meridian);
   const bad = [

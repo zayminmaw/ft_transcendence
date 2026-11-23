@@ -8,7 +8,7 @@ import { z } from 'zod';
 import { Button, Input, LanguageSwitcher, PasswordInput } from '@global-components';
 import { useAuth } from '@hooks/useAuth';
 import { useSessionCheck } from '@hooks/useSessionCheck';
-import { ApiError } from '@services/api-client';
+import { ApiError, errorKey } from '@services/api-client';
 import type { SessionEnd } from '@app/store/session';
 import { LoadingScreen } from '../components/LoadingScreen';
 import { useLogin } from '../hooks';
@@ -43,10 +43,7 @@ const loginSchema = z.object({
 function errorMessageKey(error: unknown) {
 	// A login name the API's format check refuses can't belong to an account either.
 	if (error instanceof ApiError && error.status === 400) return 'errors.invalidCredentials';
-	const code = error instanceof ApiError ? error.code : undefined;
-	return code && code in ERROR_MESSAGES
-		? ERROR_MESSAGES[code as keyof typeof ERROR_MESSAGES]
-		: 'errors.unknown';
+	return errorKey(ERROR_MESSAGES, error);
 }
 
 export function LoginPage() {

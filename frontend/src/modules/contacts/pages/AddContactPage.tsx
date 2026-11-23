@@ -4,7 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Button, ModulePage, useToast } from '@global-components';
 import { useCompanyPath } from '@hooks/useCompanyPath';
 import { shownName, useCurrentWorkspace, useRoleName } from '@modules/auth';
-import { ApiError } from '@services/api-client';
+import { ApiError, errorCode } from '@services/api-client';
 import type { Contact } from '../api';
 import { CandidateTable } from '../components/CandidateTable';
 import { ContactFilters } from '../components/ContactFilters';
@@ -16,7 +16,7 @@ type Failure = { name: string; key: 'add.exists' | 'add.notEligible' | 'errors.u
 
 // What went wrong when the API refused an add. Both refusals mean the page was out of date: the lists reload.
 function failureKey(error: unknown): Failure['key'] {
-	const code = error instanceof ApiError ? error.code : undefined;
+	const code = errorCode(error);
 	if (code === 'CONTACT_EXISTS') return 'add.exists';
 	if (code === 'CONTACT_NOT_ELIGIBLE') return 'add.notEligible';
 	return 'errors.unknown';

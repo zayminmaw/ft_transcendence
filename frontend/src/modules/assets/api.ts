@@ -1,6 +1,9 @@
-// /api/assets (planned): the open company's vehicles and equipment, who has them, and their service history. Until
-// the API exists, the hooks answer from the sample data in data/sampleAssets.ts, with these shapes and the API's
-// refusals.
+// /api/assets: the open company's vehicles and equipment, who has them, and their service history. These are the
+// shapes it answers with.
+// The API path of one asset, or of something under it (e.g. '/check-out').
+export const assetPath = (assetId: string, rest = '') =>
+	`assets/${encodeURIComponent(assetId)}${rest}`;
+
 export type AssetCategory =
 	'motorcycle' | 'van' | 'thermal_bag' | 'barcode_scanner' | 'mobile_pos' | 'other';
 

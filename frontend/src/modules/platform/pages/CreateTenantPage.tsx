@@ -2,7 +2,7 @@ import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useNavigate } from 'react-router-dom';
 import { Button, Input, ModulePage, PasswordInput, TipCard, useToast } from '@global-components';
-import { ApiError } from '@services/api-client';
+import { fromErrorCode } from '@services/api-client';
 import { toSlug } from '@utils/slug';
 import type { CreateTenantValues } from '../api';
 import { CREATE_TENANT_DEFAULT_VALUES, CREATE_TENANT_FIELD_ERRORS } from '../constants';
@@ -48,12 +48,7 @@ export function CreateTenantPage() {
 				navigate(`/platform/tenants/${tenant.id}`, { replace: true });
 			},
 			onError: (error) => {
-				const field =
-					error instanceof ApiError && error.code
-						? CREATE_TENANT_FIELD_ERRORS[
-								error.code as keyof typeof CREATE_TENANT_FIELD_ERRORS
-							]
-						: undefined;
+				const field = fromErrorCode(CREATE_TENANT_FIELD_ERRORS, error);
 				if (field) setError(field, { message: error.message }, { shouldFocus: true });
 				else
 					toast({
