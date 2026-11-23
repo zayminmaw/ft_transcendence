@@ -3,6 +3,7 @@ import type { TFunction } from 'i18next';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { AnalyticsCard, Dialog, ModulePage, Table } from '@global-components';
+import { useRoleName } from '@modules/auth';
 import type { AnalyticsItem, TableColumn } from '@global-components';
 import { formatDate, formatNumber } from '@utils/format';
 import type { ActivityDetails, ActivityFilter, TenantActivityEvent } from '../api';
@@ -70,12 +71,11 @@ export function TenantActivityPage() {
 		const key = actionKey(event.action);
 		return key ? t(`activity.actions.${key}`) : event.action;
 	};
-	// Role codes (dispatcher, org_admin) as the audit log names them, or as words.
-	const roleLabel = (code: string) =>
-		i18n.exists(`audit:roles.${code}`)
-			? t(`roles.${code}` as 'roles.driver', { ns: 'audit' })
-			: code.replaceAll('_', ' ');
-	const describe = (event: TenantActivityEvent) => summary(t, i18n.language, roleLabel, event);
+	const roleName = useRoleName();
+	// Role codes (dispatcher, org_admin) by their shared name, or as words for a code with none.
+	const roleLabel = (code: string) => roleName({ code, name: code.replaceAll('_', ' ') });
+	const describe = (event: TenantActivityEvent) =>
+		summary(t, i18n.resolvedLanguage ?? 'en', roleLabel, event);
 	const {
 		events,
 		total,

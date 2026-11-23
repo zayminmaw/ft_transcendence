@@ -22,7 +22,7 @@ export function AssignAdministratorDialog({
 	tenant: TenantDetails;
 	onClose: () => void;
 }) {
-	const { t } = useTranslation('platform');
+	const { t, i18n } = useTranslation('platform');
 	const { toast } = useToast();
 	const { assignAdministrator, isAssigning } = useTenantMutations();
 	const [mode, setMode] = useState<'new' | 'existing'>('new');
@@ -46,7 +46,10 @@ export function AssignAdministratorDialog({
 		resolver: zodResolver(administratorAccountSchema),
 		defaultValues: NEW_ADMINISTRATOR_DEFAULT_VALUES,
 	});
-	const fieldError = (message?: string) => message && t(message as ParseKeys<'platform'>);
+	// Zod messages are translation keys; a server refusal arrives already translated, so it is shown as it is.
+	const fieldError = (message?: string) =>
+		message &&
+		(i18n.exists(message, { ns: 'platform' }) ? t(message as ParseKeys<'platform'>) : message);
 
 	const assign = (values: AssignAdministratorValues) => {
 		setError(null);

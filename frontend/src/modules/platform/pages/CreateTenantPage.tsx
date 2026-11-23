@@ -13,7 +13,7 @@ import { createTenantSchema } from '../schemas/createTenantSchema';
 import { platformErrorKey } from '../errors';
 
 export function CreateTenantPage() {
-	const { t } = useTranslation('platform');
+	const { t, i18n } = useTranslation('platform');
 	const navigate = useNavigate();
 	const { toast } = useToast();
 	const { createTenant, isCreating } = useTenantMutations();
@@ -33,7 +33,10 @@ export function CreateTenantPage() {
 		control,
 		name: ['organization.name', 'administrator.username'],
 	});
-	const fieldError = (message?: string) => message && t(message as ParseKeys<'platform'>);
+	// Zod messages are translation keys; a server refusal arrives already translated, so it is shown as it is.
+	const fieldError = (message?: string) =>
+		message &&
+		(i18n.exists(message, { ns: 'platform' }) ? t(message as ParseKeys<'platform'>) : message);
 
 	const review = [
 		{ label: t('create.reviewCompany'), value: orgName.trim() || '—' },

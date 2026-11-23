@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { Input } from '@global-components';
+import { useRoleName } from '@modules/auth';
 import type { TenantMember } from '../api';
 import { MEMBER_LIST_LIMIT } from '../constants';
 
@@ -26,6 +27,7 @@ export function MemberPicker({
 	onCreateNew: () => void;
 }) {
 	const { t } = useTranslation('platform');
+	const roleName = useRoleName();
 	// Nobody to choose and nothing typed: the company has no candidates, so there is nothing to search either.
 	if (!search && !isPending && !isError && members.length === 0) {
 		return (
@@ -90,7 +92,9 @@ export function MemberPicker({
 										</span>
 									</span>
 									<span className="badge badge-sm shrink-0 border-base-300 bg-base-100">
-										{member.removed ? t('picker.removed') : member.role.name}
+										{member.removed
+											? t('picker.removed')
+											: roleName(member.role)}
 									</span>
 								</label>
 							</li>

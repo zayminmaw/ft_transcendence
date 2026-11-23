@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Dialog, useToast } from '@global-components';
+import { useRoleName } from '@modules/auth';
 import type { RevokeAdministratorValues, TenantAdministrator, TenantDetails } from '../api';
 import { useMemberRoles } from '../hooks/useTenantAdministrators';
 import { useTenantMutations } from '../hooks/useTenantMutations';
@@ -18,6 +19,7 @@ export function RevokeAdministratorDialog({
 	onClose: () => void;
 }) {
 	const { t } = useTranslation('platform');
+	const roleName = useRoleName();
 	const { toast } = useToast();
 	const { revokeAdministrator, isRevoking, revokeError } = useTenantMutations();
 	// The same count as the API. After a conflict the details refresh, and this follows.
@@ -125,7 +127,7 @@ export function RevokeAdministratorDialog({
 									</option>
 									{roles.map((role) => (
 										<option key={role.code} value={role.code}>
-											{role.name}
+											{roleName(role)}
 										</option>
 									))}
 								</select>
