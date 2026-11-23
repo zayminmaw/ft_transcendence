@@ -217,11 +217,11 @@
 			"sections": {
 				"collect": {
 					"title": "1. Information We Collect",
-					"content": "Transcend collects information required to provide multi-tenant courier and logistics management services. This includes account credentials (such as 42 Intra login credentials and email), profile details, organization memberships, parcel waybill data, recipient contact information, driver assignments, and vehicle asset records."
+					"content": "Transcend collects the information needed to provide multi-tenant courier and logistics management services. This includes account details (username, email address and, if you sign in with a password, a securely hashed copy of it), 42 profile information (the email address on your 42 profile) if you sign in with 42, profile details, organization memberships, parcel waybill data, recipient contact information, driver assignments, and vehicle asset records. For each sign-in session and each action recorded in the audit trail, we also store the IP address and browser user agent it came from."
 				},
 				"telemetry": {
-					"title": "2. Operational & Telemetry Data",
-					"content": "To facilitate accurate dispatch and proof of delivery, our platform may process operational telemetry such as delivery timestamps, status update events, and geographic coordinates associated with parcel handoffs."
+					"title": "2. Operational Data",
+					"content": "To run dispatch, the platform records each parcel status change with its time and the account that made it. Location coordinates and proof of delivery (a signature and a doorstep photo) are planned features. They are not collected yet, and this policy will be updated before they are."
 				},
 				"security": {
 					"title": "3. Data Security & Tenant Isolation",
@@ -229,17 +229,22 @@
 				},
 				"oauth": {
 					"title": "4. Third-Party Services & OAuth",
-					"content": "Transcend integrates with third-party authentication providers, including the 42 School OAuth 2.0 API. When you authenticate using 42, we only retrieve authorized profile information necessary to verify your identity and manage workspace membership."
+					"content": "Transcend integrates with third-party authentication providers, including the 42 School OAuth 2.0 API. When you authenticate using 42, we never receive your 42 password; we only retrieve the email address on your 42 profile to find your Transcend account."
+				},
+				"cookies": {
+					"title": "5. Cookies & Browser Storage",
+					"content": "Transcend uses only the cookies needed to sign you in. A refresh-token cookie keeps you signed in: page scripts cannot read it, it is sent only to the sign-in service, and your session ends after 7 days without use or after 30 days at most. Signing in with 42 sets a second cookie for 10 minutes to protect that sign-in. The short-lived access token is kept only in the open page's memory. Your language choice is saved in your browser's local storage. We use no advertising or analytics cookies."
 				},
 				"retention": {
-					"title": "5. Retention & Your Rights",
-					"content": "Logistics and financial ledger records are retained in accordance with operational and audit requirements. Users have the right to inspect their personal information, request corrections, or request account deactivation through their organization administrator."
+					"title": "6. Retention & Your Rights",
+					"content": "Audit-trail entries, which record who did what and when, are kept for a fixed period from the time of the action: 365 days for sign-ins and other security events, 180 days for changes to company data and platform administration, and 90 days for records of who viewed the audit trail or activity reports. They cannot be deleted before that period ends. Logistics and financial ledger records are kept for as long as your organization needs them for its operations and accounts. Users have the right to inspect their personal information, request corrections, or request account deactivation through their organization administrator."
 				},
 				"updates": {
-					"title": "6. Updates & Contact",
-					"content": "We may update this Privacy Policy from time to time. If you have questions regarding data privacy or compliance, please reach out to the Transcend platform team via the contact form or through your system administrator."
+					"title": "7. Updates & Contact",
+					"content": "We may update this Privacy Policy from time to time; the date at the top shows the latest version. For questions about data privacy or compliance, email privacy@transcend.com or contact your organization administrator."
 				}
-			}
+			},
+			"updated": "Last updated: {{date}}"
 		},
 		"terms": {
 			"title": "Terms of Service",
