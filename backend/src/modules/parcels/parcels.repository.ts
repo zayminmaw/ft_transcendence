@@ -4,22 +4,32 @@ import { DataSource, type EntityManager } from 'typeorm';
 import { isDuplicateKey } from '../../common/database-errors';
 import { containsPattern } from '../../common/like-pattern';
 import {
-  ASSIGNABLE_STATUSES, ON_DUTY_STATUSES, PARCEL_QUEUES, PARCEL_STATUSES, type ParcelStatus, STATUS_MOVES, VEHICLE_CATEGORIES,
+  ASSIGNABLE_STATUSES, ON_DUTY_STATUSES, PARCEL_QUEUES, PARCEL_STATUSES, PROOF_FILES, PROOF_KINDS, type ParcelStatus, type ProofKind,
+  STATUS_MOVES, VEHICLE_CATEGORIES,
 } from './constants';
 import type { ListParcelsQueryDto, StatusMoveDto } from './dto/parcel.dto';
 import { Parcel } from './entities/parcel.entity';
 import { ParcelEvent } from './entities/parcel-event.entity';
 import type {
-  DispatchDriver, NewParcel, ParcelCounts, ParcelDetails, ParcelDriver, ParcelEventRecord, ParcelFormOptions, ParcelRecord,
-  ParcelRun, ParcelVehicle,
+  DeliveryValues, DispatchDriver, NewParcel, ParcelCounts, ParcelDriver, ParcelEventRecord, ParcelFormOptions, ParcelRecord, ParcelRun,
+  ParcelVehicle,
 } from './types/parcel';
 
 // Writes its audit row with the change's own manager, so both are saved or neither.
 export type AuditStep = (manager: EntityManager, before: ParcelRecord | null, after: ParcelRecord) => Promise<void>;
 
-export type Refusal = 'not_found' | 'client_unavailable' | 'driver_unavailable' | 'wrong_status';
-// Every answer of a change: the saved parcel, or the refusal it ended in.
-export type ParcelResult = { status: 'created' | 'updated'; parcel: ParcelRecord } | { status: Refusal };
+export type Refusal = 'not_found' | 'client_unavailable' | 'driver_unavailable' | 'wrong_status' | 'proof_missing';
+// Every answer of a change: the saved parcel, or the refusal it ended in. `discardedFileIds` are proof files the
+// parcel no longer points at (a failed attempt drops its unconfirmed proof): the caller removes them once committed.
+export type ParcelResult =
+  | { status: 'created' | 'updated'; parcel: ParcelRecord; discardedFileIds?: string[] }
+  | { status: Refusal };
+// Attaching or removing one proof file: the file it replaced or removed, for the caller to delete once committed.
+export type ProofResult = { status: 'updated'; previousFileId: string | null } | { status: Refusal };
+
+// The file id of each kind of proof, or null.
+export type ProofFileIds = Record<ProofKind, string | null>;
+export type StoredParcelDetails = ParcelRecord & { events: ParcelEventRecord[]; proofFileIds: ProofFileIds };
 
 type Row = Record<string, string | number | Date | null>;
 
@@ -55,6 +65,9 @@ const VEHICLE_COLUMNS = `vehicle.id AS vehicleId, vehicle.asset_tag AS vehicleTa
          vehicle.license_plate AS vehiclePlate`;
 const RUN_COLUMNS = "run.id AS runId, DATE_FORMAT(run.run_date, '%Y%m%d') AS runDay";
 
+// The file id of each kind of proof, read by proofOf.
+const PROOF_COLUMNS = PROOF_KINDS.map((kind) => `parcel.${PROOF_FILES[kind].column} AS ${kind}`).join(', ');
+
 // A parcel and what it points to. Every query adds its own conditions after the company's.
 const PARCEL_SELECT = `
   SELECT parcel.id, parcel.tracking_number AS trackingNumber, parcel.lifecycle_status AS status,
@@ -65,7 +78,9 @@ const PARCEL_SELECT = `
          parcel.delivery_city_zone AS deliveryCityZone, parcel.delivery_landmark AS deliveryLandmark,
          parcel.weight_kg AS weightKg, parcel.is_fragile AS isFragile, parcel.delivery_fee AS deliveryFee,
          parcel.cod_amount AS codAmount, parcel.delivery_attempt_count AS deliveryAttemptCount,
-         parcel.failed_reason_code AS failedReasonCode, parcel.created_at AS createdAt, parcel.updated_at AS updatedAt
+         parcel.failed_reason_code AS failedReasonCode, parcel.delivered_at AS deliveredAt,
+         parcel.delivered_latitude AS deliveredLatitude, parcel.delivered_longitude AS deliveredLongitude,
+         parcel.created_at AS createdAt, parcel.updated_at AS updatedAt, ${PROOF_COLUMNS}
     FROM parcels parcel
     JOIN clients client ON client.id = parcel.client_id
     LEFT JOIN employees driver ON driver.id = parcel.assigned_driver_id
@@ -114,9 +129,17 @@ function toRecord(row: Row): ParcelRecord {
     codAmount: String(row.codAmount),
     deliveryAttemptCount: Number(row.deliveryAttemptCount),
     failedReasonCode: text(row.failedReasonCode),
+    deliveredAt: (row.deliveredAt as Date | null) ?? null,
+    deliveryLocation: row.deliveredLatitude === null || row.deliveredLongitude === null
+      ? null
+      : { latitude: String(row.deliveredLatitude), longitude: String(row.deliveredLongitude) },
     createdAt: row.createdAt as Date,
     updatedAt: row.updatedAt as Date,
   };
+}
+
+function proofOf(row: Row): ProofFileIds {
+  return Object.fromEntries(PROOF_KINDS.map((kind) => [kind, text(row[kind])])) as ProofFileIds;
 }
 
 function toEvent(row: Row): ParcelEventRecord {
@@ -186,10 +209,17 @@ export class ParcelsRepository {
     return { statuses, driversOut: Number(out?.drivers ?? 0) };
   }
 
-  // The parcel and its history at once; another company's history is never answered, as its parcel isn't found.
-  async find(organizationId: string, id: string): Promise<ParcelDetails | null> {
-    const [parcel, events] = await Promise.all([this.findOne(this.database.manager, organizationId, id), this.events(id)]);
-    return parcel && { ...parcel, events };
+  // The parcel, its history and its proof files at once; another company's history is never answered, as its parcel
+  // isn't found.
+  async find(organizationId: string, id: string): Promise<StoredParcelDetails | null> {
+    const [row, events] = await Promise.all([this.findRow(this.database.manager, organizationId, id), this.events(id)]);
+    return row ? { ...toRecord(row), events, proofFileIds: proofOf(row) } : null;
+  }
+
+  // Where the parcel is now, or null when it isn't in the company.
+  async statusOf(organizationId: string, id: string): Promise<ParcelStatus | null> {
+    const [row] = await this.database.query('SELECT lifecycle_status AS status FROM parcels WHERE id = ? AND organization_id = ?', [id, organizationId]);
+    return row ? (row.status as ParcelStatus) : null;
   }
 
   // The active merchants, by name, and the zones already in use (drivers' zones and parcels' zones).
@@ -265,13 +295,19 @@ export class ParcelsRepository {
   // driver it failed with in the history.
   move(organizationId: string, id: string, actorId: string, move: StatusMoveDto, audit: AuditStep): Promise<ParcelResult> {
     return this.database.transaction(WRITES, async (manager) => {
-      const before = await this.findOne(manager, organizationId, id, true);
-      if (!before) return { status: 'not_found' };
-      if (before.status !== STATUS_MOVES[move.status]) return { status: 'wrong_status' };
+      const locked = await this.lock(manager, organizationId, id);
+      if (!locked) return { status: 'not_found' };
+      if (locked.status !== STATUS_MOVES[move.status]) return { status: 'wrong_status' };
+      const before = (await this.findOne(manager, organizationId, id))!;
       const failed = move.status === 'failed_attempt';
+      // The attempt's proof was never confirmed, and the next attempt takes its own.
+      const discardedFileIds = failed ? Object.values(locked.proof).filter((file): file is string => file !== null) : [];
       await manager.update(Parcel, { organizationId, id }, {
         lifecycleStatus: move.status,
-        ...(failed && { deliveryAttemptCount: () => 'delivery_attempt_count + 1', failedReasonCode: move.reasonCode }),
+        ...(failed && {
+          deliveryAttemptCount: () => 'delivery_attempt_count + 1', failedReasonCode: move.reasonCode,
+          signatureFileId: null, doorstepPhotoFileId: null, deliveryNoteFileId: null,
+        }),
       });
       await manager.insert(ParcelEvent, {
         parcelId: id,
@@ -284,7 +320,7 @@ export class ParcelsRepository {
       });
       const after = (await this.findOne(manager, organizationId, id))!;
       await audit(manager, before, after);
-      return { status: 'updated', parcel: after };
+      return { status: 'updated', parcel: after, discardedFileIds };
     });
   }
 
@@ -313,6 +349,44 @@ export class ParcelsRepository {
       });
       await manager.insert(ParcelEvent, {
         parcelId: id, actorUserId: actorId, status: 'out_for_delivery', driverId, assetId: vehicleId, dispatchRunId: runId, notes,
+      });
+      const after = (await this.findOne(manager, organizationId, id))!;
+      await audit(manager, before, after);
+      return { status: 'updated', parcel: after };
+    });
+  }
+
+  // Points one kind of proof at a file the caller has just saved, while the parcel is out for delivery. The file it
+  // replaces is answered, not deleted: that happens once this has committed.
+  attachProof(organizationId: string, id: string, kind: ProofKind, fileId: string | null): Promise<ProofResult> {
+    return this.database.transaction(WRITES, async (manager) => {
+      const locked = await this.lock(manager, organizationId, id);
+      if (!locked) return { status: 'not_found' };
+      if (locked.status !== 'out_for_delivery') return { status: 'wrong_status' };
+      await manager.update(Parcel, { organizationId, id }, { [PROOF_FILES[kind].property]: fileId });
+      return { status: 'updated', previousFileId: locked.proof[kind] };
+    });
+  }
+
+  // Confirms the delivery of a parcel out for delivery whose signature and photo are uploaded. The history keeps the
+  // driver, vehicle and run it was delivered with. The cash collected stays pending: only the COD handover settles it.
+  deliver(organizationId: string, id: string, actorId: string, values: DeliveryValues, audit: AuditStep): Promise<ParcelResult> {
+    return this.database.transaction(WRITES, async (manager) => {
+      const locked = await this.lock(manager, organizationId, id);
+      if (!locked) return { status: 'not_found' };
+      if (locked.status !== 'out_for_delivery') return { status: 'wrong_status' };
+      if (PROOF_KINDS.some((kind) => PROOF_FILES[kind].required && locked.proof[kind] === null)) return { status: 'proof_missing' };
+      const before = (await this.findOne(manager, organizationId, id))!;
+      await manager.update(Parcel, { organizationId, id }, {
+        lifecycleStatus: 'delivered',
+        deliveredAt: () => 'CURRENT_TIMESTAMP',
+        // DECIMAL(10, 8) and DECIMAL(11, 8): more digits would only be rounded.
+        deliveredLatitude: values.latitude === null ? null : values.latitude.toFixed(8),
+        deliveredLongitude: values.longitude === null ? null : values.longitude.toFixed(8),
+      });
+      await manager.insert(ParcelEvent, {
+        parcelId: id, actorUserId: actorId, status: 'delivered', notes: values.notes,
+        driverId: before.driver?.id ?? null, assetId: before.vehicle?.id ?? null, dispatchRunId: before.run?.id ?? null,
       });
       const after = (await this.findOne(manager, organizationId, id))!;
       await audit(manager, before, after);
@@ -361,10 +435,25 @@ export class ParcelsRepository {
     return rows.map(toEvent);
   }
 
+  // Holds the parcel's row until the transaction ends, and answers where it is and its proof files; null when it isn't
+  // in the company.
+  private async lock(manager: EntityManager, organizationId: string, id: string): Promise<{ status: ParcelStatus; proof: ProofFileIds } | null> {
+    const [row] = await manager.query(
+      `SELECT parcel.lifecycle_status AS status, ${PROOF_COLUMNS} FROM parcels parcel WHERE parcel.id = ? AND parcel.organization_id = ? FOR UPDATE`,
+      [id, organizationId],
+    );
+    return row ? { status: row.status as ParcelStatus, proof: proofOf(row) } : null;
+  }
+
+  private async findRow(manager: EntityManager, organizationId: string, id: string): Promise<Row | undefined> {
+    const [row] = await manager.query(`${PARCEL_SELECT} AND parcel.id = ?`, [organizationId, id]);
+    return row;
+  }
+
   // `lock` holds the parcel's row until the transaction ends.
   private async findOne(manager: EntityManager, organizationId: string, id: string, lock = false): Promise<ParcelRecord | null> {
-    if (lock) await manager.query('SELECT id FROM parcels WHERE id = ? AND organization_id = ? FOR UPDATE', [id, organizationId]);
-    const [row] = await manager.query(`${PARCEL_SELECT} AND parcel.id = ?`, [organizationId, id]);
+    if (lock && !(await this.lock(manager, organizationId, id))) return null;
+    const row = await this.findRow(manager, organizationId, id);
     return row ? toRecord(row) : null;
   }
 }

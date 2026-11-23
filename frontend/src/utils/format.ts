@@ -12,6 +12,16 @@ export function formatNumber(
 	return new Intl.NumberFormat(language, { ...options, numberingSystem: 'latn' }).format(value);
 }
 
+// "1.2 MB", "840 kB": a file's size, in megabytes from 1 MB up.
+export function formatFileSize(bytes: number, language: string): string {
+	const megabytes = bytes >= 1024 * 1024;
+	return formatNumber(megabytes ? bytes / 1024 / 1024 : Math.max(1, bytes / 1024), language, {
+		style: 'unit',
+		unit: megabytes ? 'megabyte' : 'kilobyte',
+		maximumFractionDigits: megabytes ? 1 : 0,
+	});
+}
+
 // A 'YYYY-MM-DD' DATE column is a calendar day: read it as local midnight, not UTC midnight, so it never shows as
 // the day before in time zones behind UTC.
 export function parseDay(value: string): Date {

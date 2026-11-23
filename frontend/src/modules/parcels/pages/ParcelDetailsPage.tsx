@@ -7,6 +7,7 @@ import { useCompanyPath } from '@hooks/useCompanyPath';
 import { useCan } from '@modules/auth';
 import { formatDate } from '@utils/format';
 import type { ParcelEvent, ParcelStatus } from '../api';
+import { ProofPreview } from '../components/ProofPreview';
 import {
 	MarkInHubDialog,
 	MarkPickedUpDialog,
@@ -16,6 +17,7 @@ import {
 import type { ParcelDialogProps } from '../components/ParcelDialogs';
 import {
 	ASSIGNABLE_STATUSES,
+	coordinatesLabel,
 	failureReasonLabels,
 	parcelStatusLabels,
 	vehicleLabel,
@@ -95,6 +97,14 @@ export function ParcelDetailsPage() {
 	const action = can('parcels.update_status') ? dialogActions[parcel.status] : undefined;
 	const deliverable = can('parcels.mark_delivered') && parcel.status === 'out_for_delivery';
 	const reason = parcel.failedReasonCode && failureReasonLabels[parcel.failedReasonCode];
+	const proofFiles = (
+		[
+			['Recipient signature', parcel.proof.signature],
+			['Doorstep photo', parcel.proof.photo],
+			['Signed delivery note', parcel.proof.note],
+		] as const
+	).flatMap(([label, file]) => (file ? [{ label, file }] : []));
+	const location = parcel.deliveryLocation;
 
 	const details = [
 		{ label: 'Recipient', value: parcel.recipientName },
@@ -197,6 +207,37 @@ export function ParcelDetailsPage() {
 							))}
 						</dl>
 					</section>
+
+					{parcel.status === 'delivered' && (
+						<section
+							aria-labelledby="parcel-proof-title"
+							className="rounded-box border border-base-300 p-4 md:p-8"
+						>
+							<h2 id="parcel-proof-title" className="text-lg font-semibold">
+								Proof of delivery
+							</h2>
+							<dl className="mt-6 grid grid-cols-1 gap-5 md:grid-cols-2">
+								<DetailItem label="Delivered">
+									{parcel.deliveredAt ? time(parcel.deliveredAt) : '—'}
+								</DetailItem>
+								<DetailItem label="Location" ltr>
+									{location
+										? coordinatesLabel(location.latitude, location.longitude)
+										: 'Not shared'}
+								</DetailItem>
+							</dl>
+							<div className="mt-6 grid grid-cols-1 gap-5 md:grid-cols-2">
+								{proofFiles.map(({ label, file }) => (
+									<figure key={label} className="flex min-w-0 flex-col gap-2">
+										<figcaption className="text-sm font-medium">
+											{label}
+										</figcaption>
+										<ProofPreview label={label} saved={file} />
+									</figure>
+								))}
+							</div>
+						</section>
+					)}
 
 					<section
 						aria-labelledby="parcel-history-title"

@@ -1,6 +1,8 @@
 import { applyDecorators } from '@nestjs/common';
 import { Type } from 'class-transformer';
-import { IsBoolean, IsIn, IsInt, IsNotEmpty, IsOptional, IsString, Matches, MaxLength, Min, ValidateIf } from 'class-validator';
+import {
+  IsBoolean, IsIn, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, Matches, Max, MaxLength, Min, ValidateIf,
+} from 'class-validator';
 import { Trim, TrimOrNull } from '../../../common/decorators/trim.decorator';
 import { ID_PATTERN } from '../../../common/ids';
 import { PAGE_SIZES } from '../../../common/paging';
@@ -61,6 +63,20 @@ export class StatusMoveDto {
 
 export class AssignParcelDto {
   @Id() driverId!: string;
+  @OptionalText(NOTES_MAX_LENGTH) notes?: string | null;
+}
+
+// Confirms a delivery whose signature and photo are already uploaded (POST /parcels/:id/proof/:kind). The location is
+// where the device was, both coordinates or neither: a browser may refuse to share it.
+export class DeliverParcelDto {
+  @ValidateIf((body: DeliverParcelDto) => body.latitude != null || body.longitude != null)
+  @IsNumber({ allowNaN: false, allowInfinity: false }) @Min(-90) @Max(90)
+  latitude?: number | null;
+
+  @ValidateIf((body: DeliverParcelDto) => body.latitude != null || body.longitude != null)
+  @IsNumber({ allowNaN: false, allowInfinity: false }) @Min(-180) @Max(180)
+  longitude?: number | null;
+
   @OptionalText(NOTES_MAX_LENGTH) notes?: string | null;
 }
 

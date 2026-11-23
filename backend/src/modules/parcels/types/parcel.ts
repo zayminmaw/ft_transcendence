@@ -1,4 +1,4 @@
-import type { ParcelStatus } from '../constants';
+import type { ParcelStatus, ProofKind } from '../constants';
 
 // The people and things a parcel points to, as the screens name them.
 export interface ParcelClient { id: string; code: string; name: string }
@@ -28,6 +28,9 @@ export interface ParcelRecord {
   codAmount: string;
   deliveryAttemptCount: number;
   failedReasonCode: string | null;
+  // Set once the delivery is confirmed. The location is where the device was then, if it shared it.
+  deliveredAt: Date | null;
+  deliveryLocation: { latitude: string; longitude: string } | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -46,8 +49,28 @@ export interface ParcelEventRecord {
   notes: string | null;
 }
 
+// One file of the proof of delivery. `url` is a signed link that opens it for 10 to 15 minutes.
+export interface ProofFile {
+  id: string;
+  name: string;
+  mimeType: string;
+  sizeBytes: number;
+  url: string;
+}
+
+export type ParcelProof = Record<ProofKind, ProofFile | null>;
+
+// The proof's files are uploaded while the parcel is out for delivery and kept once it is delivered.
 export interface ParcelDetails extends ParcelRecord {
   events: ParcelEventRecord[];
+  proof: ParcelProof;
+}
+
+// What the confirmed delivery records besides its files.
+export interface DeliveryValues {
+  latitude: number | null;
+  longitude: number | null;
+  notes: string | null;
 }
 
 // Over the whole company, whatever the search and filter: parcels per status, and the drivers out with parcels now.

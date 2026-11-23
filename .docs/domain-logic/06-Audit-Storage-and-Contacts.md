@@ -68,7 +68,7 @@ There is no generic upload API. The signed GET route is storage's only controlle
 
 **STO-07 — Access lifetime limitation.** Signed download validates signature and expiry, then looks up the file; it does not recheck company suspension, membership, or account access. Previously issued links therefore remain usable until expiry or file removal, and browsers may retain already-downloaded copies. For a record needing authorization on every fetch, serve through an owning domain route using company-scoped `download` instead. Do not claim suspension immediately revokes a signed link.
 
-**STO-08 (Required).** Persist a file ID in the owning record, never a disk path or expiring signed URL. The parcel URL columns need an agreed migration for file references. A failed business save after successful file upload can leave an orphan; business/storage cleanup policy remains to be implemented.
+**STO-08 (Required).** Persist a file ID in the owning record, never a disk path or expiring signed URL. Parcels keep their proof-of-delivery files by ID since `1793577600000-DeliveryProof`. A failed business save after successful file upload can leave an orphan; business/storage cleanup policy remains to be implemented.
 
 **STO-09 (Open).** Removing a company cascades file metadata in SQL but does not remove its disk folder. There is no tenant-delete route or general orphan cleanup worker. Define lifecycle cleanup before supporting deletion, replacement, or legal retention workflows for files.
 

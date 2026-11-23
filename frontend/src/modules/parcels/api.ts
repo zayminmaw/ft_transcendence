@@ -60,8 +60,24 @@ export type Parcel = {
 	codAmount: string;
 	deliveryAttemptCount: number;
 	failedReasonCode: FailureReason | null;
+	// Set once the delivery is confirmed; the location is where the device was then, if it shared it.
+	deliveredAt: string | null;
+	deliveryLocation: { latitude: string; longitude: string } | null;
 	createdAt: string;
 	updatedAt: string;
+};
+
+// The files of a proof of delivery: the recipient's signature and the doorstep photo (both required, images), and
+// the delivery note the recipient signed on paper (optional, an image or a PDF).
+export type ProofKind = 'signature' | 'photo' | 'note';
+
+// One proof file. `url` is a signed link that opens it for 10 to 15 minutes, with no login.
+export type ProofFile = {
+	id: string;
+	name: string;
+	mimeType: string;
+	sizeBytes: number;
+	url: string;
 };
 
 // One step of the history, oldest first. An assignment names the driver, vehicle and run it went out with; a failed
@@ -79,7 +95,18 @@ export type ParcelEvent = {
 	notes: string | null;
 };
 
-export type ParcelDetails = Parcel & { events: ParcelEvent[] };
+// The proof is uploaded while the parcel is out for delivery and kept once it is delivered.
+export type ParcelDetails = Parcel & {
+	events: ParcelEvent[];
+	proof: Record<ProofKind, ProofFile | null>;
+};
+
+// POST /api/parcels/:id/delivery, once the signature and photo are uploaded: both coordinates or neither.
+export type DeliveryValues = {
+	latitude: number | null;
+	longitude: number | null;
+	notes: string | null;
+};
 
 export type ParcelList = {
 	items: Parcel[];
@@ -118,7 +145,7 @@ export type NewParcelValues = {
 };
 
 // POST /api/parcels/:id/status: one step forward. Out for delivery comes from an assignment; delivered from proof
-// of delivery.
+// of delivery (POST /api/parcels/:id/delivery).
 export type StatusMove =
 	| { status: 'picked_up'; notes?: string }
 	| { status: 'in_hub_sorted'; hubLocation: string; notes?: string }

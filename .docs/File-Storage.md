@@ -33,6 +33,7 @@ Use Multer's `FileInterceptor` with one of the ready-made option sets. They keep
 | --- | --- | --- |
 | `imageUploadOptions` | JPEG, PNG, WebP | 413 if too large, 400 for another type |
 | `documentUploadOptions` | PDF, Word (`.doc`, `.docx`) | 413 if too large, 400 for another type |
+| `imageOrPdfUploadOptions` | JPEG, PNG, WebP, PDF | 413 if too large, 400 for another type |
 
 ```ts
 import { BadRequestException, Controller, Param, Post, Req, UploadedFile, UseInterceptors } from '@nestjs/common';
@@ -46,7 +47,7 @@ export class ParcelsController {
   constructor(private readonly parcels: ParcelsService) {}
 
   @Post(':parcelId/photo')
-  @RequirePermission('parcels.update') // your module's own permission check
+  @RequirePermission('parcels.mark_delivered') // your module's own permission check
   @UseInterceptors(FileInterceptor('file', imageUploadOptions))
   uploadPhoto(
     @Param('parcelId') parcelId: string,
@@ -105,7 +106,9 @@ async photo(@Param('parcelId') parcelId: string, @Req() request: AuthenticatedRe
 | Method | Use |
 | --- | --- |
 | `find(organizationId, id)` | The file's details (`FileView`) without its bytes. |
+| `linked(organizationId, id)` | The file's details and a signed link from one lookup: what your API answers for each file. |
 | `delete(organizationId, id)` | Removes the file from disk, then its row. Clear your own reference to it first (or in the same flow). |
+| `deleteQuietly(organizationId \| null, id)` | Like `delete` (or `deleteAccountFile` with `null`), but a failure is logged, not thrown: for a file your saved change has already let go of (replaced, removed, or refused). |
 
 Every method throws `404 File not found.` when the id does not exist or belongs to another company.
 

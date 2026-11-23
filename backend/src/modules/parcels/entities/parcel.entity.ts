@@ -1,8 +1,8 @@
 import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
 import { PARCEL_STATUSES, type ParcelStatus } from '../constants';
 
-// Mirrors `parcels`, without the proof-of-delivery columns, which only POD will write. The client, driver and asset
-// tables belong to other modules, so the repository joins them in SQL rather than through relations.
+// Mirrors `parcels`. The client, driver, asset and storage tables belong to other modules, so the repository joins them
+// in SQL rather than through relations.
 @Entity('parcels')
 export class Parcel {
   @PrimaryGeneratedColumn({ type: 'bigint', unsigned: true })
@@ -65,6 +65,25 @@ export class Parcel {
 
   @Column({ name: 'failed_reason_code', type: 'varchar', length: 64, nullable: true })
   failedReasonCode!: string | null;
+
+  // Proof of delivery: files of the storage module, uploaded while the parcel is out for delivery (PROOF_FILES).
+  @Column({ name: 'signature_file_id', type: 'bigint', unsigned: true, nullable: true })
+  signatureFileId!: string | null;
+
+  @Column({ name: 'doorstep_photo_file_id', type: 'bigint', unsigned: true, nullable: true })
+  doorstepPhotoFileId!: string | null;
+
+  @Column({ name: 'delivery_note_file_id', type: 'bigint', unsigned: true, nullable: true })
+  deliveryNoteFileId!: string | null;
+
+  @Column({ name: 'delivered_at', type: 'timestamp', nullable: true })
+  deliveredAt!: Date | null;
+
+  @Column({ name: 'delivered_latitude', type: 'decimal', precision: 10, scale: 8, nullable: true })
+  deliveredLatitude!: string | null;
+
+  @Column({ name: 'delivered_longitude', type: 'decimal', precision: 11, scale: 8, nullable: true })
+  deliveredLongitude!: string | null;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamp' })
   createdAt!: Date;

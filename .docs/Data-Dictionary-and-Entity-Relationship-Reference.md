@@ -317,8 +317,9 @@ No contacts table or presence storage is implemented in the 22-table baseline. A
 | `lifecycle_status` | `ENUM(...)` | `NOT NULL`, `DEFAULT 'draft'`, `INDEX` | Lifecycle status |
 | `delivery_attempt_count`| `TINYINT UNSIGNED` | `NOT NULL`, `DEFAULT 0` | Failed attempts counter |
 | `failed_reason_code` | `VARCHAR(64)` | `NULL` | Failure reason code |
-| `recipient_signature_url`| `VARCHAR(255)` | `NULL` | Signature image URL |
-| `doorstep_photo_url` | `VARCHAR(255)` | `NULL` | POD photo URL |
+| `signature_file_id` | `BIGINT UNSIGNED` | `NULL`; FK -> storage_files.id (`ON DELETE SET NULL`) | POD recipient signature (image). Replaced `recipient_signature_url` in `1793577600000-DeliveryProof` |
+| `doorstep_photo_file_id` | `BIGINT UNSIGNED` | `NULL`; FK -> storage_files.id (`ON DELETE SET NULL`) | POD doorstep photo (image). Replaced `doorstep_photo_url` |
+| `delivery_note_file_id` | `BIGINT UNSIGNED` | `NULL`; FK -> storage_files.id (`ON DELETE SET NULL`) | Optional POD delivery note the recipient signed (image or PDF) |
 | `delivered_at` | `TIMESTAMP` | `NULL` | Completion timestamp |
 | `delivered_latitude` | `DECIMAL(10, 8)` | `NULL` | POD latitude ping |
 | `delivered_longitude` | `DECIMAL(11, 8)` | `NULL` | POD longitude ping |
@@ -665,6 +666,9 @@ These definitions are taken from the baseline. A composite unique key applies to
 | `parcels.client_id` | `clients.id` | RESTRICT | `fk_parcel_client` |
 | `parcels.assigned_driver_id` | `delivery_drivers.employee_id` | SET NULL | `fk_parcel_driver` |
 | `parcels.assigned_asset_id` | `assets.id` | SET NULL | `fk_parcel_asset` |
+| `parcels.signature_file_id` | `storage_files.id` | SET NULL | `fk_parcel_signature_file` |
+| `parcels.doorstep_photo_file_id` | `storage_files.id` | SET NULL | `fk_parcel_photo_file` |
+| `parcels.delivery_note_file_id` | `storage_files.id` | SET NULL | `fk_parcel_note_file` |
 | `parcel_events.parcel_id` | `parcels.id` | CASCADE | `fk_pe_parcel` |
 | `parcel_events.actor_user_id` | `users.id` | SET NULL | `fk_pe_user` |
 | `driver_cod_settlements.organization_id` | `organizations.id` | CASCADE | `fk_dcs_org` |
