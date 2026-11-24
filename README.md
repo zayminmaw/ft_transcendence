@@ -86,7 +86,8 @@ docker compose up --build -d
 docker compose ps
 ```
 
-Open https://localhost (or http://localhost:8080, which automatically redirects to HTTPS). API liveness is http://localhost:3000/api/health and readiness is `/api/health/ready` (also accessible via https://localhost/api/health). NGINX serves SPA deep links and proxies `/api/` to NestJS. All published ports bind to localhost. This Compose configuration provides self-signed TLS for local development; internet deployment needs managed certificates and secrets.
+Open https://localhost (or http://localhost:8080, which automatically redirects to HTTPS). API liveness is https://localhost/api/health and readiness is https://localhost/api/health/ready (use `curl -k` with the self-signed certificate). NGINX serves SPA deep links and proxies `/api/` and `/socket.io/` to NestJS. Only the NGINX ports are published, bound to localhost; the API and MariaDB are reachable only on the internal Compose network, so every connection to the backend goes through HTTPS. This Compose configuration provides self-signed TLS for local development; internet deployment needs managed certificates and secrets.
+TLS terminates at NGINX. Connections from clients to NGINX use HTTPS; NGINX forwards API and socket traffic to backend:3000 over HTTP, and the backend health check also uses HTTP. Traffic on that internal hop is not encrypted. Configure TLS upstream if your deployment requires end-to-end encryption.
 
 MariaDB uses a named persistent volume. The one-shot `migrate` service applies the versioned baseline before the API starts. The baseline creates all 22 draft tables without dropping existing data, adds explicit foreign-key indexes, and uses `DECIMAL(12,2)` for currency and `DECIMAL(8,2)` for package dimensions/capacity. GPS coordinates retain their documented precision. Schema synchronization is disabled.
 
@@ -102,7 +103,7 @@ From the repository root:
 npm run docker:dev
 ```
 
-Open http://localhost:5173 (`/app` for the tenant workspace or `/platform` for platform administration). This switches the existing `transcend` stack to its development targets and retains the database volume. Source directories are mounted; frontend edits reload through Vite without restarting or rebuilding containers. The development override enables polling so edits from Windows reach the container's file watcher. Container dependencies remain isolated.
+Open http://localhost:5173 (`/app` for the tenant workspace or `/platform` for platform administration). The Vite dev server is plain HTTP and is for local development only; the HTTPS stack is `npm run docker:up`. The development override also publishes MariaDB on `127.0.0.1:${DB_PUBLIC_PORT}` for host tools and `test:db`. This switches the existing `transcend` stack to its development targets and retains the database volume. Source directories are mounted; frontend edits reload through Vite without restarting or rebuilding containers. The development override enables polling so edits from Windows reach the container's file watcher. Container dependencies remain isolated.
 
 Run `npm run docker:dev` again after dependency or configuration changes. Return to the NGINX build with `npm run docker:up`; changes in that mode require rebuilding the frontend image, not just restarting its container. `npm run docker:down` stops either mode without deleting the database volume.
 
@@ -110,7 +111,7 @@ For host development, copy the backend and frontend `.env.example` files to `.en
 
 ```sh
 npm run setup
-docker compose up -d mariadb
+npm run docker:db
 npm run migration:run --prefix backend
 npm run dev:backend
 # In a second terminal:
