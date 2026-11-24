@@ -7,10 +7,11 @@ import { type AuditAction, AuditService } from '../audit';
 import { PendingCodService } from '../billing';
 import {
   PARCEL_CLIENT_UNAVAILABLE, PARCEL_COD_MISMATCH, PARCEL_DRIVER_UNAVAILABLE, PARCEL_NOT_FOUND, PARCEL_NOT_YOUR_PARCEL, PARCEL_WRONG_STATUS,
+  TRACKING_NOT_FOUND, TRACKING_PATTERN,
 } from './constants';
 import type { AssignParcelDto, CreateParcelDto, DeliverParcelDto, ListParcelsQueryDto, StatusMoveDto } from './dto/parcel.dto';
 import { type AuditStep, type ParcelResult, ParcelsRepository, type Refusal } from './parcels.repository';
-import type { ParcelRecord } from './types/parcel';
+import type { ParcelRecord, ParcelTracking } from './types/parcel';
 
 // Who is asking: the verified company and role, and the account, for the history and the audit row.
 export interface ParcelsActor {
@@ -68,6 +69,14 @@ export class ParcelsService {
     requireId(id);
     const parcel = await this.parcels.find(tenant.organizationId, id);
     if (!parcel) throw new NotFoundException(PARCEL_NOT_FOUND);
+    return parcel;
+  }
+
+  // Open to anyone with the number. Waybill numbers are upper case; the page may send what was typed.
+  async track(trackingNumber: string): Promise<ParcelTracking> {
+    const number = trackingNumber.trim().toUpperCase();
+    const parcel = TRACKING_PATTERN.test(number) ? await this.parcels.track(number) : null;
+    if (!parcel) throw new NotFoundException(TRACKING_NOT_FOUND);
     return parcel;
   }
 
