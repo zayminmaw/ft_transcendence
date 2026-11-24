@@ -8,6 +8,8 @@ Transcend manages the complete financial bridge between doorstep cash collection
 
 ## 1. Domain Entities & Responsibilities
 
+The switch from dispatch-based to delivery-based pending COD requires the offline [pending COD cutover](../Pending-COD-Cutover.md) and migration `1793750400000-PendingCodAtDelivery` before new writers start.
+
 | Table | Scope | Key Attributes |
 | --- | --- | --- |
 | `driver_cod_settlements` | Driver daily shift cash drop sheet | `settlement_reference`, `driver_id`, `reconciled_by_user_id`, `total_cod_expected`, `total_cash_dropped`, `discrepancy_amount`, `settlement_status`, `settled_at` |

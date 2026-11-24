@@ -1,15 +1,18 @@
 import { useEffect, useState } from 'react';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { useToast, type TableSort } from '@global-components';
 import { useDebounced } from '@hooks/useDebounced';
 import { apiRequest } from '@services/api-client';
 import { tenantsQueryKey } from '@utils/query-keys';
 import type { ActivityFilter, ActivitySortKey, TenantActivity, TenantActivityParams } from '../api';
+import { platformErrorKey } from '../errors';
 
 // The tenant management events with their search, action filter, sort and paging, newest first by default. Like
 // useTenants, changing anything but the page goes back to page 1. The key sits under tenantsQueryKey, so every
 // tenant change refreshes it.
 export function useTenantActivity() {
+	const { t } = useTranslation('platform');
 	const { toast } = useToast();
 	const [search, setSearchValue] = useState('');
 	const [action, setActionValue] = useState<ActivityFilter>('all');
@@ -48,10 +51,10 @@ export function useTenantActivity() {
 		if (error)
 			toast({
 				variant: 'error',
-				title: "Couldn't load tenant activity",
-				description: error.message,
+				title: t('errors.loadActivity'),
+				description: t(platformErrorKey(error)),
 			});
-	}, [error, errorUpdatedAt, toast]);
+	}, [error, errorUpdatedAt, toast, t]);
 
 	const firstPage =
 		<T>(set: (value: T) => void) =>

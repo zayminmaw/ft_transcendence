@@ -32,7 +32,7 @@ export function ProofField({
 	picker?: (send: (file: File) => void, disabled: boolean) => ReactNode;
 }) {
 	const inputId = useId();
-	const { i18n } = useTranslation();
+	const { t, i18n } = useTranslation('parcels');
 	const proof = useProofFile(parcelId, kind, accept);
 	const busy = Boolean(proof.sending) || proof.isRemoving;
 	const problemId = `${inputId}-problem`;
@@ -72,7 +72,7 @@ export function ProofField({
 						className="progress progress-primary w-full"
 						value={proof.progress}
 						max={100}
-						aria-label={`Uploading ${label}`}
+						aria-label={t('proof.uploadingLabel', { label })}
 					/>
 					<p role="status" className="text-sm text-[var(--color-slate)]">
 						Uploading {proof.sending.name} · {proof.progress}%
@@ -86,7 +86,7 @@ export function ProofField({
 							{saved.name} · {formatFileSize(saved.sizeBytes, i18n.language)}
 						</p>
 						<div className="flex gap-2">
-							{!picker && chooser('Replace')}
+							{!picker && chooser(t('proof.replace'))}
 							<button
 								type="button"
 								className="btn btn-ghost btn-sm"
@@ -102,7 +102,7 @@ export function ProofField({
 				picker(proof.send, busy)
 			) : (
 				<div className="flex flex-wrap items-center gap-3 rounded-box border border-dashed border-base-300 p-4">
-					{chooser('Choose file')}
+					{chooser(t('proof.choose'))}
 					<p className="text-sm text-[var(--color-slate)]">{hint}</p>
 				</div>
 			)}

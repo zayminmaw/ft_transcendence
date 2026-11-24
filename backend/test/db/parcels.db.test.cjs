@@ -8,6 +8,8 @@ const { Client } = require('../../dist/modules/clients/entities/client.entity');
 const { LedgerRepository } = require('../../dist/modules/billing/ledger.repository');
 const { LedgerService } = require('../../dist/modules/billing/ledger.service');
 const { PendingCodService } = require('../../dist/modules/billing/pending-cod.service');
+const { CodRepository } = require('../../dist/modules/billing/cod.repository');
+const { CodService } = require('../../dist/modules/billing/cod.service');
 const { MerchantLedgerEntry } = require('../../dist/modules/billing/entities/merchant-ledger-entry.entity');
 const { ParcelsRepository } = require('../../dist/modules/parcels/parcels.repository');
 const { ParcelsService } = require('../../dist/modules/parcels/parcels.service');
@@ -568,4 +570,105 @@ test('proof upload, replacement and deletion restrict full-scope linked drivers 
     assert.deepEqual(await parcels.attachProof(meridian, parcel.id, kind, second, owner), { status: 'updated', previousFileId: first });
     assert.deepEqual(await parcels.attachProof(meridian, parcel.id, kind, null, owner), { status: 'updated', previousFileId: second });
   }
+});
+
+test('the pending COD cutover migrates old holds atomically and handles in-flight deliveries, returns and handovers', async () => {
+  await database.undoLastMigration({ transaction: 'each' });
+  const merchant = await insertClient(meridian, 'CUTOVER', 'Cutover merchant', true);
+  const empty = await insertClient(meridian, 'CUTEMPTY', 'Old phantom balance', false);
+  const foreign = await insertClient(harbor, 'CUTOTHER', 'Other company', true);
+  const delivered = await proofReadyParcel({ clientId: merchant });
+  await deliver(delivered.id);
+  // A pre-collected_amount delivery retains an unknown collection fact, but the old hold remains due at handover.
+  await database.query('UPDATE parcels SET collected_amount = NULL WHERE id = ?', [delivered.id]);
+  const out = await proofReadyParcel({ clientId: merchant, codAmount: '80.00' });
+  const failed = await outParcel({ clientId: merchant, codAmount: '30.00' });
+  await parcels.move(meridian, failed.id, clerk, { status: 'failed_attempt', reasonCode: 'refused' }, noAudit);
+  const settled = await proofReadyParcel({ clientId: merchant, codAmount: '40.00' });
+  await deliver(settled.id, '40.00');
+  await newParcel({ clientId: merchant, codAmount: '17.00' }); // never dispatched
+  await database.query("UPDATE clients SET pending_cod_balance = '270.00' WHERE id = ?", [merchant]);
+  await database.query("UPDATE clients SET pending_cod_balance = '99.00' WHERE id = ?", [empty]);
+  const foreignParcel = await newParcel({ clientId: foreign, codAmount: '10.00' }, harbor);
+  await database.query("UPDATE parcels SET lifecycle_status = 'delivered', delivered_at = NOW() WHERE id = ?", [foreignParcel.id]);
+  await database.query("UPDATE clients SET pending_cod_balance = '10.00' WHERE id = ?", [foreign]);
+  const cod = new CodService(new CodRepository(database), new LedgerService(new LedgerRepository()), { record: async () => {} });
+  const handover = (parcelIds, totalCashDropped, settlementReference) => cod.reconcile(actor(), {
+    driverId: drivers.leen, parcelIds, totalCashDropped, settlementReference,
+  });
+  await handover([settled.id], '40.00', 'CUTOVER-SETTLED');
+  assert.equal(await pending(merchant), '230.00');
+  const ledgerBefore = await database.getRepository(MerchantLedgerEntry).countBy({ clientId: merchant });
+
+  // Exercise TypeORM's actual per-migration transaction override, including failure after the balance UPDATE.
+  const migration = database.migrations.find((item) => item.constructor.name === 'PendingCodAtDelivery1793750400000');
+  assert.ok(migration);
+  const originalUp = migration.up;
+  migration.up = async (runner) => {
+    assert.equal(runner.isTransactionActive, true);
+    await originalUp.call(migration, runner);
+    throw new Error('cutover interrupted');
+  };
+  await assert.rejects(database.runMigrations(), /cutover interrupted/);
+  assert.equal(await pending(merchant), '230.00');
+  assert.equal(await pending(empty), '99.00');
+  migration.up = originalUp;
+  await database.runMigrations();
+  assert.equal(await pending(merchant), '120.00');
+  assert.equal(await pending(empty), '0.00');
+  assert.equal(await pending(foreign), '10.00');
+  assert.equal((await parcels.find(meridian, delivered.id)).collectedAmount, null);
+  assert.equal(await database.getRepository(MerchantLedgerEntry).countBy({ clientId: merchant }), ledgerBefore);
+  assert.equal((await database.getRepository(Client).findOneByOrFail({ id: merchant })).currentBalance, '33.00');
+
+  const service = serviceWith({ record: async () => {} });
+  await service.deliver(actor(), out.id, { collectedAmount: '80.00' });
+  assert.equal(await pending(merchant), '200.00');
+  await service.move(actor(), failed.id, { status: 'returned_to_sender', notes: 'Returned after cutover' });
+  assert.equal(await pending(merchant), '200.00');
+  await handover([delivered.id, out.id], '200.00', 'CUTOVER-REMAINING');
+  assert.equal(await pending(merchant), '0.00');
+  const fresh = await sortedParcel({ clientId: merchant, codAmount: '25.00' });
+  await service.assign(actor(), fresh.id, { driverId: drivers.leen });
+  assert.equal(await pending(merchant), '0.00');
+
+  const originalDown = migration.down;
+  migration.down = async (runner) => {
+    assert.equal(runner.isTransactionActive, true);
+    await originalDown.call(migration, runner);
+    throw new Error('rollback interrupted');
+  };
+  await assert.rejects(database.undoLastMigration({ transaction: 'each' }), /rollback interrupted/);
+  assert.equal(await pending(merchant), '0.00');
+  migration.down = originalDown;
+  await assert.rejects(database.undoLastMigration({ transaction: 'none' }), /--transaction each/);
+  await database.undoLastMigration({ transaction: 'each' });
+  assert.equal(await pending(merchant), '25.00');
+  await database.runMigrations();
+  assert.equal(await pending(merchant), '0.00');
+});
+
+test('cutover refuses inconsistent imported cash and out-of-range totals without changing balances', async () => {
+  await database.undoLastMigration({ transaction: 'each' });
+  const bad = await insertClient(meridian, 'CUTBAD', 'Mismatched collection', true);
+  const huge = await insertClient(meridian, 'CUTHUGE', 'Excessive total', true);
+  const badParcel = await newParcel({ clientId: bad, codAmount: '100.00' });
+  await database.query("UPDATE parcels SET lifecycle_status = 'delivered', delivered_at = NOW(), collected_amount = '99.00' WHERE id = ?", [badParcel.id]);
+  await database.query("UPDATE clients SET pending_cod_balance = '100.00' WHERE id = ?", [bad]);
+  const oversized = [];
+  for (let i = 0; i < 2; i++) {
+    const parcel = await newParcel({ clientId: huge, codAmount: '9999999999.99' });
+    oversized.push(parcel.id);
+    await database.query("UPDATE parcels SET lifecycle_status = 'delivered', delivered_at = NOW() WHERE id = ?", [parcel.id]);
+  }
+  const migrationCount = async () => Number((await database.query("SELECT COUNT(*) AS total FROM migrations WHERE name = 'PendingCodAtDelivery1793750400000'"))[0].total);
+  await assert.rejects(database.runMigrations(), /recorded collection differs/);
+  assert.deepEqual([await pending(bad), await pending(huge), await migrationCount()], ['100.00', '0.00', 0]);
+  // Simulate operator reconciliation of imported records, then retry the same migration.
+  await database.query("UPDATE parcels SET collected_amount = '100.00' WHERE id = ?", [badParcel.id]);
+  await assert.rejects(database.runMigrations(), /exceeds DECIMAL/);
+  assert.deepEqual([await pending(bad), await pending(huge), await migrationCount()], ['100.00', '0.00', 0]);
+  await database.query("UPDATE parcels SET lifecycle_status = 'returned_to_sender' WHERE id IN (?)", [oversized]);
+  await database.runMigrations();
+  assert.deepEqual([await pending(bad), await pending(huge), await migrationCount()], ['100.00', '0.00', 1]);
 });

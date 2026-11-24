@@ -1,11 +1,15 @@
+import type { ParseKeys } from 'i18next';
 import { useForm } from 'react-hook-form';
+import { useTranslation } from 'react-i18next';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Dialog, Input, useToast } from '@global-components';
 import type { TenantDetails, UpdateTenantValues } from '../api';
 import { useTenantMutations } from '../hooks/useTenantMutations';
 import { editOrganizationSchema } from '../schemas/editOrganizationSchema';
+import { platformErrorKey } from '../errors';
 
 export function EditDialog({ tenant, onClose }: { tenant: TenantDetails; onClose: () => void }) {
+	const { t } = useTranslation('platform');
 	const { toast } = useToast();
 	const { updateTenant, isUpdating, updateError } = useTenantMutations();
 	const {
@@ -21,20 +25,21 @@ export function EditDialog({ tenant, onClose }: { tenant: TenantDetails; onClose
 			address: tenant.address ?? '',
 		},
 	});
+	const fieldError = (message?: string) => message && t(message as ParseKeys<'platform'>);
 
 	return (
 		<Dialog
 			open
 			onClose={onClose}
-			title="Edit organization details"
-			description="The slug stays the same: it is part of every company link."
+			title={t('edit.title')}
+			description={t('edit.description')}
 			onSubmit={handleSubmit((values) =>
 				updateTenant(
 					{ tenantId: tenant.id, values },
 					{
 						onSuccess: () => {
 							onClose();
-							toast({ variant: 'success', title: 'Details saved' });
+							toast({ variant: 'success', title: t('edit.saved') });
 						},
 					},
 				),
@@ -42,42 +47,42 @@ export function EditDialog({ tenant, onClose }: { tenant: TenantDetails; onClose
 			actions={
 				<>
 					<button type="button" className="btn border-0 bg-base-200" onClick={onClose}>
-						Cancel
+						{t('common.cancel')}
 					</button>
 					<button type="submit" className="btn btn-primary" disabled={isUpdating}>
-						Save details
+						{t('edit.save')}
 					</button>
 				</>
 			}
 		>
 			{updateError && (
 				<p role="alert" className="alert alert-error alert-soft text-sm">
-					{updateError.message}
+					{t(platformErrorKey(updateError))}
 				</p>
 			)}
 			<div className="flex flex-col gap-4">
 				<Input
-					label="Organization name"
+					label={t('fields.organizationName')}
 					required
-					error={errors.name?.message}
+					error={fieldError(errors.name?.message)}
 					{...register('name')}
 				/>
 				<Input
-					label="Contact email"
+					label={t('fields.contactEmail')}
 					type="email"
 					required
-					error={errors.contactEmail?.message}
+					error={fieldError(errors.contactEmail?.message)}
 					{...register('contactEmail')}
 				/>
 				<Input
-					label="Phone (optional)"
+					label={t('fields.phoneOptional')}
 					type="tel"
-					error={errors.contactPhone?.message}
+					error={fieldError(errors.contactPhone?.message)}
 					{...register('contactPhone')}
 				/>
 				<Input
-					label="Address (optional)"
-					error={errors.address?.message}
+					label={t('fields.addressOptional')}
+					error={fieldError(errors.address?.message)}
 					{...register('address')}
 				/>
 			</div>

@@ -5,13 +5,7 @@ import { Button, Input } from '@global-components';
 import { errorCode } from '@services/api-client';
 import { formatDate } from '@utils/format';
 import type { ParcelStatus, ParcelTracking } from '../api';
-import { parcelStatusLabels } from '../constants';
 import { useParcelTracking } from '../hooks/useParcels';
-
-const publicStatusLabels: Record<ParcelStatus, string> = {
-	...parcelStatusLabels,
-	delivered: 'Delivered',
-};
 
 // The usual way to the door, drawn as the progress bar. A parcel off this path (a failed attempt, a return) shows
 // only its timeline.
@@ -26,6 +20,7 @@ const JOURNEY: ParcelStatus[] = [
 // /track and /track/:trackingNumber, open to anyone. Shows only the status and its times: never the recipient, the
 // address, COD or who handled the parcel (GET /api/tracking/:trackingNumber answers nothing more).
 export function TrackParcelPage() {
+	const { t } = useTranslation('parcels');
 	const { trackingNumber } = useParams();
 	const navigate = useNavigate();
 	useEffect(() => {
@@ -36,10 +31,12 @@ export function TrackParcelPage() {
 
 	return (
 		<section className="mx-auto flex max-w-3xl flex-col items-center px-6 py-16 md:px-10 md:py-24">
-			<p className="mb-5 text-xs font-semibold uppercase tracking-[0.2em]">Parcel tracking</p>
-			<h1 className="marketing-title text-center text-5xl md:text-7xl">Track a parcel</h1>
+			<p className="mb-5 text-xs font-semibold uppercase tracking-[0.2em]">
+				{t('track.eyebrow')}
+			</p>
+			<h1 className="marketing-title text-center text-5xl md:text-7xl">{t('track.title')}</h1>
 			<p className="mt-6 max-w-md text-center text-lg leading-relaxed opacity-70">
-				Enter the tracking number from your waybill to see where your parcel is.
+				{t('track.intro')}
 			</p>
 
 			<div className="mt-12 w-full">
@@ -58,7 +55,7 @@ export function TrackParcelPage() {
 					}}
 				>
 					<Input
-						label="Tracking number"
+						label={t('track.number')}
 						name="tracking"
 						required
 						dir="ltr"
@@ -69,14 +66,14 @@ export function TrackParcelPage() {
 						className="font-mono"
 					/>
 					<Button type="submit">
-						Track <span aria-hidden="true">→</span>
+						{t('track.submit')}{' '}
+						<span aria-hidden="true" className="inline-block rtl:-scale-x-100">
+							→
+						</span>
 					</Button>
 				</form>
 
-				<p className="mt-3 text-xs opacity-60">
-					Tracking shows the parcel's status and times only — never the recipient, the
-					address or the payment.
-				</p>
+				<p className="mt-3 text-xs opacity-60">{t('track.privacy')}</p>
 
 				{isTrackingPending && (
 					<p role="status" className="mt-6 flex items-center gap-3 text-sm opacity-70">
@@ -110,20 +107,18 @@ function TrackingErrorMessage({
 	error: Error;
 	trackingNumber?: string;
 }) {
+	const { t } = useTranslation('parcels');
 	const code = errorCode(error);
 	if (code === 'TRACKING_NOT_FOUND')
-		return (
-			<>
-				No parcel matches <span className="font-mono">{trackingNumber}</span>. Check the
-				number on your waybill and try again.
-			</>
-		);
-	if (code === 'TRACKING_TOO_MANY_LOOKUPS') return <>{error.message}</>;
-	return <>Tracking isn't available right now. Try again in a moment.</>;
+		return <>{t('track.noMatch', { tracking: trackingNumber })}</>;
+	if (code === 'TRACKING_TOO_MANY_LOOKUPS') return <>{t('track.tooMany')}</>;
+	return <>{t('track.unavailable')}</>;
 }
 
 function TrackingResult({ parcel }: { parcel: ParcelTracking }) {
-	const { i18n } = useTranslation();
+	const { t, i18n } = useTranslation('parcels');
+	const statusLabel = (status: ParcelStatus) =>
+		status === 'delivered' ? t('track.delivered') : t(`status.${status}`);
 	const time = (value: string) =>
 		formatDate(value, i18n.language, { dateStyle: 'medium', timeStyle: 'short' });
 	const reached = JOURNEY.indexOf(parcel.status);
@@ -137,9 +132,11 @@ function TrackingResult({ parcel }: { parcel: ParcelTracking }) {
 						{parcel.trackingNumber}
 					</p>
 					<h2 className="marketing-title mt-2 text-3xl md:text-4xl">
-						{publicStatusLabels[parcel.status]}
+						{statusLabel(parcel.status)}
 					</h2>
-					<p className="mt-2 text-sm opacity-70">Carried by {parcel.company}</p>
+					<p className="mt-2 text-sm opacity-70">
+						{t('track.carriedBy', { company: parcel.company })}
+					</p>
 				</div>
 				{/* Every parcel has a history: creating it records the scheduled pickup. */}
 				<p className="flex items-center gap-2 rounded-full bg-base-200 px-3 py-1.5 text-xs font-medium">
@@ -147,12 +144,12 @@ function TrackingResult({ parcel }: { parcel: ParcelTracking }) {
 						aria-hidden="true"
 						className="size-2 rounded-full bg-primary ring-2 ring-primary/40"
 					/>
-					Updated {time(events[0].at)}
+					{t('track.updated', { time: time(events[0].at) })}
 				</p>
 			</div>
 
 			{reached >= 0 && (
-				<ol aria-label="Delivery progress" className="mt-8 grid grid-cols-5 gap-2">
+				<ol aria-label={t('track.progress')} className="mt-8 grid grid-cols-5 gap-2">
 					{JOURNEY.map((status, index) => (
 						<li key={status} aria-current={index === reached ? 'step' : undefined}>
 							<span
@@ -162,14 +159,14 @@ function TrackingResult({ parcel }: { parcel: ParcelTracking }) {
 							<span
 								className={`mt-2 hidden text-xs sm:block ${index <= reached ? 'font-medium' : 'opacity-50'}`}
 							>
-								{publicStatusLabels[status]}
+								{statusLabel(status)}
 							</span>
 						</li>
 					))}
 				</ol>
 			)}
 
-			<ol aria-label="Tracking history" className="mt-8">
+			<ol aria-label={t('track.history')} className="mt-8">
 				{events.map((event, index) => (
 					<li key={`${event.status}-${event.at}`} className="flex gap-4">
 						<div aria-hidden="true" className="flex flex-col items-center">
@@ -184,7 +181,7 @@ function TrackingResult({ parcel }: { parcel: ParcelTracking }) {
 							className={`flex grow flex-col gap-1 sm:flex-row sm:justify-between ${index < events.length - 1 ? 'pb-6' : ''}`}
 						>
 							<p className={index === 0 ? 'font-semibold' : 'font-medium opacity-80'}>
-								{publicStatusLabels[event.status]}
+								{statusLabel(event.status)}
 							</p>
 							<p dir="ltr" className="font-mono text-sm opacity-60">
 								{time(event.at)}
