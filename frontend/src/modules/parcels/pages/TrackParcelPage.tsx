@@ -31,7 +31,8 @@ export function TrackParcelPage() {
 	useEffect(() => {
 		document.title = 'Track a parcel — Transcend';
 	}, []);
-	const { tracked, trackingError, isTrackingPending } = useParcelTracking(trackingNumber);
+	const { tracked, trackingError, isTrackingPending, refetchTracking } =
+		useParcelTracking(trackingNumber);
 
 	return (
 		<section className="mx-auto flex max-w-3xl flex-col items-center px-6 py-16 md:px-10 md:py-24">
@@ -48,7 +49,12 @@ export function TrackParcelPage() {
 					onSubmit={(event) => {
 						event.preventDefault();
 						const value = new FormData(event.currentTarget).get('tracking');
-						navigate(`/track/${encodeURIComponent(String(value).trim())}`);
+						const number = String(value ?? '')
+							.trim()
+							.toUpperCase();
+						if (!number) return;
+						if (number === trackingNumber?.trim().toUpperCase()) void refetchTracking();
+						else navigate(`/track/${encodeURIComponent(number)}`);
 					}}
 				>
 					<Input
@@ -91,7 +97,7 @@ export function TrackParcelPage() {
 					</p>
 				)}
 
-				{tracked && <TrackingResult parcel={tracked} />}
+				{!trackingError && tracked && <TrackingResult parcel={tracked} />}
 			</div>
 		</section>
 	);

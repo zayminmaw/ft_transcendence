@@ -142,11 +142,16 @@ export function useParcelFormOptions() {
 // tenant key. Waybill numbers are upper case, so "trc-…" and "TRC-…" share one answer.
 export function useParcelTracking(trackingNumber: string | undefined) {
 	const number = trackingNumber?.trim().toUpperCase() ?? '';
-	const { data, error, isLoading } = useQuery({
+	const { data, error, isLoading, refetch } = useQuery({
 		queryKey: ['tracking', number],
 		queryFn: () => apiRequest<ParcelTracking>(`tracking/${encodeURIComponent(number)}`),
 		enabled: number !== '',
 		retry: retryServerErrors,
 	});
-	return { tracked: data, trackingError: error, isTrackingPending: isLoading };
+	return {
+		tracked: data,
+		trackingError: error,
+		isTrackingPending: isLoading,
+		refetchTracking: refetch,
+	};
 }
