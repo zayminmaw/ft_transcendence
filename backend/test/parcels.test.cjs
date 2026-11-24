@@ -5,6 +5,7 @@ const { ParcelsModule } = require('../dist/modules/parcels');
 const { ParcelsRepository } = require('../dist/modules/parcels/parcels.repository');
 const { LedgerHistoryRepository } = require('../dist/modules/billing/ledger-history.repository');
 const { PayoutsRepository } = require('../dist/modules/billing/payouts.repository');
+const { InvoicesRepository } = require('../dist/modules/billing/invoices.repository');
 const { hashPassword } = require('../dist/modules/users/password');
 const { PASSWORD, as, createAuthApp, createFakeStore, tokenFor } = require('./helpers/auth-app.cjs');
 
@@ -73,7 +74,7 @@ async function parcelsApp(t) {
     store.users.push({ id, username, email: `${username}@demo.example.test`, passwordHash, isActive: true, lastLoginAt: null });
     store.memberships.push({ organizationId, userId: id, roleId, isActive: true });
   }
-  const { server } = await createAuthApp(t, store, { imports: [ParcelsModule], overrides: [[ParcelsRepository, parcels.repository], [LedgerHistoryRepository, {}], [PayoutsRepository, {}]] });
+  const { server } = await createAuthApp(t, store, { imports: [ParcelsModule], overrides: [[ParcelsRepository, parcels.repository], [LedgerHistoryRepository, {}], [PayoutsRepository, {}], [InvoicesRepository, {}]] });
   const tokens = {};
   for (const [, username] of people) tokens[username] = await tokenFor(server, username);
   return { server, parcels, tokens };
