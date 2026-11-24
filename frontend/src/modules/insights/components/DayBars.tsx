@@ -1,8 +1,8 @@
 import { useTranslation } from 'react-i18next';
 import { formatDate, formatNumber } from '@utils/format';
 
-// One bar for each day, no chart library. The tallest day fills the height; a day with no one is a thin tick. The
-// numbers are also in a table for screen readers.
+// One bar for each day, no chart library. The tallest day fills the height; a day with no one is a thin tick. A hover
+// tooltip reaches only a mouse, so the numbers are also in a table that anyone can open, by keyboard or touch.
 export function DayBars({ days }: { days: { day: string; members: number }[] }) {
 	const { t, i18n } = useTranslation('insights');
 	const tallest = Math.max(0, ...days.map((entry) => entry.members));
@@ -35,23 +35,35 @@ export function DayBars({ days }: { days: { day: string; members: number }[] }) 
 					<span>{formatDate(last, i18n.language, short)}</span>
 				</figcaption>
 			)}
-			<table className="sr-only">
-				<caption>{t('byDay.title')}</caption>
-				<thead>
-					<tr>
-						<th>{t('byDay.day')}</th>
-						<th>{t('byDay.members')}</th>
-					</tr>
-				</thead>
-				<tbody>
-					{days.map(({ day, members }) => (
-						<tr key={day}>
-							<td>{formatDate(day, i18n.language)}</td>
-							<td>{formatNumber(members, i18n.language)}</td>
-						</tr>
-					))}
-				</tbody>
-			</table>
+			<details className="rounded-box border border-base-300">
+				<summary className="cursor-pointer px-4 py-2 text-sm">
+					{t('byDay.showTable')}
+				</summary>
+				<div
+					role="region"
+					aria-label={t('byDay.title')}
+					tabIndex={0}
+					className="max-h-64 overflow-y-auto px-4 pb-2"
+				>
+					<table className="table table-sm">
+						<caption>{t('byDay.title')}</caption>
+						<thead>
+							<tr>
+								<th>{t('byDay.day')}</th>
+								<th>{t('byDay.members')}</th>
+							</tr>
+						</thead>
+						<tbody>
+							{days.map(({ day, members }) => (
+								<tr key={day}>
+									<td>{formatDate(day, i18n.language)}</td>
+									<td>{formatNumber(members, i18n.language)}</td>
+								</tr>
+							))}
+						</tbody>
+					</table>
+				</div>
+			</details>
 		</figure>
 	);
 }

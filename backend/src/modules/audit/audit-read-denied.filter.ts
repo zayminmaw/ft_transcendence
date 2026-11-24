@@ -24,10 +24,21 @@ export class AuditReadDeniedFilter implements ExceptionFilter {
 
 	// The company the person asked about, so its administrators see the attempt. A header is only a claim: it counts
 	// when the person really is an active member there.
-	private async company(request: AuthenticatedRequest): Promise<string | null> {
+	protected async company(request: AuthenticatedRequest): Promise<string | null> {
 		const header = request.headers['x-organization-id'];
 		const userId = request.user?.id;
 		if (!userId || typeof header !== 'string' || !/^[1-9]\d*$/.test(header)) return null;
 		return (await this.logs.isActiveMember(userId, header).catch(() => false)) ? header : null;
+	}
+}
+
+// A refused read of the platform trail belongs to no company, so it is recorded with none. Otherwise a company's
+// administrators would see it, and the activity counts would include it, because the company header only needs the
+// caller to be an active member there.
+@Catch(ForbiddenException)
+@Injectable()
+export class PlatformAuditReadDeniedFilter extends AuditReadDeniedFilter {
+	protected override company(): Promise<string | null> {
+		return Promise.resolve(null);
 	}
 }

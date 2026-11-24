@@ -16,5 +16,24 @@
 			"manual_adjustment": "Manual adjustment",
 			"invoice_offset": "Invoice offset"
 		}
+	},
+	"payout": {
+		"title": "Pay out {{name}}",
+		"description": "The merchant is owed {{balance}}. Send the wire first, then record it here with the bank's reference.",
+		"amount": "Amount",
+		"wireReference": "Wire reference",
+		"referenceNote": "Recording the same reference again never pays twice. Paying the whole balance also marks the merchant's issued invoices as paid.",
+		"cancel": "Cancel",
+		"submit": "Record payout",
+		"paid": "Paid {{amount}} to {{name}}",
+		"repeated": "Reference {{reference}} was already recorded. Nothing new was paid.",
+		"errors": {
+			"amount": "Enter an amount above zero with two decimals, e.g. 120.00.",
+			"wireReference": "Use 4–40 letters, digits, dots, dashes or underscores.",
+			"notFound": "This merchant isn't in this company.",
+			"exceedsBalance": "That is more than the merchant is owed, so nothing was recorded.",
+			"referenceReused": "This reference was already used for a different amount.",
+			"unknown": "The payout could not be recorded. Try again."
+		}
 	}
 }

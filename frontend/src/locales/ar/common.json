@@ -2,6 +2,9 @@
 	"language": {
 		"label": "اللغة"
 	},
+	"list": {
+		"separator": "، "
+	},
 	"password": {
 		"show": "إظهار كلمة المرور"
 	},
@@ -48,10 +51,7 @@
 			"drivers": "السائقون",
 			"assets": "الأسطول والأصول",
 			"administration": "الإدارة",
-			"billing": "الفوترة والدفع عند الاستلام",
-			"staff": "الموظفون",
 			"rbac": "الأشخاص والصلاحيات",
-			"organizations": "إعدادات المؤسسة",
 			"contacts": "جهات الاتصال"
 		},
 		"overview": {
