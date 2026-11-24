@@ -10,6 +10,11 @@ export type AuditScope =
 	| { kind: 'actor'; userId: string }
 	| { kind: 'platform' };
 
+// Reads of the trail and of the activity page are recorded too, but would bury the changes people come for: shown only
+// when asked for, by module or by resource.
+const ACCESS_MODULES = ['audit', 'insights'];
+const ACCESS_RESOURCES = ['audit_log', 'activity_insight'];
+
 export interface AuditPage {
 	items: AuditLog[];
 	total: number;
@@ -23,8 +28,8 @@ export class AuditRepository {
 
 	async list(scope: AuditScope, query: ListAuditLogsDto): Promise<AuditPage> {
 		const builder = this.scoped(scope);
-		// Reads of the trail are recorded but would bury the changes people come for: shown only when asked for.
-		if (query.module !== 'audit' && query.resourceType !== 'audit_log') builder.andWhere("log.category <> 'access'");
+		const asksForAccess = ACCESS_MODULES.includes(query.module ?? '') || ACCESS_RESOURCES.includes(query.resourceType ?? '');
+		if (!asksForAccess) builder.andWhere("log.category <> 'access'");
 		if (query.module) builder.andWhere('log.module = :module', { module: query.module });
 		if (query.resourceType) builder.andWhere('log.resourceType = :resourceType', { resourceType: query.resourceType });
 		if (query.recordId) builder.andWhere('log.recordId IN (:...recordIds)', { recordIds: query.recordId.split(',') });

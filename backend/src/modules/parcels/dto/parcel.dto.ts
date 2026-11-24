@@ -67,8 +67,10 @@ export class AssignParcelDto {
 }
 
 // Confirms a delivery whose signature and photo are already uploaded (POST /parcels/:id/proof/:kind). The location is
-// where the device was, both coordinates or neither: a browser may refuse to share it.
+// where the device was, both coordinates or neither. The cash must equal the amount due; partial collection isn't supported.
 export class DeliverParcelDto {
+  @Amount() collectedAmount!: string;
+
   @ValidateIf((body: DeliverParcelDto) => body.latitude != null || body.longitude != null)
   @IsNumber({ allowNaN: false, allowInfinity: false }) @Min(-90) @Max(90)
   latitude?: number | null;

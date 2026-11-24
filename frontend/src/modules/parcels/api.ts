@@ -103,6 +103,7 @@ export type ParcelDetails = Parcel & {
 
 // POST /api/parcels/:id/delivery, once the signature and photo are uploaded: both coordinates or neither.
 export type DeliveryValues = {
+	collectedAmount: string;
 	latitude: number | null;
 	longitude: number | null;
 	notes: string | null;

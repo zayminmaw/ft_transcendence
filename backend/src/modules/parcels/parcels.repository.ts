@@ -18,7 +18,8 @@ import type {
 // Writes its audit row with the change's own manager, so both are saved or neither.
 export type AuditStep = (manager: EntityManager, before: ParcelRecord | null, after: ParcelRecord) => Promise<void>;
 
-export type Refusal = 'not_found' | 'client_unavailable' | 'driver_unavailable' | 'wrong_status' | 'proof_missing';
+export type Refusal =
+  | 'not_found' | 'client_unavailable' | 'driver_unavailable' | 'wrong_status' | 'proof_missing' | 'not_assigned_driver' | 'cod_mismatch';
 // Every answer of a change: the saved parcel, or the refusal it ended in. `discardedFileIds` are proof files the
 // parcel no longer points at (a failed attempt drops its unconfirmed proof): the caller removes them once committed.
 export type ParcelResult =
@@ -369,14 +370,25 @@ export class ParcelsRepository {
   }
 
   // Confirms the delivery of a parcel out for delivery whose signature and photo are uploaded. The history keeps the
-  // driver, vehicle and run it was delivered with. The cash collected stays pending: only the COD handover settles it.
+  // driver, vehicle and run it was delivered with. The assigned driver must collect exactly the COD due. The cash stays
+  // pending: only the COD handover settles it.
   deliver(organizationId: string, id: string, actorId: string, values: DeliveryValues, audit: AuditStep): Promise<ParcelResult> {
     return this.database.transaction(WRITES, async (manager) => {
       const locked = await this.lock(manager, organizationId, id);
       if (!locked) return { status: 'not_found' };
       if (locked.status !== 'out_for_delivery') return { status: 'wrong_status' };
-      if (PROOF_KINDS.some((kind) => PROOF_FILES[kind].required && locked.proof[kind] === null)) return { status: 'proof_missing' };
       const before = (await this.findOne(manager, organizationId, id))!;
+      const own = await manager
+        .createQueryBuilder()
+        .select('e.id', 'id')
+        .from('employees', 'e')
+        .where('e.user_id = :actorId', { actorId })
+        .andWhere('e.organization_id = :organizationId', { organizationId })
+        .andWhere('e.personnel_type = :type', { type: 'driver' })
+        .getRawOne();
+      if (own && String(own.id) !== before.driver?.id) return { status: 'not_assigned_driver' };
+      if (values.collected !== before.codAmount) return { status: 'cod_mismatch' };
+      if (PROOF_KINDS.some((kind) => PROOF_FILES[kind].required && locked.proof[kind] === null)) return { status: 'proof_missing' };
       await manager.update(Parcel, { organizationId, id }, {
         lifecycleStatus: 'delivered',
         deliveredAt: () => 'CURRENT_TIMESTAMP',

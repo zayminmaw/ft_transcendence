@@ -18,7 +18,7 @@ export function InsightsPage() {
 	const { t, i18n } = useTranslation('insights');
 	const { t: audit } = useTranslation('audit');
 	const [range, setRange] = useState<InsightsRange>(DEFAULT_RANGE);
-	const { data, isPending, error, refetch, isFetching } = useInsights(range);
+	const { data, isPending, isPlaceholderData, error, refetch, isFetching } = useInsights(range);
 	const number = (value: number) => formatNumber(value, i18n.language);
 	const header = <ModulePage title={t('pageTitle')} description={t('pageDescription')} />;
 
@@ -71,68 +71,83 @@ export function InsightsPage() {
 			{header}
 			<div className="flex flex-wrap items-end gap-2">
 				<RangeSelect value={range} onChange={setRange} />
+				{isPlaceholderData && (
+					<p
+						role="status"
+						className="flex items-center gap-2 pb-2 text-sm text-[var(--color-slate)]"
+					>
+						<span className="loading loading-spinner loading-xs" />
+						{t('updating')}
+					</p>
+				)}
 			</div>
-			<AnalyticsCard
-				items={[
-					{
-						label: t('cards.activeMembers'),
-						value: t('cards.activeOf', {
-							active: number(data.members.active),
-							total: number(data.members.total),
-						}),
-						description: t('cards.activeHint'),
-					},
-					{
-						label: t('cards.visits'),
-						value: number(data.visits),
-						description: t('cards.visitsHint'),
-					},
-					{ label: t('cards.changes'), value: number(data.changes.total) },
-				]}
-			/>
-			<AnalyticsCard
-				items={[
-					{
-						label: t('cards.passwordResets'),
-						value: number(data.security.passwordResets),
-					},
-					{
-						label: t('cards.switchedOff'),
-						value: number(data.security.accountsSwitchedOff),
-					},
-					{ label: t('cards.roleChanges'), value: number(data.security.roleChanges) },
-					{ label: t('cards.denied'), value: number(data.security.deniedAttempts) },
-				]}
-			/>
-			{data.hasHistory ? (
-				<section className="flex flex-col gap-2">
-					<h2 className="text-sm font-medium">{t('byDay.title')}</h2>
-					<DayBars days={data.activeByDay} />
-				</section>
-			) : (
-				<p className="rounded-box border border-base-300 bg-base-200 px-6 py-8 text-center text-sm text-[var(--color-slate)]">
-					{t('noHistory')}
-				</p>
-			)}
-			<div className="grid gap-4 md:grid-cols-2">
-				<CountList
-					title={t('byRole.title')}
-					empty={t('byRole.empty')}
-					items={data.activeByRole.map((row) => ({
-						key: row.roleCode,
-						label: roles[row.roleCode] ?? row.roleName,
-						count: row.members,
-					}))}
+			{/* The old period's numbers stay on screen while the new one loads, so they are dimmed and marked busy. */}
+			<div
+				aria-busy={isPlaceholderData}
+				className={`flex flex-col gap-4 transition-opacity ${isPlaceholderData ? 'opacity-50' : ''}`}
+			>
+				<AnalyticsCard
+					items={[
+						{
+							label: t('cards.activeMembers'),
+							value: t('cards.activeOf', {
+								active: number(data.members.active),
+								total: number(data.members.total),
+							}),
+							description: t('cards.activeHint'),
+						},
+						{
+							label: t('cards.visits'),
+							value: number(data.visits),
+							description: t('cards.visitsHint'),
+						},
+						{ label: t('cards.changes'), value: number(data.changes.total) },
+					]}
 				/>
-				<CountList
-					title={t('byModule.title')}
-					empty={t('byModule.empty')}
-					items={data.changes.byModule.map((row) => ({
-						key: row.module,
-						label: nameOf(modules, row.module),
-						count: row.count,
-					}))}
+				<AnalyticsCard
+					items={[
+						{
+							label: t('cards.passwordResets'),
+							value: number(data.security.passwordResets),
+						},
+						{
+							label: t('cards.switchedOff'),
+							value: number(data.security.accountsSwitchedOff),
+						},
+						{ label: t('cards.roleChanges'), value: number(data.security.roleChanges) },
+						{ label: t('cards.denied'), value: number(data.security.deniedAttempts) },
+					]}
 				/>
+				{data.hasHistory ? (
+					<section className="flex flex-col gap-2">
+						<h2 className="text-sm font-medium">{t('byDay.title')}</h2>
+						<DayBars days={data.activeByDay} />
+					</section>
+				) : (
+					<p className="rounded-box border border-base-300 bg-base-200 px-6 py-8 text-center text-sm text-[var(--color-slate)]">
+						{t('noHistory')}
+					</p>
+				)}
+				<div className="grid gap-4 md:grid-cols-2">
+					<CountList
+						title={t('byRole.title')}
+						empty={t('byRole.empty')}
+						items={data.activeByRole.map((row) => ({
+							key: row.roleCode,
+							label: roles[row.roleCode] ?? row.roleName,
+							count: row.members,
+						}))}
+					/>
+					<CountList
+						title={t('byModule.title')}
+						empty={t('byModule.empty')}
+						items={data.changes.byModule.map((row) => ({
+							key: row.module,
+							label: nameOf(modules, row.module),
+							count: row.count,
+						}))}
+					/>
+				</div>
 			</div>
 		</div>
 	);

@@ -68,6 +68,7 @@ export interface ParcelDetails extends ParcelRecord {
 
 // What the confirmed delivery records besides its files.
 export interface DeliveryValues {
+  collected: string;
   latitude: number | null;
   longitude: number | null;
   notes: string | null;

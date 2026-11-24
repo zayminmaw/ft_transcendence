@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { Button, ModulePage, Textarea, TipCard, useToast } from '@global-components';
+import { Button, Input, ModulePage, Textarea, TipCard, useToast } from '@global-components';
 import { useCompanyPath } from '@hooks/useCompanyPath';
 import { IMAGE_TYPES, PDF_TYPE } from '@utils/upload';
 import { ProofField } from '../components/ProofField';
@@ -73,14 +73,16 @@ export function RecordDeliveryPage() {
 				<form
 					onSubmit={(event) => {
 						event.preventDefault();
-						const notes = String(
-							new FormData(event.currentTarget).get('notes') ?? '',
-						).trim();
+						const form = new FormData(event.currentTarget);
+						const notes = String(form.get('notes') ?? '').trim();
 						const found = location.state === 'found' ? location : null;
 						deliverParcel(
 							{
 								parcelId: parcel.id,
 								values: {
+									collectedAmount: String(
+										form.get('collectedAmount') ?? '',
+									).trim(),
 									latitude: found?.latitude ?? null,
 									longitude: found?.longitude ?? null,
 									notes: notes || null,
@@ -109,6 +111,16 @@ export function RecordDeliveryPage() {
 					}}
 					className="flex flex-col gap-6 rounded-box border border-base-300 p-4 md:p-8"
 				>
+					<Input
+						label="Cash collected"
+						name="collectedAmount"
+						required
+						inputMode="decimal"
+						dir="ltr"
+						defaultValue={parcel.codAmount}
+						pattern="[0-9]{1,10}(\.[0-9]{1,2})?"
+						title="Enter an amount with up to 10 digits and 2 decimal places."
+					/>
 					<ProofField
 						parcelId={parcel.id}
 						kind="signature"

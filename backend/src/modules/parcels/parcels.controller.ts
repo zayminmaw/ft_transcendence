@@ -15,7 +15,7 @@ const actor = (request: AuthenticatedRequest): ParcelsActor => ({
 
 // The parcels of the company named by X-Organization-Id (checked by RolesGuard). Reading needs parcels.view; each
 // change needs its own permission, which replaces it: creating a waybill parcels.create, moving it through pickup,
-// hub and failure parcels.update_status, sending it out with a driver parcels.dispatch, its proof of delivery
+// hub and failure parcels.update_status, sending it out with a driver parcels.dispatch, recording its cash and proof
 // parcels.mark_delivered. The fixed paths come before :parcelId.
 @Controller('parcels')
 @RequirePermission('parcels.view')
@@ -61,6 +61,14 @@ export class ParcelsController {
     return this.parcels.move(actor(request), id, body);
   }
 
+  // The driver hands the parcel over and takes its cash. 200 like the other actions on a parcel.
+  @Post(':parcelId/delivery')
+  @HttpCode(200)
+  @RequirePermission('parcels.mark_delivered')
+  deliver(@Param('parcelId') id: string, @Body() body: DeliverParcelDto, @Req() request: AuthenticatedRequest) {
+    return this.parcels.deliver(actor(request), id, body);
+  }
+
   @Post(':parcelId/assignment')
   @HttpCode(200)
   @RequirePermission('parcels.dispatch')
@@ -87,12 +95,5 @@ export class ParcelsController {
   @RequirePermission('parcels.mark_delivered')
   removeProof(@Param('parcelId') id: string, @Param('kind') kind: string, @Req() request: AuthenticatedRequest) {
     return this.parcels.removeProof(actor(request), id, kind);
-  }
-
-  @Post(':parcelId/delivery')
-  @HttpCode(200)
-  @RequirePermission('parcels.mark_delivered')
-  deliver(@Param('parcelId') id: string, @Body() body: DeliverParcelDto, @Req() request: AuthenticatedRequest) {
-    return this.parcels.deliver(actor(request), id, body);
   }
 }

@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import type { EntityManager } from 'typeorm';
 import type { RequestMeta } from '../../common/context/request-meta';
 import { ID_PATTERN } from '../../common/ids';
@@ -7,7 +7,8 @@ import { type AuditAction, AuditService } from '../audit';
 import { PendingCodService } from '../billing';
 import { IMAGE_TYPES, StorageService, type UploadedFileInput } from '../storage';
 import {
-  PARCEL_CLIENT_UNAVAILABLE, PARCEL_DRIVER_UNAVAILABLE, PARCEL_NOT_FOUND, PARCEL_PROOF_KIND, PARCEL_PROOF_MISSING, PARCEL_PROOF_TYPE,
+  PARCEL_CLIENT_UNAVAILABLE, PARCEL_COD_MISMATCH, PARCEL_DRIVER_UNAVAILABLE, PARCEL_NOT_FOUND, PARCEL_NOT_YOUR_PARCEL,
+  PARCEL_PROOF_KIND, PARCEL_PROOF_MISSING, PARCEL_PROOF_TYPE,
   PARCEL_WRONG_STATUS, PROOF_FILES, PROOF_KINDS, type ProofKind,
 } from './constants';
 import type { AssignParcelDto, CreateParcelDto, DeliverParcelDto, ListParcelsQueryDto, StatusMoveDto } from './dto/parcel.dto';
@@ -27,6 +28,8 @@ const REFUSALS: Record<Refusal, () => Error> = {
   driver_unavailable: () => new ConflictException(PARCEL_DRIVER_UNAVAILABLE),
   wrong_status: () => new ConflictException(PARCEL_WRONG_STATUS),
   proof_missing: () => new ConflictException(PARCEL_PROOF_MISSING),
+  not_assigned_driver: () => new ForbiddenException(PARCEL_NOT_YOUR_PARCEL),
+  cod_mismatch: () => new ConflictException(PARCEL_COD_MISMATCH),
 };
 
 function savedParcel(result: ParcelResult): ParcelRecord {
@@ -119,6 +122,19 @@ export class ParcelsService {
     return parcel;
   }
 
+  // The cash is compared as saved ("120.5" is 120.50), so how it was typed doesn't matter.
+  async deliver(actor: ParcelsActor, id: string, body: DeliverParcelDto) {
+    requireId(id);
+    const result = await this.parcels.deliver(
+      actor.tenant.organizationId, id, actor.userId,
+      {
+        collected: Number(body.collectedAmount).toFixed(2), latitude: body.latitude ?? null,
+        longitude: body.longitude ?? null, notes: body.notes ?? null,
+      }, this.auditStep(actor, 'status_change'),
+    );
+    return savedParcel(result);
+  }
+
   async assign(actor: ParcelsActor, id: string, body: AssignParcelDto) {
     requireId(id);
     const result = await this.parcels.assign(
@@ -165,14 +181,6 @@ export class ParcelsService {
     const result = await this.parcels.attachProof(organizationId, id, requireKind(kind), null);
     if (result.status !== 'updated') throw REFUSALS[result.status]();
     if (result.previousFileId) await this.storage.deleteQuietly(organizationId, result.previousFileId);
-  }
-
-  // Delivered: needs the signature and photo already uploaded. From then on the proof can't change.
-  async deliver(actor: ParcelsActor, id: string, body: DeliverParcelDto) {
-    requireId(id);
-    const values = { latitude: body.latitude ?? null, longitude: body.longitude ?? null, notes: body.notes ?? null };
-    const result = await this.parcels.deliver(actor.tenant.organizationId, id, actor.userId, values, this.auditStep(actor, 'status_change'));
-    return savedParcel(result);
   }
 
   private async proofOf(organizationId: string, ids: ProofFileIds): Promise<ParcelProof> {
