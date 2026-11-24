@@ -35,7 +35,7 @@ export function useWebSocket({
 }: WebSocketHandlers = {}) {
 	const { accessToken, activeOrganizationId } = useAuth();
 	const handlers = useRef({ onNotification, onPresence, onReconnect });
-	const connectedBefore = useRef(false);
+	const catchUpOnConnect = useRef(false);
 
 	useEffect(() => {
 		handlers.current = { onNotification, onPresence, onReconnect };
@@ -70,9 +70,10 @@ export function useWebSocket({
 		};
 
 		socket.on('connect', () => {
+			if (!active) return;
 			attempt = 0;
-			if (active && connectedBefore.current) handlers.current.onReconnect?.();
-			connectedBefore.current = true;
+			if (catchUpOnConnect.current) handlers.current.onReconnect?.();
+			catchUpOnConnect.current = true;
 		});
 
 		socket.on('notification', (payload: NotificationPayload) => {
@@ -96,6 +97,8 @@ export function useWebSocket({
 		// itself: Unavailable (a server fault) is retried, Unauthorized would stay refused, network errors retry alone.
 		socket.on('connect_error', (error) => {
 			if (!active) return;
+			// The page can load before the first connection succeeds. Catch up on events missed while it was refused.
+			catchUpOnConnect.current = true;
 			if (error.message === 'TokenExpired') renew();
 			else if (error.message === 'Unavailable') later(() => socket.connect());
 		});
