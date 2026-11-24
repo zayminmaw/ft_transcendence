@@ -1,1 +1,0 @@
-export { organizationsRoutes } from './routes';

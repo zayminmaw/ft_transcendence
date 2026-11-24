@@ -16,6 +16,7 @@ test('WebSocket notifications reach only authenticated, authorized members of th
 	// user -> organization -> role
 	const memberships = { 7: { 1: '3' }, 8: { 1: '4', 2: '5' }, 9: { 2: '5' } };
 	const members = { async requireActiveMembership(userId, organizationId) {
+		if (userId === '6') throw new Error('database unavailable');
 		const roleId = memberships[userId]?.[organizationId];
 		if (!roleId) throw new ForbiddenException('Inactive membership');
 		return { organizationId, roleId };
@@ -56,6 +57,8 @@ test('WebSocket notifications reach only authenticated, authorized members of th
 	await assert.rejects(connect({ token: 'malformed', organizationId: '1' }), /Unauthorized/);
 	// Only an expired token says so: it is the one refusal a refreshed token fixes.
 	await assert.rejects(connect({ token: token('7', -1), organizationId: '1' }), /TokenExpired/);
+	// A failed membership lookup is worth retrying; a missing membership is not.
+	await assert.rejects(connect({ token: token('6'), organizationId: '1' }), /Unavailable/);
 	await assert.rejects(connect({ token: token('7') }), /Unauthorized/);
 	await assert.rejects(connect({ token: token('7'), organizationId: 'abc' }), /Unauthorized/);
 	await assert.rejects(connect({ token: token('7'), organizationId: '2' }), /Unauthorized/);

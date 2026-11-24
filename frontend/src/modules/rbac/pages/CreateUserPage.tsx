@@ -114,6 +114,7 @@ export function CreateUserPage() {
 							autoComplete="off"
 							autoCapitalize="none"
 							spellCheck={false}
+							dir="ltr"
 							error={fieldError(errors.username?.message)}
 							{...register('username')}
 						/>
@@ -132,8 +133,6 @@ export function CreateUserPage() {
 							label={t('create.password')}
 							required
 							autoComplete="new-password"
-							// A password reads left to right, also on an Arabic page.
-							dir="ltr"
 							error={fieldError(errors.password?.message)}
 							visible={passwordVisible}
 							onVisibleChange={setPasswordVisible}

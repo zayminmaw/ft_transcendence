@@ -29,8 +29,10 @@ export function UserCreatedDialog({
 		>
 			<div>
 				<p className="text-xs text-[var(--color-slate)]">{t('created.identifier')}</p>
-				<p className="mt-1 font-semibold" dir="ltr">
-					{member.username} · {member.email}
+				<p className="mt-1 font-semibold">
+					<span dir="ltr">
+						{member.username} · {member.email}
+					</span>
 				</p>
 			</div>
 			<p className="text-sm text-[var(--color-slate)]">

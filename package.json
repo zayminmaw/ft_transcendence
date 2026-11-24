@@ -16,6 +16,7 @@
 		"verify": "npm run lint && npm run build && npm test",
 		"docker:up": "docker compose up --build -d",
 		"docker:dev": "docker compose --env-file .env -f docker/docker-compose.yml -f docker/docker-compose.dev.yml up --build -d",
+		"docker:db": "docker compose --env-file .env -f docker/docker-compose.yml -f docker/docker-compose.dev.yml up -d mariadb",
 		"docker:down": "docker compose down"
 	},
 	"devDependencies": {

@@ -130,3 +130,14 @@ export type StatusMove =
 // POST /api/parcels/:id/delivery: the driver hands the parcel over and takes the cash. The cash must be exactly the
 // amount due; the API refuses anything else.
 export type DeliveryValues = { collectedAmount: string; notes: string | null };
+
+// /api/tracking/:trackingNumber, open to anyone: what the public tracking page shows of a parcel. Never the
+// recipient, the address, the money or who handled it.
+export type ParcelTracking = {
+	trackingNumber: string;
+	status: ParcelStatus;
+	// The courier company carrying it.
+	company: string;
+	// Oldest first.
+	events: { status: ParcelStatus; at: string }[];
+};
