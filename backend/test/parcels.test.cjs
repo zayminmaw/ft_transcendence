@@ -9,6 +9,7 @@ const { ParcelsRepository } = require('../dist/modules/parcels/parcels.repositor
 const { CodRepository } = require('../dist/modules/billing/cod.repository');
 const { LedgerHistoryRepository } = require('../dist/modules/billing/ledger-history.repository');
 const { PayoutsRepository } = require('../dist/modules/billing/payouts.repository');
+const { InvoicesRepository } = require('../dist/modules/billing/invoices.repository');
 const { hashPassword } = require('../dist/modules/users/password');
 const { PASSWORD, as, createAuthApp, createFakeStore, tokenFor } = require('./helpers/auth-app.cjs');
 
@@ -90,7 +91,7 @@ async function parcelsApp(t) {
   }
   const { server } = await createAuthApp(t, store, {
     imports: [ParcelsModule],
-    overrides: [[ParcelsRepository, parcels.repository], [CodRepository, {}], [LedgerHistoryRepository, {}], [PayoutsRepository, {}]],
+    overrides: [[ParcelsRepository, parcels.repository], [CodRepository, {}], [LedgerHistoryRepository, {}], [PayoutsRepository, {}], [InvoicesRepository, {}]],
   });
   const tokens = {};
   for (const [, username] of people) tokens[username] = await tokenFor(server, username);

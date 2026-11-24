@@ -1,5 +1,8 @@
 import { Module } from '@nestjs/common';
 import { AuditModule } from '../audit';
+import { InvoicesController } from './invoices.controller';
+import { InvoicesRepository } from './invoices.repository';
+import { InvoicesService } from './invoices.service';
 import { CodController } from './cod.controller';
 import { CodRepository } from './cod.repository';
 import { CodService } from './cod.service';
@@ -18,10 +21,10 @@ import { PendingCodService } from './pending-cod.service';
 // changes nothing.
 @Module({
   imports: [AuditModule],
-  controllers: [CodController, LedgerHistoryController, PayoutsController],
+  controllers: [InvoicesController, CodController, LedgerHistoryController, PayoutsController],
   providers: [
     LedgerRepository, LedgerService, PendingCodService, CodRepository, CodService, LedgerHistoryRepository, LedgerHistoryService,
-    PayoutsRepository, PayoutsService,
+    PayoutsRepository, PayoutsService, InvoicesRepository, InvoicesService,
   ],
   exports: [LedgerService, PendingCodService],
 })
