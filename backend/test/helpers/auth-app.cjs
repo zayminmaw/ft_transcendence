@@ -246,7 +246,7 @@ function createFakeStore() {
     auditRepository: {
       list: async (scope, query) => {
         const ids = query.recordId?.split(',');
-        const showAccess = query.module === 'audit' || query.resourceType === 'audit_log';
+        const showAccess = ['audit', 'insights'].includes(query.module) || ['audit_log', 'activity_insight'].includes(query.resourceType);
         const rows = store.auditRows.filter((row) => auditInScope(scope, row)
           && (showAccess || row.category !== 'access')
           && (!query.module || row.module === query.module)
