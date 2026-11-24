@@ -8,8 +8,18 @@ import { useMerchantLedger } from '../hooks/useMerchantLedger';
 // money the courier owes the merchant, a debit lowers it.
 export function MerchantLedger({ clientId }: { clientId: string }) {
 	const { t, i18n } = useTranslation('billing');
-	const { entries, total, isPending, page, setPage, pageSize, setPageSize } =
-		useMerchantLedger(clientId);
+	const {
+		entries,
+		total,
+		isPending,
+		ledgerError,
+		isFetching,
+		retryLedger,
+		page,
+		setPage,
+		pageSize,
+		setPageSize,
+	} = useMerchantLedger(clientId);
 
 	const columns: TableColumn<LedgerEntry>[] = [
 		{
@@ -62,7 +72,19 @@ export function MerchantLedger({ clientId }: { clientId: string }) {
 				</h2>
 				<p className="mt-1 text-xs text-[var(--color-slate)]">{t('ledger.description')}</p>
 			</div>
-			{isPending ? (
+			{ledgerError ? (
+				<div role="alert" className="flex flex-col items-start gap-3">
+					<p className="text-sm text-error">{t('ledger.loadFailed')}</p>
+					<button
+						type="button"
+						className="btn btn-sm border-0 bg-base-200"
+						disabled={isFetching}
+						onClick={() => void retryLedger()}
+					>
+						{isFetching ? t('ledger.retrying') : t('ledger.retry')}
+					</button>
+				</div>
+			) : isPending ? (
 				<span className="loading loading-spinner" aria-label={t('ledger.loading')} />
 			) : (
 				<Table

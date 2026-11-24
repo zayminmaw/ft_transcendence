@@ -152,7 +152,9 @@ export function ClientDetailsPage() {
 						</p>
 					</section>
 
-					{can('clients.view_financials') && <MerchantLedger clientId={client.id} />}
+					{can('clients.view_financials') && (
+						<MerchantLedger key={client.id} clientId={client.id} />
+					)}
 				</div>
 
 				<aside className="flex flex-col gap-6">

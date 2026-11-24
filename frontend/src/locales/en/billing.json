@@ -4,6 +4,8 @@
 		"description": "Every change to the merchant's balance, newest first.",
 		"loading": "Loading the ledger",
 		"loadFailed": "The ledger could not be loaded",
+		"retry": "Try again",
+		"retrying": "Retrying…",
 		"empty": "No ledger lines yet. COD credits, fees and payouts appear here.",
 		"date": "Date",
 		"entry": "Entry",
