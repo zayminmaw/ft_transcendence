@@ -2,6 +2,9 @@
 	"language": {
 		"label": "Language"
 	},
+	"list": {
+		"separator": ", "
+	},
 	"password": {
 		"show": "Show password"
 	},
