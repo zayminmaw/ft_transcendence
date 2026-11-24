@@ -1,26 +1,32 @@
 import { useState } from 'react';
+import type { ParseKeys } from 'i18next';
 import { useForm } from 'react-hook-form';
+import { useTranslation } from 'react-i18next';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Button, Input } from '@global-components';
 import { PageIntro } from '../components/PageIntro';
 
+const key = (value: ParseKeys<'marketing'>) => value;
+
+// Messages are translation keys, translated when shown.
 const briefSchema = z.object({
-	company: z.string().trim().min(2, 'Enter a company name with at least 2 characters.').max(120),
+	company: z
+		.string()
+		.trim()
+		.min(2, key('contact.errors.company'))
+		.max(120, key('contact.errors.companyMax')),
 	drivers: z
 		.string()
-		.regex(/^[1-9]\d*$/, 'Enter the number of drivers, starting from 1.')
-		.refine((value) => Number(value) <= 100000, 'Enter a number up to 100,000.'),
-	priority: z.enum([
-		'Dispatch coordination',
-		'COD reconciliation',
-		'Fleet and people',
-		'Merchant accounts',
-	]),
+		.regex(/^[1-9]\d*$/, key('contact.errors.drivers'))
+		.refine((value) => Number(value) <= 100000, key('contact.errors.driversMax')),
+	priority: z.enum(['dispatch', 'cod', 'fleet', 'merchants']),
 });
 type Brief = z.infer<typeof briefSchema>;
+const questions = ['flow', 'cash', 'access'] as const;
 
 export function ContactPage() {
+	const { t } = useTranslation('marketing');
 	const [brief, setBrief] = useState<Brief | null>(null);
 	const {
 		register,
@@ -28,16 +34,21 @@ export function ContactPage() {
 		formState: { errors, isSubmitting },
 	} = useForm<Brief>({
 		resolver: zodResolver(briefSchema),
-		defaultValues: { company: '', drivers: '', priority: 'Dispatch coordination' },
+		defaultValues: { company: '', drivers: '', priority: 'dispatch' },
 	});
+	const fieldError = (message?: string) => message && t(message as ParseKeys<'marketing'>);
 
 	function downloadBrief() {
 		if (!brief) return;
-		const text = `Transcend operations brief\n\nCompany: ${brief.company}\nDrivers: ${brief.drivers}\nPriority: ${brief.priority}\n\nNext: document your current workflow, the teams involved, and the handoffs to improve.\n`;
+		const text = t('contact.file.text', {
+			company: brief.company,
+			drivers: brief.drivers,
+			priority: t(`contact.priorities.${brief.priority}`),
+		});
 		const url = URL.createObjectURL(new Blob([text], { type: 'text/plain;charset=utf-8' }));
 		const anchor = document.createElement('a');
 		anchor.href = url;
-		anchor.download = 'transcend-operations-brief.txt';
+		anchor.download = t('contact.file.name');
 		anchor.click();
 		setTimeout(() => URL.revokeObjectURL(url), 1000);
 	}
@@ -45,9 +56,9 @@ export function ContactPage() {
 	return (
 		<>
 			<PageIntro
-				eyebrow="Plan your rollout"
-				title="Start with the way you work."
-				description="Create a simple operations brief to help your team discuss what comes next. Your details stay in this browser; nothing is sent or saved to a server."
+				eyebrow={t('contact.eyebrow')}
+				title={t('contact.title')}
+				description={t('contact.description')}
 			/>
 			<section className="mx-auto grid max-w-7xl gap-12 px-6 pb-20 md:px-10 lg:grid-cols-2">
 				<form
@@ -55,17 +66,17 @@ export function ContactPage() {
 					onSubmit={handleSubmit((data) => setBrief(data))}
 				>
 					<div className="card-body gap-6 p-6 md:p-8">
-						<h2 className="card-title">Your operations brief</h2>
+						<h2 className="card-title">{t('contact.formTitle')}</h2>
 						<Input
-							label="Company name"
+							label={t('contact.company')}
 							autoComplete="organization"
-							error={errors.company?.message}
+							error={fieldError(errors.company?.message)}
 							{...register('company')}
 						/>
 						<Input
-							label="Number of drivers"
+							label={t('contact.drivers')}
 							inputMode="numeric"
-							error={errors.drivers?.message}
+							error={fieldError(errors.drivers?.message)}
 							{...register('drivers')}
 						/>
 						<div>
@@ -73,7 +84,7 @@ export function ContactPage() {
 								htmlFor="rollout-priority"
 								className="mb-2 block text-sm font-medium"
 							>
-								First priority
+								{t('contact.priority')}
 							</label>
 							<select
 								id="rollout-priority"
@@ -83,7 +94,9 @@ export function ContactPage() {
 								{...register('priority')}
 							>
 								{briefSchema.shape.priority.options.map((priority) => (
-									<option key={priority}>{priority}</option>
+									<option key={priority} value={priority}>
+										{t(`contact.priorities.${priority}`)}
+									</option>
 								))}
 							</select>
 							{errors.priority && (
@@ -97,16 +110,16 @@ export function ContactPage() {
 							)}
 						</div>
 						<Button type="submit" disabled={isSubmitting}>
-							{isSubmitting ? 'Preparing…' : 'Create brief'}
+							{isSubmitting ? t('contact.preparing') : t('contact.create')}
 						</Button>
 					</div>
 				</form>
 				<div>
-					<h2 className="marketing-title text-3xl">A useful starting conversation.</h2>
+					<h2 className="marketing-title text-3xl">{t('contact.conversationTitle')}</h2>
 					<ul className="mt-6 list-disc space-y-4 ps-5 leading-relaxed opacity-70">
-						<li>How does a parcel move from merchant intake to its assigned driver?</li>
-						<li>Where are cash handovers and discrepancies recorded today?</li>
-						<li>Which teams need access to each part of the operation?</li>
+						{questions.map((question) => (
+							<li key={question}>{t(`contact.questions.${question}`)}</li>
+						))}
 					</ul>
 					{brief && (
 						<div
@@ -114,14 +127,17 @@ export function ContactPage() {
 							className="mt-8 rounded-xl border border-secondary/25 bg-base-100 p-6"
 						>
 							<p className="text-xs font-semibold uppercase tracking-wide text-secondary">
-								Brief ready
+								{t('contact.ready')}
 							</p>
 							<h3 className="mt-3 text-xl font-semibold">{brief.company}</h3>
 							<p className="mt-2 text-sm opacity-70">
-								{brief.drivers} drivers · {brief.priority}
+								{t('contact.summary', {
+									drivers: brief.drivers,
+									priority: t(`contact.priorities.${brief.priority}`),
+								})}
 							</p>
 							<Button className="mt-5" onClick={downloadBrief}>
-								Download your brief
+								{t('contact.download')}
 							</Button>
 						</div>
 					)}
