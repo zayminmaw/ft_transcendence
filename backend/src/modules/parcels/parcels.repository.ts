@@ -374,12 +374,13 @@ export class ParcelsRepository {
 
   // Points one kind of proof at a file the caller has just saved, while the parcel is out for delivery. The file it
   // replaces is answered, not deleted: that happens once this has committed.
-  attachProof(organizationId: string, id: string, kind: ProofKind, fileId: string | null, assignedUserId?: string): Promise<ProofResult> {
+  attachProof(organizationId: string, id: string, kind: ProofKind, fileId: string | null, actorId: string, assignedOnly = false): Promise<ProofResult> {
     return this.database.transaction(WRITES, async (manager) => {
       const locked = await this.lock(manager, organizationId, id);
       if (!locked) return { status: 'not_found' };
-      if (assignedUserId && !(await this.isAssignedTo(organizationId, id, assignedUserId, manager))) return { status: 'not_found' };
+      if (assignedOnly && !(await this.isAssignedTo(organizationId, id, actorId, manager))) return { status: 'not_found' };
       if (locked.status !== 'out_for_delivery') return { status: 'wrong_status' };
+      if (await this.isOtherDriver(manager, organizationId, actorId, locked.driverId)) return { status: 'not_assigned_driver' };
       await manager.update(Parcel, { organizationId, id }, { [PROOF_FILES[kind].property]: fileId });
       return { status: 'updated', previousFileId: locked.proof[kind] };
     });
@@ -395,15 +396,7 @@ export class ParcelsRepository {
       if (assignedOnly && !(await this.isAssignedTo(organizationId, id, actorId, manager))) return { status: 'not_found' };
       if (locked.status !== 'out_for_delivery') return { status: 'wrong_status' };
       const before = (await this.findOne(manager, organizationId, id))!;
-      const own = await manager
-        .createQueryBuilder()
-        .select('e.id', 'id')
-        .from('employees', 'e')
-        .where('e.user_id = :actorId', { actorId })
-        .andWhere('e.organization_id = :organizationId', { organizationId })
-        .andWhere('e.personnel_type = :type', { type: 'driver' })
-        .getRawOne();
-      if (own && String(own.id) !== before.driver?.id) return { status: 'not_assigned_driver' };
+      if (await this.isOtherDriver(manager, organizationId, actorId, before.driver?.id ?? null)) return { status: 'not_assigned_driver' };
       if (values.collected !== before.codAmount) return { status: 'cod_mismatch' };
       if (PROOF_KINDS.some((kind) => PROOF_FILES[kind].required && locked.proof[kind] === null)) return { status: 'proof_missing' };
       await manager.update(Parcel, { organizationId, id }, {
@@ -433,6 +426,20 @@ export class ParcelsRepository {
       [organizationId, driverId, actorId],
     );
     return String(result.insertId);
+  }
+
+  // Shared by proof changes and confirmation. A linked driver acts only on their own assignment, even with a full
+  // grant; a permitted non-driver (e.g. a dispatcher) may help with any parcel. The caller holds the parcel lock.
+  private async isOtherDriver(manager: EntityManager, organizationId: string, actorId: string, driverId: string | null): Promise<boolean> {
+    const own = await manager
+      .createQueryBuilder()
+      .select('e.id', 'id')
+      .from('employees', 'e')
+      .where('e.user_id = :actorId', { actorId })
+      .andWhere('e.organization_id = :organizationId', { organizationId })
+      .andWhere('e.personnel_type = :type', { type: 'driver' })
+      .getRawOne();
+    return !!own && String(own.id) !== driverId;
   }
 
   // Draws waybill numbers until one is free. A refused INSERT undoes only itself, so the transaction carries on.
@@ -490,12 +497,12 @@ export class ParcelsRepository {
 
   // Holds the parcel's row until the transaction ends, and answers where it is and its proof files; null when it isn't
   // in the company.
-  private async lock(manager: EntityManager, organizationId: string, id: string): Promise<{ status: ParcelStatus; proof: ProofFileIds } | null> {
+  private async lock(manager: EntityManager, organizationId: string, id: string): Promise<{ status: ParcelStatus; proof: ProofFileIds; driverId: string | null } | null> {
     const [row] = await manager.query(
-      `SELECT parcel.lifecycle_status AS status, ${PROOF_COLUMNS} FROM parcels parcel WHERE parcel.id = ? AND parcel.organization_id = ? FOR UPDATE`,
+      `SELECT parcel.lifecycle_status AS status, parcel.assigned_driver_id AS driverId, ${PROOF_COLUMNS} FROM parcels parcel WHERE parcel.id = ? AND parcel.organization_id = ? FOR UPDATE`,
       [id, organizationId],
     );
-    return row ? { status: row.status as ParcelStatus, proof: proofOf(row) } : null;
+    return row ? { status: row.status as ParcelStatus, proof: proofOf(row), driverId: text(row.driverId) } : null;
   }
 
   private async findRow(manager: EntityManager, organizationId: string, id: string, assignedUserId?: string): Promise<Row | undefined> {

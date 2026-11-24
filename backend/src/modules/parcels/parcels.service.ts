@@ -173,7 +173,7 @@ export class ParcelsService {
     const saved = await this.storage.save(organizationId, actor.userId, file);
     let previousFileId: string | null;
     try {
-      const result = await this.parcels.attachProof(organizationId, id, proofKind, saved.id, actor.assignedOnly ? actor.userId : undefined);
+      const result = await this.parcels.attachProof(organizationId, id, proofKind, saved.id, actor.userId, actor.assignedOnly);
       if (result.status !== 'updated') throw REFUSALS[result.status]();
       previousFileId = result.previousFileId;
     } catch (error) {
@@ -191,7 +191,7 @@ export class ParcelsService {
   async removeProof(actor: ParcelsActor, id: string, kind: string): Promise<void> {
     requireId(id);
     const organizationId = actor.tenant.organizationId;
-    const result = await this.parcels.attachProof(organizationId, id, requireKind(kind), null, actor.assignedOnly ? actor.userId : undefined);
+    const result = await this.parcels.attachProof(organizationId, id, requireKind(kind), null, actor.userId, actor.assignedOnly);
     if (result.status !== 'updated') throw REFUSALS[result.status]();
     if (result.previousFileId) await this.storage.deleteQuietly(organizationId, result.previousFileId);
   }

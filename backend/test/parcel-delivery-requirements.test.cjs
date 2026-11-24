@@ -90,7 +90,32 @@ test('proof attachment and removal recheck assignment after locking, before any 
       assert.deepEqual([organizationId, id, userId, transaction], ['1', '7', '15', manager]);
       return false;
     };
-    assert.deepEqual(await repository.attachProof('1', '7', 'photo', fileId, '15'), { status: 'not_found' });
+    assert.deepEqual(await repository.attachProof('1', '7', 'photo', fileId, '15', true), { status: 'not_found' });
     assert.equal(writes, 0);
   }
 });
+
+for (const [action, previousFileId, fileId] of [['upload', null, '42'], ['replace', '41', '42'], ['remove', '41', null]]) {
+  test(`a full-scope linked driver cannot ${action} another driver's proof; the assigned driver and a permitted dispatcher can`, async () => {
+    for (const kind of ['signature', 'photo', 'note']) {
+      for (const ownDriverId of ['9', '3', null]) {
+        const writes = [];
+        const query = {
+          select: () => query, from: () => query, where: (_sql, args) => { assert.equal(args.actorId, '15'); return query; },
+          andWhere: () => query, getRawOne: async () => ownDriverId === null ? undefined : { id: ownDriverId },
+        };
+        const manager = { createQueryBuilder: () => query, update: async (...args) => { writes.push(args); } };
+        const repository = new ParcelsRepository({ transaction: async (_level, callback) => callback(manager) });
+        repository.lock = async () => ({ status: 'out_for_delivery', driverId: '3', proof: { [kind]: previousFileId } });
+        const result = await repository.attachProof('1', '7', kind, fileId, '15');
+        if (ownDriverId === '9') {
+          assert.deepEqual(result, { status: 'not_assigned_driver' });
+          assert.equal(writes.length, 0);
+        } else {
+          assert.deepEqual(result, { status: 'updated', previousFileId });
+          assert.equal(writes.length, 1);
+        }
+      }
+    }
+  });
+}

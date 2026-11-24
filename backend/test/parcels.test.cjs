@@ -207,7 +207,7 @@ test('a proof file is saved in the company, attached to the parcel and answered 
   assert.deepEqual([file.organizationId, file.uploadedByUserId], ['1', '10']);
   assert.deepEqual([photo.id, photo.name, photo.mimeType, photo.sizeBytes], [file.id, 'door.png', 'image/png', PNG.length]);
   assert.match(photo.url, new RegExp(`^/api/storage/files/${file.id}\\?exp=\\d+&sig=`));
-  assert.deepEqual(parcels.calls.find(([call]) => call === 'attachProof').slice(1), ['1', '1', 'photo', file.id]);
+  assert.deepEqual(parcels.calls.find(([call]) => call === 'attachProof').slice(1), ['1', '1', 'photo', file.id, '10', false]);
 
   // A PDF only as the delivery note; other types never reach the parcel.
   assert.equal((await upload('signature', PDF, { filename: 'sign.pdf', contentType: 'application/pdf' }).expect(400)).body.code, 'PARCEL_PROOF_TYPE');
@@ -240,7 +240,7 @@ test('a replaced, refused or removed proof file is deleted', async (t) => {
 
   parcels.next.attachProof = { status: 'updated', previousFileId: second.id };
   await as(request(server).delete('/api/parcels/1/proof/photo'), tokens.dana).expect(204);
-  assert.deepEqual(parcels.calls.filter(([call]) => call === 'attachProof').at(-1).slice(1), ['1', '1', 'photo', null]);
+  assert.deepEqual(parcels.calls.filter(([call]) => call === 'attachProof').at(-1).slice(1), ['1', '1', 'photo', null, '10', false]);
   assert.deepEqual([store.storageFiles.length, (await companyFiles()).length], [0, 0]);
   await as(request(server).delete('/api/parcels/1/proof/stamp'), tokens.dana).expect(404);
 });
@@ -325,7 +325,7 @@ test('assigned-only couriers can read, upload, remove and confirm their own parc
   assert.deepEqual(parcels.calls.find(([name]) => name === 'counts'), ['counts', '1', '15']);
   await as(request(server).post('/api/parcels/1/proof/photo'), tokens.leen).attach('file', PNG, { filename: 'door.png', contentType: 'image/png' }).expect(201);
   assert.deepEqual(parcels.calls.find(([name]) => name === 'statusOf'), ['statusOf', '1', '1', '15']);
-  assert.equal(parcels.calls.find(([name]) => name === 'attachProof').at(-1), '15');
+  assert.deepEqual(parcels.calls.find(([name]) => name === 'attachProof').slice(-2), ['15', true]);
   await as(request(server).delete('/api/parcels/1/proof/photo'), tokens.leen).expect(204);
   await as(request(server).post('/api/parcels/1/delivery').send({ collectedAmount: '120.00' }), tokens.leen).expect(200);
   assert.equal(parcels.calls.find(([name]) => name === 'deliver').at(-1), true);
@@ -364,4 +364,17 @@ test('/me separates usable assigned parcel permissions from all-scope and unsupp
   const me = (await as(request(server).get('/api/auth/me'), tokens.leen).expect(200)).body;
   assert.deepEqual(me.workspaces[0].permissions, []);
   assert.deepEqual(me.workspaces[0].assignedPermissions, ['parcels.mark_delivered', 'parcels.view']);
+});
+
+test('a full-scope driver refusal preserves the original proof and removes a refused replacement upload', async (t) => {
+  const { server, store, parcels, tokens, companyFiles } = await parcelsApp(t);
+  const upload = () => as(request(server).post('/api/parcels/1/proof/photo'), tokens.dana).attach('file', PNG, { filename: 'door.png', contentType: 'image/png' });
+  const first = (await upload().expect(201)).body;
+  // The repository resolves this full-scope caller to another driver, exactly as the delivery step does.
+  parcels.next.attachProof = { status: 'not_assigned_driver' };
+  assert.equal((await upload().expect(403)).body.code, 'PARCEL_NOT_YOUR_PARCEL');
+  assert.equal((await as(request(server).delete('/api/parcels/1/proof/photo'), tokens.dana).expect(403)).body.code, 'PARCEL_NOT_YOUR_PARCEL');
+  assert.deepEqual(store.storageFiles.map((file) => file.id), [first.id]);
+  assert.equal((await companyFiles()).length, 1);
+  assert.deepEqual(parcels.calls.filter(([name]) => name === 'attachProof').map((call) => call.slice(-2)), [['10', false], ['10', false], ['10', false]]);
 });

@@ -147,6 +147,8 @@ The delivery request requires `collectedAmount`, explicitly entered as the actua
 
 Assigned-only `parcels.view` and `parcels.mark_delivered` grants are checked against the company's driver employee linked to the signed-in user. Reads, list totals and status counts are scoped to that driver's parcels; proof upload, removal and delivery confirmation recheck ownership under the parcel lock. An unlinked or different driver cannot use the workflow. Details return `canRecordDelivery` for the UI action.
 
+For full-scope delivery grants, proof upload, replacement and deletion use the same linked-driver check as delivery confirmation: a linked driver may change only their own parcel's proof. Permitted non-driver staff may assist on any parcel in the company.
+
 ```mermaid
 sequenceDiagram
     autonumber

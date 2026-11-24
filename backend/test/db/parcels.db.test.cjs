@@ -324,8 +324,8 @@ async function outParcel(extra) {
 }
 async function proofReadyParcel(extra) {
   const parcel = await outParcel(extra);
-  await parcels.attachProof(meridian, parcel.id, 'photo', await insertFile(meridian));
-  await parcels.attachProof(meridian, parcel.id, 'signature', await insertFile(meridian, 'signature.png'));
+  await parcels.attachProof(meridian, parcel.id, 'photo', await insertFile(meridian), clerk);
+  await parcels.attachProof(meridian, parcel.id, 'signature', await insertFile(meridian, 'signature.png'), clerk);
   return parcel;
 }
 const deliver = (id, collected = '120.00', actor = clerk, organizationId = meridian, audit = noAudit) =>
@@ -445,16 +445,16 @@ const at = { collected: '120.00', latitude: 31.9539494, longitude: 35.910635, no
 test('proof files attach while out for delivery, one per kind, answering the file each replaces', async () => {
   const parcel = await outParcel();
   const [first, second, note] = [await insertFile(meridian), await insertFile(meridian), await insertFile(meridian, 'note.pdf')];
-  assert.deepEqual(await parcels.attachProof(meridian, parcel.id, 'photo', first), { status: 'updated', previousFileId: null });
-  assert.deepEqual(await parcels.attachProof(meridian, parcel.id, 'photo', second), { status: 'updated', previousFileId: first });
-  await parcels.attachProof(meridian, parcel.id, 'note', note);
+  assert.deepEqual(await parcels.attachProof(meridian, parcel.id, 'photo', first, clerk), { status: 'updated', previousFileId: null });
+  assert.deepEqual(await parcels.attachProof(meridian, parcel.id, 'photo', second, clerk), { status: 'updated', previousFileId: first });
+  await parcels.attachProof(meridian, parcel.id, 'note', note, clerk);
   assert.deepEqual(await proofOf(parcel.id), { signature: null, photo: second, note });
-  assert.deepEqual(await parcels.attachProof(meridian, parcel.id, 'note', null), { status: 'updated', previousFileId: note });
+  assert.deepEqual(await parcels.attachProof(meridian, parcel.id, 'note', null, clerk), { status: 'updated', previousFileId: note });
   assert.deepEqual(await proofOf(parcel.id), { signature: null, photo: second, note: null });
 
   // Not out for delivery, or not in this company.
-  assert.deepEqual(await parcels.attachProof(meridian, (await sortedParcel()).id, 'photo', first), { status: 'wrong_status' });
-  assert.deepEqual(await parcels.attachProof(harbor, parcel.id, 'photo', first), { status: 'not_found' });
+  assert.deepEqual(await parcels.attachProof(meridian, (await sortedParcel()).id, 'photo', first, clerk), { status: 'wrong_status' });
+  assert.deepEqual(await parcels.attachProof(harbor, parcel.id, 'photo', first, clerk), { status: 'not_found' });
   assert.equal(await parcels.statusOf(harbor, parcel.id), null);
   assert.equal(await parcels.statusOf(meridian, parcel.id), 'out_for_delivery');
 
@@ -466,9 +466,9 @@ test('proof files attach while out for delivery, one per kind, answering the fil
 test('a delivery needs the signature and photo, records where and when, and then the proof is fixed', async () => {
   const parcel = await outParcel();
   assert.deepEqual(await parcels.deliver(meridian, parcel.id, clerk, at, noAudit), { status: 'proof_missing' });
-  await parcels.attachProof(meridian, parcel.id, 'photo', await insertFile(meridian));
+  await parcels.attachProof(meridian, parcel.id, 'photo', await insertFile(meridian), clerk);
   assert.deepEqual(await parcels.deliver(meridian, parcel.id, clerk, at, noAudit), { status: 'proof_missing' });
-  await parcels.attachProof(meridian, parcel.id, 'signature', await insertFile(meridian, 'signature.png'));
+  await parcels.attachProof(meridian, parcel.id, 'signature', await insertFile(meridian, 'signature.png'), clerk);
   assert.deepEqual(await parcels.deliver(harbor, parcel.id, clerk, at, noAudit), { status: 'not_found' });
 
   let audited;
@@ -483,13 +483,13 @@ test('a delivery needs the signature and photo, records where and when, and then
   ]);
 
   assert.deepEqual(await parcels.deliver(meridian, parcel.id, clerk, at, noAudit), { status: 'wrong_status' });
-  assert.deepEqual(await parcels.attachProof(meridian, parcel.id, 'photo', null), { status: 'wrong_status' });
+  assert.deepEqual(await parcels.attachProof(meridian, parcel.id, 'photo', null, clerk), { status: 'wrong_status' });
   assert.deepEqual(await parcels.move(meridian, parcel.id, clerk, { status: 'failed_attempt', reasonCode: 'refused' }, noAudit), { status: 'wrong_status' });
 
   // Without a location the delivery still counts.
   const other = await outParcel();
-  await parcels.attachProof(meridian, other.id, 'photo', await insertFile(meridian));
-  await parcels.attachProof(meridian, other.id, 'signature', await insertFile(meridian));
+  await parcels.attachProof(meridian, other.id, 'photo', await insertFile(meridian), clerk);
+  await parcels.attachProof(meridian, other.id, 'signature', await insertFile(meridian), clerk);
   const plain = (await parcels.deliver(meridian, other.id, clerk, { collected: '120.00', latitude: null, longitude: null, notes: null }, noAudit)).parcel;
   assert.deepEqual([plain.status, plain.deliveryLocation], ['delivered', null]);
 });
@@ -497,8 +497,8 @@ test('a delivery needs the signature and photo, records where and when, and then
 test('a failed attempt drops its unconfirmed proof, and a failed audit keeps it', async () => {
   const parcel = await outParcel();
   const [photo, signature] = [await insertFile(meridian), await insertFile(meridian)];
-  await parcels.attachProof(meridian, parcel.id, 'photo', photo);
-  await parcels.attachProof(meridian, parcel.id, 'signature', signature);
+  await parcels.attachProof(meridian, parcel.id, 'photo', photo, clerk);
+  await parcels.attachProof(meridian, parcel.id, 'signature', signature, clerk);
   const failing = async () => { throw new Error('audit down'); };
   await assert.rejects(parcels.deliver(meridian, parcel.id, clerk, at, failing), /audit down/);
   await assert.rejects(parcels.move(meridian, parcel.id, clerk, { status: 'failed_attempt', reasonCode: 'refused' }, failing), /audit down/);
@@ -521,8 +521,8 @@ test('assigned-only access filters every read and rechecks every proof and deliv
     assert.equal(await parcels.isAssignedTo(meridian, parcel.id, userId), false);
     assert.equal(await parcels.find(meridian, parcel.id, userId), null);
     assert.equal(await parcels.statusOf(meridian, parcel.id, userId), null);
-    assert.deepEqual(await parcels.attachProof(meridian, parcel.id, 'photo', fileId, userId), { status: 'not_found' });
-    assert.deepEqual(await parcels.attachProof(meridian, parcel.id, 'photo', null, userId), { status: 'not_found' });
+    assert.deepEqual(await parcels.attachProof(meridian, parcel.id, 'photo', fileId, userId, true), { status: 'not_found' });
+    assert.deepEqual(await parcels.attachProof(meridian, parcel.id, 'photo', null, userId, true), { status: 'not_found' });
     assert.deepEqual(await parcels.deliver(meridian, parcel.id, userId, at, noAudit, true), { status: 'not_found' });
   }
   assert.equal(await parcels.find(harbor, parcel.id, owner), null);
@@ -532,6 +532,26 @@ test('assigned-only access filters every read and rechecks every proof and deliv
   const counts = await parcels.counts(meridian, owner);
   assert.equal(Object.values(counts.statuses).reduce((sum, count) => sum + count, 0), ownList.total);
   const previousFileId = (await proofOf(parcel.id)).photo;
-  assert.deepEqual(await parcels.attachProof(meridian, parcel.id, 'photo', fileId, owner), { status: 'updated', previousFileId });
+  assert.deepEqual(await parcels.attachProof(meridian, parcel.id, 'photo', fileId, owner, true), { status: 'updated', previousFileId });
   assert.equal((await parcels.deliver(meridian, parcel.id, owner, at, noAudit, true)).parcel.collectedAmount, '120.00');
+});
+
+test('proof upload, replacement and deletion restrict full-scope linked drivers exactly like delivery', async () => {
+  const owner = (await database.getRepository(User).save({ username: 'pod.full.owner', email: 'pod.full.owner@parcels.db.test', passwordHash: 'x' })).id;
+  const other = (await database.getRepository(User).save({ username: 'pod.full.other', email: 'pod.full.other@parcels.db.test', passwordHash: 'x' })).id;
+  await database.query('UPDATE employees SET user_id = ? WHERE id = ?', [owner, drivers.leen]);
+  await database.query('UPDATE employees SET user_id = ? WHERE id = ?', [other, drivers.samir]);
+  const parcel = await outParcel();
+  for (const kind of ['signature', 'photo', 'note']) {
+    const first = await insertFile(meridian);
+    const second = await insertFile(meridian);
+    assert.deepEqual(await parcels.attachProof(meridian, parcel.id, kind, first, other), { status: 'not_assigned_driver' });
+    assert.equal((await proofOf(parcel.id))[kind], null);
+    assert.deepEqual(await parcels.attachProof(meridian, parcel.id, kind, first, owner), { status: 'updated', previousFileId: null });
+    assert.deepEqual(await parcels.attachProof(meridian, parcel.id, kind, second, other), { status: 'not_assigned_driver' });
+    assert.deepEqual(await parcels.attachProof(meridian, parcel.id, kind, null, other), { status: 'not_assigned_driver' });
+    assert.equal((await proofOf(parcel.id))[kind], first);
+    assert.deepEqual(await parcels.attachProof(meridian, parcel.id, kind, second, owner), { status: 'updated', previousFileId: first });
+    assert.deepEqual(await parcels.attachProof(meridian, parcel.id, kind, null, owner), { status: 'updated', previousFileId: second });
+  }
 });
