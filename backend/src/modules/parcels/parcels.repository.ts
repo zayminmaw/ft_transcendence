@@ -17,7 +17,8 @@ import type {
 // Writes its audit row with the change's own manager, so both are saved or neither.
 export type AuditStep = (manager: EntityManager, before: ParcelRecord | null, after: ParcelRecord) => Promise<void>;
 
-export type Refusal = 'not_found' | 'client_unavailable' | 'driver_unavailable' | 'wrong_status';
+export type Refusal =
+  | 'not_found' | 'client_unavailable' | 'driver_unavailable' | 'wrong_status' | 'not_assigned_driver' | 'cod_mismatch';
 // Every answer of a change: the saved parcel, or the refusal it ended in.
 export type ParcelResult = { status: 'created' | 'updated'; parcel: ParcelRecord } | { status: Refusal };
 
@@ -65,7 +66,8 @@ const PARCEL_SELECT = `
          parcel.delivery_city_zone AS deliveryCityZone, parcel.delivery_landmark AS deliveryLandmark,
          parcel.weight_kg AS weightKg, parcel.is_fragile AS isFragile, parcel.delivery_fee AS deliveryFee,
          parcel.cod_amount AS codAmount, parcel.delivery_attempt_count AS deliveryAttemptCount,
-         parcel.failed_reason_code AS failedReasonCode, parcel.created_at AS createdAt, parcel.updated_at AS updatedAt
+         parcel.failed_reason_code AS failedReasonCode, parcel.delivered_at AS deliveredAt,
+         parcel.created_at AS createdAt, parcel.updated_at AS updatedAt
     FROM parcels parcel
     JOIN clients client ON client.id = parcel.client_id
     LEFT JOIN employees driver ON driver.id = parcel.assigned_driver_id
@@ -114,6 +116,7 @@ function toRecord(row: Row): ParcelRecord {
     codAmount: String(row.codAmount),
     deliveryAttemptCount: Number(row.deliveryAttemptCount),
     failedReasonCode: text(row.failedReasonCode),
+    deliveredAt: (row.deliveredAt as Date | null) ?? null,
     createdAt: row.createdAt as Date,
     updatedAt: row.updatedAt as Date,
   };
@@ -281,6 +284,35 @@ export class ParcelsRepository {
         reasonCode: failed ? move.reasonCode : null,
         ...(failed && { driverId: before.driver?.id ?? null, assetId: before.vehicle?.id ?? null, dispatchRunId: before.run?.id ?? null }),
         notes: move.notes ?? null,
+      });
+      const after = (await this.findOne(manager, organizationId, id))!;
+      await audit(manager, before, after);
+      return { status: 'updated', parcel: after };
+    });
+  }
+
+  // Records that the driver delivered the parcel and took exactly the cash due. A driver's own account may only deliver
+  // what is assigned to them; an account that isn't a driver's (a dispatcher) may deliver any parcel of the company.
+  // Anything else leaves the parcel as it was.
+  deliver(organizationId: string, id: string, actorId: string, delivery: { collected: string; notes: string | null }, audit: AuditStep): Promise<ParcelResult> {
+    return this.database.transaction(WRITES, async (manager) => {
+      const before = await this.findOne(manager, organizationId, id, true);
+      if (!before) return { status: 'not_found' };
+      if (before.status !== 'out_for_delivery') return { status: 'wrong_status' };
+      const own = await manager
+        .createQueryBuilder()
+        .select('e.id', 'id')
+        .from('employees', 'e')
+        .where('e.user_id = :actorId', { actorId })
+        .andWhere('e.organization_id = :organizationId', { organizationId })
+        .andWhere('e.personnel_type = :type', { type: 'driver' })
+        .getRawOne();
+      if (own && String(own.id) !== before.driver?.id) return { status: 'not_assigned_driver' };
+      if (delivery.collected !== before.codAmount) return { status: 'cod_mismatch' };
+      await manager.update(Parcel, { organizationId, id }, { lifecycleStatus: 'delivered', deliveredAt: () => 'CURRENT_TIMESTAMP' });
+      await manager.insert(ParcelEvent, {
+        parcelId: id, actorUserId: actorId, status: 'delivered', driverId: before.driver?.id ?? null, assetId: before.vehicle?.id ?? null,
+        dispatchRunId: before.run?.id ?? null, notes: delivery.notes,
       });
       const after = (await this.findOne(manager, organizationId, id))!;
       await audit(manager, before, after);
