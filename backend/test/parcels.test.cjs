@@ -6,6 +6,7 @@ const { join } = require('node:path');
 const request = require('supertest');
 const { ParcelsModule } = require('../dist/modules/parcels');
 const { ParcelsRepository } = require('../dist/modules/parcels/parcels.repository');
+const { CodRepository } = require('../dist/modules/billing/cod.repository');
 const { LedgerHistoryRepository } = require('../dist/modules/billing/ledger-history.repository');
 const { PayoutsRepository } = require('../dist/modules/billing/payouts.repository');
 const { hashPassword } = require('../dist/modules/users/password');
@@ -87,7 +88,10 @@ async function parcelsApp(t) {
     store.users.push({ id, username, email: `${username}@demo.example.test`, passwordHash, isActive: true, lastLoginAt: null });
     store.memberships.push({ organizationId, userId: id, roleId, isActive: true });
   }
-  const { server } = await createAuthApp(t, store, { imports: [ParcelsModule], overrides: [[ParcelsRepository, parcels.repository], [LedgerHistoryRepository, {}], [PayoutsRepository, {}]] });
+  const { server } = await createAuthApp(t, store, {
+    imports: [ParcelsModule],
+    overrides: [[ParcelsRepository, parcels.repository], [CodRepository, {}], [LedgerHistoryRepository, {}], [PayoutsRepository, {}]],
+  });
   const tokens = {};
   for (const [, username] of people) tokens[username] = await tokenFor(server, username);
   const companyFiles = () => readdir(join(storage, '1')).catch(() => []);
