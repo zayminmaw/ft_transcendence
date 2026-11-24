@@ -80,7 +80,7 @@ export function ProofField({
 				</div>
 			) : saved ? (
 				<div className="flex flex-col gap-2">
-					<ProofPreview label={label} saved={saved} />
+					<ProofPreview label={label} saved={saved} onRefresh={proof.refreshProof} />
 					<div className="flex flex-wrap items-center justify-between gap-2">
 						<p className="min-w-0 truncate text-sm text-[var(--color-slate)]">
 							{saved.name} · {formatFileSize(saved.sizeBytes, i18n.language)}

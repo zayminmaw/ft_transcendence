@@ -25,13 +25,12 @@ export class PermissionsRepository {
     return new Set(grants.map((grant) => grant.permission.code));
   }
 
-  // The codes each role may use, by role code, with the guard's rule: only full-scope permissions (it refuses
-  // assigned_only until ownership rules exist). For /me, so the interface offers only what the API allows.
-  async grantedCodes(roleCodes: string[]): Promise<Record<string, string[]>> {
+  // Keep scopes separate: only routes with resource ownership checks may offer assigned-only actions.
+  async grantedCodes(roleCodes: string[], scope: 'all' | 'assigned_only' = 'all'): Promise<Record<string, string[]>> {
     const granted: Record<string, string[]> = Object.fromEntries(roleCodes.map((code) => [code, []]));
     if (roleCodes.length === 0) return granted;
     const grants = await this.rolePermissions.find({
-      where: { scope: 'all', role: { code: In(roleCodes) } },
+      where: { scope, role: { code: In(roleCodes) } },
       relations: { role: true, permission: true },
       order: { permission: { code: 'ASC' } },
     });

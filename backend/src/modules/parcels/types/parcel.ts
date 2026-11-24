@@ -26,6 +26,7 @@ export interface ParcelRecord {
   isFragile: boolean;
   deliveryFee: string;
   codAmount: string;
+  collectedAmount: string | null;
   deliveryAttemptCount: number;
   failedReasonCode: string | null;
   // Set once the delivery is confirmed. The location is where the device was then, if it shared it.
@@ -62,6 +63,7 @@ export type ParcelProof = Record<ProofKind, ProofFile | null>;
 
 // The proof's files are uploaded while the parcel is out for delivery and kept once it is delivered.
 export interface ParcelDetails extends ParcelRecord {
+  canRecordDelivery: boolean;
   events: ParcelEventRecord[];
   proof: ParcelProof;
 }
@@ -72,6 +74,15 @@ export interface DeliveryValues {
   latitude: number | null;
   longitude: number | null;
   notes: string | null;
+}
+
+// What the public tracking page shows of a parcel: its status, the company carrying it and when each step happened.
+// Never the recipient, the address, the money or who handled it.
+export interface ParcelTracking {
+  trackingNumber: string;
+  status: ParcelStatus;
+  company: string;
+  events: { status: ParcelStatus; at: Date }[];
 }
 
 // Over the whole company, whatever the search and filter: parcels per status, and the drivers out with parcels now.

@@ -5,21 +5,23 @@ import { ID_PATTERN } from '../../common/ids';
 import type { TenantContext } from '../../common/types/authenticated-request';
 import { type AuditAction, AuditService } from '../audit';
 import { PendingCodService } from '../billing';
+import { PermissionsRepository } from '../rbac';
 import { IMAGE_TYPES, StorageService, type UploadedFileInput } from '../storage';
 import {
   PARCEL_CLIENT_UNAVAILABLE, PARCEL_COD_MISMATCH, PARCEL_DRIVER_UNAVAILABLE, PARCEL_NOT_FOUND, PARCEL_NOT_YOUR_PARCEL,
   PARCEL_PROOF_KIND, PARCEL_PROOF_MISSING, PARCEL_PROOF_TYPE,
-  PARCEL_WRONG_STATUS, PROOF_FILES, PROOF_KINDS, type ProofKind,
+  PARCEL_WRONG_STATUS, PROOF_FILES, PROOF_KINDS, type ProofKind, TRACKING_NOT_FOUND, TRACKING_PATTERN,
 } from './constants';
 import type { AssignParcelDto, CreateParcelDto, DeliverParcelDto, ListParcelsQueryDto, StatusMoveDto } from './dto/parcel.dto';
 import { type AuditStep, type ParcelResult, ParcelsRepository, type ProofFileIds, type Refusal } from './parcels.repository';
-import type { ParcelDetails, ParcelProof, ParcelRecord, ProofFile } from './types/parcel';
+import type { ParcelDetails, ParcelProof, ParcelRecord, ParcelTracking, ProofFile } from './types/parcel';
 
 // Who is asking: the verified company and role, and the account, for the history and the audit row.
 export interface ParcelsActor {
   tenant: TenantContext;
   userId: string;
   meta: RequestMeta;
+  assignedOnly?: boolean;
 }
 
 const REFUSALS: Record<Refusal, () => Error> = {
@@ -64,23 +66,34 @@ export class ParcelsService {
     private readonly audit: AuditService,
     private readonly pendingCod: PendingCodService,
     private readonly storage: StorageService,
+    private readonly permissions: PermissionsRepository,
   ) {}
 
-  async list(tenant: TenantContext, query: ListParcelsQueryDto) {
+  async list(tenant: TenantContext, query: ListParcelsQueryDto, assignedUserId?: string) {
     const [page, counts] = await Promise.all([
-      this.parcels.list(tenant.organizationId, query),
-      this.parcels.counts(tenant.organizationId),
+      this.parcels.list(tenant.organizationId, query, assignedUserId),
+      this.parcels.counts(tenant.organizationId, assignedUserId),
     ]);
     return { items: page.items, total: page.total, page: query.page, pageSize: query.pageSize, counts };
   }
 
   // With signed links to its proof files: whoever may read the parcel may open them.
-  async get(tenant: TenantContext, id: string): Promise<ParcelDetails> {
+  async get(tenant: TenantContext, id: string, userId: string, assignedOnly = false): Promise<ParcelDetails> {
     requireId(id);
-    const stored = await this.parcels.find(tenant.organizationId, id);
+    const stored = await this.parcels.find(tenant.organizationId, id, assignedOnly ? userId : undefined);
     if (!stored) throw new NotFoundException(PARCEL_NOT_FOUND);
     const { proofFileIds, ...parcel } = stored;
-    return { ...parcel, proof: await this.proofOf(tenant.organizationId, proofFileIds) };
+    const deliveryScope = await this.permissions.findScope(tenant.roleId, 'parcels.mark_delivered');
+    const canRecordDelivery = deliveryScope === 'all' || (deliveryScope === 'assigned_only' && await this.parcels.isAssignedTo(tenant.organizationId, id, userId));
+    return { ...parcel, canRecordDelivery, proof: await this.proofOf(tenant.organizationId, proofFileIds) };
+  }
+
+  // Open to anyone with the number. Waybill numbers are upper case; the page may send what was typed.
+  async track(trackingNumber: string): Promise<ParcelTracking> {
+    const number = trackingNumber.trim().toUpperCase();
+    const parcel = TRACKING_PATTERN.test(number) ? await this.parcels.track(number) : null;
+    if (!parcel) throw new NotFoundException(TRACKING_NOT_FOUND);
+    return parcel;
   }
 
   formOptions(tenant: TenantContext) {
@@ -130,7 +143,7 @@ export class ParcelsService {
       {
         collected: Number(body.collectedAmount).toFixed(2), latitude: body.latitude ?? null,
         longitude: body.longitude ?? null, notes: body.notes ?? null,
-      }, this.auditStep(actor, 'status_change'),
+      }, this.auditStep(actor, 'status_change'), actor.assignedOnly,
     );
     return savedParcel(result);
   }
@@ -154,13 +167,13 @@ export class ParcelsService {
     if (!PROOF_FILES[proofKind].pdf && !IMAGE_TYPES.includes(file.mimetype)) throw new BadRequestException(PARCEL_PROOF_TYPE);
     const organizationId = actor.tenant.organizationId;
     // Not worth writing the file for a parcel that can't take it. Checked again, with the parcel locked, below.
-    const status = await this.parcels.statusOf(organizationId, id);
+    const status = await this.parcels.statusOf(organizationId, id, actor.assignedOnly ? actor.userId : undefined);
     if (status === null) throw new NotFoundException(PARCEL_NOT_FOUND);
     if (status !== 'out_for_delivery') throw new ConflictException(PARCEL_WRONG_STATUS);
     const saved = await this.storage.save(organizationId, actor.userId, file);
     let previousFileId: string | null;
     try {
-      const result = await this.parcels.attachProof(organizationId, id, proofKind, saved.id);
+      const result = await this.parcels.attachProof(organizationId, id, proofKind, saved.id, actor.assignedOnly ? actor.userId : undefined);
       if (result.status !== 'updated') throw REFUSALS[result.status]();
       previousFileId = result.previousFileId;
     } catch (error) {
@@ -178,7 +191,7 @@ export class ParcelsService {
   async removeProof(actor: ParcelsActor, id: string, kind: string): Promise<void> {
     requireId(id);
     const organizationId = actor.tenant.organizationId;
-    const result = await this.parcels.attachProof(organizationId, id, requireKind(kind), null);
+    const result = await this.parcels.attachProof(organizationId, id, requireKind(kind), null, actor.assignedOnly ? actor.userId : undefined);
     if (result.status !== 'updated') throw REFUSALS[result.status]();
     if (result.previousFileId) await this.storage.deleteQuietly(organizationId, result.previousFileId);
   }

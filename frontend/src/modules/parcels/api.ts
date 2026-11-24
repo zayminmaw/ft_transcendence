@@ -58,6 +58,7 @@ export type Parcel = {
 	isFragile: boolean;
 	deliveryFee: string;
 	codAmount: string;
+	collectedAmount: string | null;
 	deliveryAttemptCount: number;
 	failedReasonCode: FailureReason | null;
 	// Set once the delivery is confirmed; the location is where the device was then, if it shared it.
@@ -97,6 +98,7 @@ export type ParcelEvent = {
 
 // The proof is uploaded while the parcel is out for delivery and kept once it is delivered.
 export type ParcelDetails = Parcel & {
+	canRecordDelivery: boolean;
 	events: ParcelEvent[];
 	proof: Record<ProofKind, ProofFile | null>;
 };
@@ -152,3 +154,11 @@ export type StatusMove =
 	| { status: 'in_hub_sorted'; hubLocation: string; notes?: string }
 	| { status: 'failed_attempt'; reasonCode: FailureReason; notes?: string }
 	| { status: 'returned_to_sender'; notes: string };
+
+// The public tracking answer contains no recipient, address, proof or payment data.
+export type ParcelTracking = {
+	trackingNumber: string;
+	status: ParcelStatus;
+	company: string;
+	events: { status: ParcelStatus; at: string }[];
+};

@@ -7,12 +7,14 @@ import { ProofField } from '../components/ProofField';
 import { SignaturePad } from '../components/SignaturePad';
 import { useParcelMutations } from '../hooks/useParcelMutations';
 import { useParcelDetails } from '../hooks/useParcels';
-import { refusalMessage, useProofBusy } from '../hooks/useProofFile';
+import { useProofBusy } from '../hooks/useProofFile';
 import { coordinatesLabel } from '../constants';
 
 type Location =
 	| { state: 'none' | 'locating' | 'unavailable' }
 	| { state: 'found'; latitude: number; longitude: number };
+
+const AMOUNT_PATTERN = /^\d{1,10}(\.\d{1,2})?$/;
 
 const locationText = (location: Location) => {
 	if (location.state === 'found') return coordinatesLabel(location.latitude, location.longitude);
@@ -30,12 +32,13 @@ export function RecordDeliveryPage() {
 	const companyPath = useCompanyPath();
 	const { toast } = useToast();
 	const [location, setLocation] = useState<Location>({ state: 'none' });
+	const [error, setError] = useState<string | null>(null);
 	const { parcel, isParcelPending } = useParcelDetails(parcelId);
 	const { deliverParcel, isDelivering } = useParcelMutations();
 	const proofBusy = useProofBusy(parcelId);
 
 	if (isParcelPending) return <span className="loading loading-spinner" aria-label="Loading" />;
-	if (parcel?.status !== 'out_for_delivery') {
+	if (parcel?.status !== 'out_for_delivery' || !parcel.canRecordDelivery) {
 		return (
 			<ModulePage
 				title="This parcel can't be delivered"
@@ -73,16 +76,22 @@ export function RecordDeliveryPage() {
 				<form
 					onSubmit={(event) => {
 						event.preventDefault();
+						setError(null);
 						const form = new FormData(event.currentTarget);
+						const collectedAmount = String(form.get('collectedAmount') ?? '').trim();
+						if (!AMOUNT_PATTERN.test(collectedAmount)) {
+							setError(
+								'Enter the cash collected as an amount with up to 2 decimals.',
+							);
+							return;
+						}
 						const notes = String(form.get('notes') ?? '').trim();
 						const found = location.state === 'found' ? location : null;
 						deliverParcel(
 							{
 								parcelId: parcel.id,
 								values: {
-									collectedAmount: String(
-										form.get('collectedAmount') ?? '',
-									).trim(),
+									collectedAmount,
 									latitude: found?.latitude ?? null,
 									longitude: found?.longitude ?? null,
 									notes: notes || null,
@@ -97,27 +106,24 @@ export function RecordDeliveryPage() {
 									});
 									navigate(detailsPath);
 								},
-								onError: (error) =>
-									toast({
-										variant: 'error',
-										title: "The delivery couldn't be recorded",
-										description: refusalMessage(
-											error,
-											'Check your connection and try again.',
-										),
-									}),
+								onError: (failure) => setError(failure.message),
 							},
 						);
 					}}
 					className="flex flex-col gap-6 rounded-box border border-base-300 p-4 md:p-8"
 				>
+					{error && (
+						<p role="alert" className="rounded-box bg-error/10 p-4 text-sm text-error">
+							{error}
+						</p>
+					)}
 					<Input
 						label="Cash collected"
 						name="collectedAmount"
 						required
 						inputMode="decimal"
 						dir="ltr"
-						defaultValue={parcel.codAmount}
+						placeholder={parcel.codAmount}
 						pattern="[0-9]{1,10}(\.[0-9]{1,2})?"
 						title="Enter an amount with up to 10 digits and 2 decimal places."
 					/>

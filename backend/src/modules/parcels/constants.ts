@@ -52,6 +52,12 @@ export const ON_DUTY_STATUSES = ['available', 'on_pickup', 'out_for_delivery'] a
 export const VEHICLE_CATEGORIES = ['motorcycle', 'van'] as const;
 
 export const PARCEL_NOT_FOUND = { message: "That parcel isn't in this company.", code: 'PARCEL_NOT_FOUND' };
+// The public tracking page's answer for a number it can't show, whatever the reason: it never tells an unknown number
+// from a parcel it hides.
+export const TRACKING_NOT_FOUND = { message: 'No parcel has this tracking number.', code: 'TRACKING_NOT_FOUND' };
+// What an upper-cased tracking number can look like (waybills print TRC-23456789AB); anything else names no parcel and
+// never reaches the database.
+export const TRACKING_PATTERN = /^[A-Z0-9-]{1,64}$/;
 export const PARCEL_CLIENT_UNAVAILABLE = {
   message: 'Choose an active merchant of this company.',
   code: 'PARCEL_CLIENT_UNAVAILABLE',

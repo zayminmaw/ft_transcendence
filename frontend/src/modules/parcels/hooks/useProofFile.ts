@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useIsMutating, useMutation, useQueryClient } from '@tanstack/react-query';
 import { tenantQueryKey } from '@utils/query-keys';
 import { fileProblem, PDF_TYPE } from '@utils/upload';
@@ -27,6 +27,12 @@ export function useProofFile(parcelId: string, kind: ProofKind, accept: string[]
 	const [progress, setProgress] = useState(0);
 	const [problem, setProblem] = useState<string | null>(null);
 	const detailsKey = tenantQueryKey('parcels', 'details', parcelId);
+	const refreshProof = useCallback(async () => {
+		await queryClient.refetchQueries(
+			{ queryKey: tenantQueryKey('parcels', 'details', parcelId), exact: true },
+			{ cancelRefetch: false, throwOnError: true },
+		);
+	}, [queryClient, parcelId]);
 	const show = (file: ProofFile | null) =>
 		queryClient.setQueryData<ParcelDetails>(
 			detailsKey,
@@ -66,6 +72,7 @@ export function useProofFile(parcelId: string, kind: ProofKind, accept: string[]
 	});
 
 	return {
+		refreshProof,
 		// Checked here first, so a wrong file is never sent.
 		send: (file: File) => {
 			const wrong = fileProblem(file, accept, MAX_BYTES);

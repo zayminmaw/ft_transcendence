@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { LanguageSwitcher } from '@global-components';
+import { LegalLinks } from './LegalLinks';
 
 // The picker, "no access" and "not found" pages: the logo, a title and the content, outside any workspace.
 export function CenteredPage({
@@ -35,6 +36,7 @@ export function CenteredPage({
 					<p className="mt-2 text-sm text-[var(--color-slate)]">{description}</p>
 				</div>
 				{children}
+				<LegalLinks className="mt-4" />
 			</main>
 		</div>
 	);

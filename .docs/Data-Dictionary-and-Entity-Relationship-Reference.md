@@ -311,6 +311,7 @@ No contacts table or presence storage is implemented in the 22-table baseline. A
 | `package_type` | `VARCHAR(64)` | `NOT NULL`, `DEFAULT 'standard_box'` | Packaging format |
 | `delivery_fee` | `DECIMAL(12, 2)` | `NOT NULL`, `DEFAULT 0.00` | Fee billed to merchant |
 | `cod_amount` | `DECIMAL(12, 2)` | `NOT NULL`, `DEFAULT 0.00` | Doorstep COD collection |
+| `collected_amount` | `DECIMAL(12, 2)` | `NULL` | Actual cash recorded on delivery, validated against full COD due. NULL means not recorded (including legacy deliveries); `1793664000000-CollectedCod` |
 | `declared_value` | `DECIMAL(12, 2)` | `NOT NULL`, `DEFAULT 0.00` | Declared parcel content value |
 | `is_insured` | `BOOLEAN` | `NOT NULL`, `DEFAULT FALSE` | Transit insurance flag |
 | `insurance_fee` | `DECIMAL(12, 2)` | `NOT NULL`, `DEFAULT 0.00` | Premium charged for insurance |

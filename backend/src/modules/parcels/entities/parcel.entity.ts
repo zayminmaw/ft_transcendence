@@ -57,6 +57,9 @@ export class Parcel {
   @Column({ name: 'cod_amount', type: 'decimal', precision: 12, scale: 2, default: '0.00' })
   codAmount!: string;
 
+  @Column({ name: 'collected_amount', type: 'decimal', precision: 12, scale: 2, nullable: true })
+  collectedAmount!: string | null;
+
   @Column({ name: 'lifecycle_status', type: 'enum', enum: PARCEL_STATUSES, default: 'draft' })
   lifecycleStatus!: ParcelStatus;
 

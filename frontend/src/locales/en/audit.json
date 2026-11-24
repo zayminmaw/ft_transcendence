@@ -110,7 +110,8 @@
 		"account": "Account",
 		"membershipActive": "Membership active",
 		"total": "Total",
-		"amount": "Amount"
+		"amount": "Amount",
+		"collectedAmount": "Cash collected"
 	},
 	"values": {
 		"empty": "empty",

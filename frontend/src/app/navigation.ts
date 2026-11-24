@@ -1,18 +1,14 @@
 import type { TFunction } from 'i18next';
 import type { NavigationGroup } from '@global-components';
 
-// What each module's sidebar link and pages need in the open company (ERP outline section 5). Organization settings
-// has no permission of its own yet: admin.manage_roles keeps it to company admins until the organization system
-// defines one. Hiding a link is not authorization: the API checks every request.
+// What each module's sidebar link and pages need in the open company (ERP outline section 5). Hiding a link is not
+// authorization: the API checks every request.
 export const MODULE_ACCESS = {
-	parcels: { permission: 'parcels.view', label: 'workspace.nav.parcels' },
+	parcels: { permission: 'parcels.view', label: 'workspace.nav.parcels', allowAssigned: true },
 	clients: { permission: 'clients.view', label: 'workspace.nav.clients' },
 	drivers: { permission: 'drivers.view', label: 'workspace.nav.drivers' },
 	assets: { permission: 'assets.view', label: 'workspace.nav.assets' },
-	billing: { permission: 'billing.view', label: 'workspace.nav.billing' },
-	staff: { permission: 'staff.view', label: 'workspace.nav.staff' },
 	rbac: { permission: 'admin.manage_users', label: 'workspace.nav.rbac' },
-	organizations: { permission: 'admin.manage_roles', label: 'workspace.nav.organizations' },
 	// Every company role holds it: your own contacts, not other people's.
 	contacts: { permission: 'contacts.manage_own', label: 'workspace.nav.contacts' },
 } as const;
@@ -24,13 +20,13 @@ type Module = keyof typeof MODULE_ACCESS;
 export function getTenantNavigation(
 	t: TFunction,
 	home: string,
-	can: (permission: string) => boolean,
+	can: (permission: string, allowAssigned?: boolean) => boolean,
 ): NavigationGroup[] {
 	const links = (modules: Module[]) =>
 		modules.map((module) => ({
 			to: `${home}/${module}`,
 			label: t(MODULE_ACCESS[module].label),
-			hidden: !can(MODULE_ACCESS[module].permission),
+			hidden: !can(MODULE_ACCESS[module].permission, module === 'parcels'),
 		}));
 	return [
 		{
@@ -43,7 +39,7 @@ export function getTenantNavigation(
 		{
 			label: t('workspace.nav.administration'),
 			items: [
-				...links(['billing', 'staff', 'rbac', 'organizations']),
+				...links(['rbac']),
 				// Not in MODULE_ACCESS: its label lives in the audit namespace, and the page shows its own "no access".
 				{
 					to: `${home}/audit`,

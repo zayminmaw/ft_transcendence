@@ -77,7 +77,7 @@ export function ParcelDetailsPage() {
 	const companyPath = useCompanyPath();
 	const can = useCan();
 	const [actionOpen, setActionOpen] = useState(false);
-	const { parcel, isParcelPending } = useParcelDetails(parcelId);
+	const { parcel, isParcelPending, refreshParcel } = useParcelDetails(parcelId);
 
 	if (isParcelPending) return <span className="loading loading-spinner" aria-label="Loading" />;
 	if (!parcel) {
@@ -95,7 +95,7 @@ export function ParcelDetailsPage() {
 	const returned = parcel.status === 'returned_to_sender';
 	const assignable = can('parcels.dispatch') && ASSIGNABLE_STATUSES.includes(parcel.status);
 	const action = can('parcels.update_status') ? dialogActions[parcel.status] : undefined;
-	const deliverable = can('parcels.mark_delivered') && parcel.status === 'out_for_delivery';
+	const deliverable = parcel.canRecordDelivery && parcel.status === 'out_for_delivery';
 	const reason = parcel.failedReasonCode && failureReasonLabels[parcel.failedReasonCode];
 	const proofFiles = (
 		[
@@ -220,6 +220,11 @@ export function ParcelDetailsPage() {
 								<DetailItem label="Delivered">
 									{parcel.deliveredAt ? time(parcel.deliveredAt) : '—'}
 								</DetailItem>
+								<DetailItem label="Cash collected" ltr>
+									{parcel.collectedAmount === null
+										? 'Not recorded'
+										: `${parcel.collectedAmount} CUR`}
+								</DetailItem>
 								<DetailItem label="Location" ltr>
 									{location
 										? coordinatesLabel(location.latitude, location.longitude)
@@ -232,7 +237,11 @@ export function ParcelDetailsPage() {
 										<figcaption className="text-sm font-medium">
 											{label}
 										</figcaption>
-										<ProofPreview label={label} saved={file} />
+										<ProofPreview
+											label={label}
+											saved={file}
+											onRefresh={refreshParcel}
+										/>
 									</figure>
 								))}
 							</div>

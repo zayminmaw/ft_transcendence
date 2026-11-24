@@ -225,6 +225,33 @@ test('a failed attempt counts, keeps its reason and driver, and goes out again o
   ]);
 });
 
+test('tracking finds any company\'s parcel by its number, with only its status and times', async () => {
+  const parcel = await sortedParcel();
+  const tracked = await parcels.track(parcel.trackingNumber);
+  assert.deepEqual(Object.keys(tracked).sort(), ['company', 'events', 'status', 'trackingNumber']);
+  assert.deepEqual([tracked.trackingNumber, tracked.status, tracked.company], [parcel.trackingNumber, 'in_hub_sorted', 'Parcels Meridian']);
+  assert.deepEqual(tracked.events.map((event) => event.status), ['pickup_scheduled', 'picked_up', 'in_hub_sorted']);
+  assert.deepEqual(Object.keys(tracked.events[0]).sort(), ['at', 'status']);
+  assert.ok(tracked.events.every((event) => event.at instanceof Date));
+
+  const elsewhere = await newParcel({ clientId: clients.harbor }, harbor);
+  assert.equal((await parcels.track(elsewhere.trackingNumber)).company, 'Parcels Harbor');
+  assert.equal(await parcels.track('TRC-NOSUCHPARC'), null);
+});
+
+test('tracking hides a draft and the parcels of a suspended company', async () => {
+  const draft = await newParcel();
+  await database.query("UPDATE parcels SET lifecycle_status = 'draft' WHERE id = ?", [draft.id]);
+  assert.equal(await parcels.track(draft.trackingNumber), null);
+
+  const closed = (await database.getRepository(Organization).save({
+    name: 'Parcels Closed', slug: 'parcels-closed', contactEmail: 'ops@closed.db.test', isActive: false,
+  })).id;
+  const merchant = await insertClient(closed, 'SHUT', 'Shut Shop', true);
+  const hidden = await newParcel({ clientId: merchant }, closed);
+  assert.equal(await parcels.track(hidden.trackingNumber), null);
+});
+
 test('the list searches, filters by queue or status, sorts and pages within one company; the counts cover the company', async () => {
   await newParcel({ recipientName: 'Omar 100% T.', clientId: clients.field }, meridian);
   await newParcel({ recipientName: 'Harbor only', clientId: clients.harbor }, harbor);
@@ -317,6 +344,7 @@ test('a delivery needs the exact cash due, marks the parcel delivered with the t
   assert.deepEqual([done.status, done.deliveredAt instanceof Date], ['delivered', true]);
   assert.deepEqual(seen, [['out_for_delivery', 'delivered']]);
   const details = await parcels.find(meridian, parcel.id);
+  assert.equal(details.collectedAmount, '120.00');
   const last = details.events.at(-1);
   assert.deepEqual([last.status, last.driver.name, last.vehicle.tag, last.run.id, last.actor.userId], [
     'delivered', 'Leen Mansour', 'V-012', parcel.run.id, String(clerk),
@@ -357,6 +385,7 @@ test('two deliveries at once record one delivery, and a failing audit undoes it'
   const other = await proofReadyParcel();
   await assert.rejects(deliver(other.id, '120.00', clerk, meridian, async () => { throw new Error('audit down'); }), /audit down/);
   const after = await parcels.find(meridian, other.id);
+  assert.equal(after.collectedAmount, null);
   assert.deepEqual([after.status, after.deliveredAt, steps(after).at(-1)], ['out_for_delivery', null, 'out_for_delivery']);
 });
 
@@ -478,4 +507,31 @@ test('a failed attempt drops its unconfirmed proof, and a failed audit keeps it'
   const result = await parcels.move(meridian, parcel.id, clerk, { status: 'failed_attempt', reasonCode: 'refused' }, noAudit);
   assert.deepEqual(result.discardedFileIds.sort(), [photo, signature].sort());
   assert.deepEqual(await proofOf(parcel.id), { signature: null, photo: null, note: null });
+});
+
+test('assigned-only access filters every read and rechecks every proof and delivery write', async () => {
+  const owner = (await database.getRepository(User).save({ username: 'pod.owner', email: 'pod.owner@parcels.db.test', passwordHash: 'x' })).id;
+  const other = (await database.getRepository(User).save({ username: 'pod.other', email: 'pod.other@parcels.db.test', passwordHash: 'x' })).id;
+  await database.query('UPDATE employees SET user_id = ? WHERE id = ?', [owner, drivers.leen]);
+  await database.query('UPDATE employees SET user_id = ? WHERE id = ?', [other, drivers.samir]);
+  const parcel = await proofReadyParcel();
+  const fileId = await insertFile(meridian);
+  assert.equal(await parcels.isAssignedTo(meridian, parcel.id, owner), true);
+  for (const userId of [other, clerk]) {
+    assert.equal(await parcels.isAssignedTo(meridian, parcel.id, userId), false);
+    assert.equal(await parcels.find(meridian, parcel.id, userId), null);
+    assert.equal(await parcels.statusOf(meridian, parcel.id, userId), null);
+    assert.deepEqual(await parcels.attachProof(meridian, parcel.id, 'photo', fileId, userId), { status: 'not_found' });
+    assert.deepEqual(await parcels.attachProof(meridian, parcel.id, 'photo', null, userId), { status: 'not_found' });
+    assert.deepEqual(await parcels.deliver(meridian, parcel.id, userId, at, noAudit, true), { status: 'not_found' });
+  }
+  assert.equal(await parcels.find(harbor, parcel.id, owner), null);
+  const ownList = await parcels.list(meridian, query(), owner);
+  assert.ok(ownList.items.length > 0);
+  assert.ok(ownList.items.every((item) => item.driver.id === drivers.leen));
+  const counts = await parcels.counts(meridian, owner);
+  assert.equal(Object.values(counts.statuses).reduce((sum, count) => sum + count, 0), ownList.total);
+  const previousFileId = (await proofOf(parcel.id)).photo;
+  assert.deepEqual(await parcels.attachProof(meridian, parcel.id, 'photo', fileId, owner), { status: 'updated', previousFileId });
+  assert.equal((await parcels.deliver(meridian, parcel.id, owner, at, noAudit, true)).parcel.collectedAmount, '120.00');
 });

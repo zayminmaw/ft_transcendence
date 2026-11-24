@@ -11,6 +11,10 @@ export class ApiError extends Error {
 	}
 }
 
+// A query's retry rule: a refusal (4xx) won't change on a second try; a network or server error might, once.
+export const retryServerErrors = (failures: number, error: Error) =>
+	failures < 1 && !(error instanceof ApiError && error.status < 500);
+
 // The API's code for a refusal, e.g. CLIENT_CODE_TAKEN; undefined for anything else.
 export function errorCode(error: unknown) {
 	return error instanceof ApiError ? error.code : undefined;

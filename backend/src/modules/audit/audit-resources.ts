@@ -105,6 +105,7 @@ export const AUDIT_RESOURCES: Record<string, AuditResource> = {
 			isFragile: 'plain',
 			deliveryFee: 'plain',
 			codAmount: 'plain',
+			collectedAmount: 'plain',
 			driverId: 'plain',
 			vehicleId: 'plain',
 			runId: 'plain',

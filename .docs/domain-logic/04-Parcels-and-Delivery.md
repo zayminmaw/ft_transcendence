@@ -143,6 +143,10 @@ sequenceDiagram
 
 ### Flow C: Doorstep Delivery Execution & Proof of Delivery (POD)
 
+The delivery request requires `collectedAmount`, explicitly entered as the actual collection (including `0.00` for a zero-COD parcel). The transaction refuses any amount other than the full COD due. It saves `parcels.collected_amount` together with the delivery, event and audit row; this records collection without verifying the cashier handover. Existing deliveries without this record stay NULL.
+
+Assigned-only `parcels.view` and `parcels.mark_delivered` grants are checked against the company's driver employee linked to the signed-in user. Reads, list totals and status counts are scoped to that driver's parcels; proof upload, removal and delivery confirmation recheck ownership under the parcel lock. An unlinked or different driver cannot use the workflow. Details return `canRecordDelivery` for the UI action.
+
 ```mermaid
 sequenceDiagram
     autonumber

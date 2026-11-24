@@ -35,7 +35,7 @@ function fakeParcels() {
   const calls = [];
   const next = {};
   const answer = (name, fallback) => (...args) => {
-    calls.push([name, ...args.filter((arg) => typeof arg !== 'function')]);
+    calls.push([name, ...args.filter((arg) => typeof arg !== 'function' && arg !== undefined)]);
     return Promise.resolve(name in next ? next[name] : fallback);
   };
   return {
@@ -45,6 +45,7 @@ function fakeParcels() {
       list: answer('list', { items: [parcelRow('1')], total: 1 }),
       counts: answer('counts', { statuses: { pickup_scheduled: 1 }, driversOut: 0 }),
       find: answer('find', { ...parcelRow('1'), events: [], proofFileIds: { signature: null, photo: null, note: null } }),
+      isAssignedTo: answer('isAssignedTo', true),
       formOptions: answer('formOptions', { clients: [], zones: [] }),
       dispatchDrivers: answer('dispatchDrivers', []),
       create: answer('create', { status: 'created', parcel: parcelRow('2') }),
@@ -53,6 +54,10 @@ function fakeParcels() {
       statusOf: answer('statusOf', 'out_for_delivery'),
       attachProof: answer('attachProof', { status: 'updated', previousFileId: null }),
       deliver: answer('deliver', { status: 'updated', parcel: parcelRow('1', { status: 'delivered' }) }),
+      track: answer('track', {
+        trackingNumber: 'TRC-ABCDEFGH1', status: 'picked_up', company: 'Meridian',
+        events: [{ status: 'pickup_scheduled', at: new Date('2026-11-01T08:00:00Z') }, { status: 'picked_up', at: new Date('2026-11-01T09:00:00Z') }],
+      }),
     },
   };
 }
@@ -76,7 +81,8 @@ async function parcelsApp(t) {
   store.rolePermissions.set('2', new Set(['parcels.view', 'parcels.update_status']));
   store.rolePermissions.set('3', new Set(['parcels.view']));
   store.rolePermissions.set('4', new Set(['drivers.view']));
-  const people = [['10', 'dana', '1', '1'], ['11', 'sami', '1', '2'], ['12', 'farah', '1', '3'], ['13', 'omar', '1', '4'], ['14', 'karim', '2', '1']];
+  store.assignedRolePermissions.set('5', new Set(['parcels.view', 'parcels.mark_delivered', 'parcels.update_status', 'drivers.view_earnings']));
+  const people = [['10', 'dana', '1', '1'], ['11', 'sami', '1', '2'], ['12', 'farah', '1', '3'], ['13', 'omar', '1', '4'], ['14', 'karim', '2', '1'], ['15', 'leen', '1', '5']];
   for (const [id, username, organizationId, roleId] of people) {
     store.users.push({ id, username, email: `${username}@demo.example.test`, passwordHash, isActive: true, lastLoginAt: null });
     store.memberships.push({ organizationId, userId: id, roleId, isActive: true });
@@ -254,11 +260,38 @@ test('the details link every proof file; a delivery takes the location as a pair
   assert.equal((await deliver({ collectedAmount: '120.00', latitude: 31.951, longitude: 35.923, notes: ' Left with the neighbour ' }).expect(200)).body.status, 'delivered');
   await deliver({ collectedAmount: '120.00' }).expect(200);
   assert.deepEqual(parcels.calls.filter(([call]) => call === 'deliver').map((call) => call.slice(1)), [
-    ['1', '1', '10', { collected: '120.00', latitude: 31.951, longitude: 35.923, notes: 'Left with the neighbour' }],
-    ['1', '1', '10', { collected: '120.00', latitude: null, longitude: null, notes: null }],
+    ['1', '1', '10', { collected: '120.00', latitude: 31.951, longitude: 35.923, notes: 'Left with the neighbour' }, false],
+    ['1', '1', '10', { collected: '120.00', latitude: null, longitude: null, notes: null }, false],
   ]);
   parcels.next.deliver = { status: 'proof_missing' };
   assert.equal((await deliver({ collectedAmount: '120.00' }).expect(409)).body.code, 'PARCEL_PROOF_MISSING');
+});
+
+test('tracking is open to anyone with the number, answers only status and times, and is rate limited', async (t) => {
+  const { server, parcels, tokens } = await parcelsApp(t);
+  // No account, no company: the number alone. It is looked up as the waybill prints it.
+  const tracked = (await request(server).get('/api/tracking/%20trc-abcdefgh1%20').expect(200)).body;
+  assert.deepEqual(tracked, {
+    trackingNumber: 'TRC-ABCDEFGH1', status: 'picked_up', company: 'Meridian',
+    events: [{ status: 'pickup_scheduled', at: '2026-11-01T08:00:00.000Z' }, { status: 'picked_up', at: '2026-11-01T09:00:00.000Z' }],
+  });
+  assert.deepEqual(parcels.calls.filter(([call]) => call === 'track'), [['track', 'TRC-ABCDEFGH1']]);
+  // Signed in to another company changes nothing.
+  await as(request(server).get('/api/tracking/TRC-ABCDEFGH1'), tokens.karim).expect(200);
+
+  parcels.next.track = null;
+  assert.equal((await request(server).get('/api/tracking/TRC-UNKNOWN').expect(404)).body.code, 'TRACKING_NOT_FOUND');
+  // A malformed number never reaches the repository.
+  const before = parcels.calls.length;
+  await request(server).get(`/api/tracking/${encodeURIComponent("TRC-1' OR 1=1")}`).expect(404);
+  await request(server).get(`/api/tracking/${'A'.repeat(65)}`).expect(404);
+  assert.equal(parcels.calls.length, before);
+
+  // 30 lookups a minute per address: this test has made 5.
+  for (let index = 0; index < 25; index++) await request(server).get('/api/tracking/TRC-UNKNOWN').expect(404);
+  assert.equal((await request(server).get('/api/tracking/TRC-UNKNOWN').expect(429)).body.code, 'TRACKING_TOO_MANY_LOOKUPS');
+  // The sign-in limits are counted apart: signing in still works.
+  await tokenFor(server, 'dana');
 });
 
 test('a delivery names the cash collected; a mismatch, another driver\'s parcel or a parcel that moved on is refused', async (t) => {
@@ -270,7 +303,7 @@ test('a delivery names the cash collected; a mismatch, another driver\'s parcel 
   const done = (await deliver({ collectedAmount: ' 120.5 ', notes: ' Left with the guard ' }).expect(200)).body;
   assert.equal(done.status, 'delivered');
   // The cash goes down as saved, and the company and the actor come from the token, never from the body.
-  assert.deepEqual(parcels.calls.find(([call]) => call === 'deliver').slice(1), ['1', '1', '10', { collected: '120.50', latitude: null, longitude: null, notes: 'Left with the guard' }]);
+  assert.deepEqual(parcels.calls.find(([call]) => call === 'deliver').slice(1), ['1', '1', '10', { collected: '120.50', latitude: null, longitude: null, notes: 'Left with the guard' }, false]);
   await deliver({ collectedAmount: '120.00' }, 'abc').expect(404);
   parcels.next.deliver = { status: 'cod_mismatch' };
   assert.equal((await deliver({ collectedAmount: '100.00' }).expect(409)).body.code, 'PARCEL_COD_MISMATCH');
@@ -280,4 +313,55 @@ test('a delivery names the cash collected; a mismatch, another driver\'s parcel 
   assert.equal((await deliver({ collectedAmount: '120.00' }).expect(409)).body.code, 'PARCEL_WRONG_STATUS');
   parcels.next.deliver = { status: 'not_found' };
   assert.equal((await deliver({ collectedAmount: '120.00' }).expect(404)).body.code, 'PARCEL_NOT_FOUND');
+});
+
+test('assigned-only couriers can read, upload, remove and confirm their own parcel, with scoped list and counts', async (t) => {
+  const { server, parcels, tokens } = await parcelsApp(t);
+  const get = await as(request(server).get('/api/parcels/1'), tokens.leen).expect(200);
+  assert.equal(get.body.canRecordDelivery, true);
+  assert.deepEqual(parcels.calls.find(([name]) => name === 'find'), ['find', '1', '1', '15']);
+  await as(request(server).get('/api/parcels'), tokens.leen).expect(200);
+  assert.equal(parcels.calls.find(([name]) => name === 'list').at(-1), '15');
+  assert.deepEqual(parcels.calls.find(([name]) => name === 'counts'), ['counts', '1', '15']);
+  await as(request(server).post('/api/parcels/1/proof/photo'), tokens.leen).attach('file', PNG, { filename: 'door.png', contentType: 'image/png' }).expect(201);
+  assert.deepEqual(parcels.calls.find(([name]) => name === 'statusOf'), ['statusOf', '1', '1', '15']);
+  assert.equal(parcels.calls.find(([name]) => name === 'attachProof').at(-1), '15');
+  await as(request(server).delete('/api/parcels/1/proof/photo'), tokens.leen).expect(204);
+  await as(request(server).post('/api/parcels/1/delivery').send({ collectedAmount: '120.00' }), tokens.leen).expect(200);
+  assert.equal(parcels.calls.find(([name]) => name === 'deliver').at(-1), true);
+  // A partial grant never opens other tenant-wide routes.
+  await as(request(server).get('/api/parcels/dispatch-drivers'), tokens.leen).expect(403);
+  await as(request(server).get('/api/parcels/form-options'), tokens.leen).expect(403);
+  await as(request(server).post('/api/parcels/1/assignment').send({ driverId: '3' }), tokens.leen).expect(403);
+});
+
+test('other drivers, unlinked couriers and foreign parcels get no details or proof access', async (t) => {
+  const { server, parcels, tokens, companyFiles } = await parcelsApp(t);
+  parcels.next.isAssignedTo = false;
+  for (const id of ['1', '999999', 'abc']) {
+    await as(request(server).get(`/api/parcels/${id}`), tokens.leen).expect(404);
+    await as(request(server).post(`/api/parcels/${id}/proof/photo`), tokens.leen).attach('file', PNG, { filename: 'door.png', contentType: 'image/png' }).expect(404);
+    await as(request(server).delete(`/api/parcels/${id}/proof/photo`), tokens.leen).expect(404);
+    await as(request(server).post(`/api/parcels/${id}/delivery`).send({ collectedAmount: '120.00' }), tokens.leen).expect(404);
+  }
+  await as(request(server).get('/api/parcels/1'), tokens.leen, '2').expect(403);
+  assert.equal(parcels.calls.some(([name]) => ['find', 'statusOf', 'attachProof', 'deliver'].includes(name)), false);
+  assert.deepEqual(await companyFiles(), []);
+});
+
+test('reassignment during an upload refuses attachment and deletes the newly saved file', async (t) => {
+  const { server, store, parcels, tokens, companyFiles } = await parcelsApp(t);
+  parcels.next.attachProof = { status: 'not_found' };
+  await as(request(server).post('/api/parcels/1/proof/photo'), tokens.leen).attach('file', PNG, { filename: 'door.png', contentType: 'image/png' }).expect(404);
+  assert.deepEqual(await companyFiles(), []);
+  assert.equal(store.storageFiles.length, 0);
+});
+
+test('/me separates usable assigned parcel permissions from all-scope and unsupported partial grants', async (t) => {
+  const { server, store, tokens } = await parcelsApp(t);
+  store.roles.push({ id: '5', code: 'courier', name: 'Courier' });
+  store.workspaces.set('15', [{ id: '1', slug: 'meridian', name: 'Meridian', role: { code: 'courier', name: 'Courier' } }]);
+  const me = (await as(request(server).get('/api/auth/me'), tokens.leen).expect(200)).body;
+  assert.deepEqual(me.workspaces[0].permissions, []);
+  assert.deepEqual(me.workspaces[0].assignedPermissions, ['parcels.mark_delivered', 'parcels.view']);
 });

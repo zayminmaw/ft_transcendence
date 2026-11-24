@@ -132,4 +132,5 @@ signed-in person's own `users` row.
 - Check your own permission before calling `StorageService`; the storage module never does.
 - Always pass `request.tenant!.organizationId`, never a company id from the request body or URL.
 - Keep the file `id` on your row, never a path or a signed URL (signed URLs expire).
+- Parcel proof previews refresh authorized parcel details 30 seconds before link expiry. Failed previews also request fresh links; a failed renewal hides the old preview and offers Retry. Expired links are blocked even when a background tab delayed its timer.
 - When you delete your record, also call `storage.delete()` for its files, or they stay on disk.

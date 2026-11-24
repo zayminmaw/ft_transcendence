@@ -12,7 +12,7 @@ import { Parcel } from './entities/parcel.entity';
 import { ParcelEvent } from './entities/parcel-event.entity';
 import type {
   DeliveryValues, DispatchDriver, NewParcel, ParcelCounts, ParcelDriver, ParcelEventRecord, ParcelFormOptions, ParcelRecord, ParcelRun,
-  ParcelVehicle,
+  ParcelTracking, ParcelVehicle,
 } from './types/parcel';
 
 // Writes its audit row with the change's own manager, so both are saved or neither.
@@ -69,6 +69,11 @@ const RUN_COLUMNS = "run.id AS runId, DATE_FORMAT(run.run_date, '%Y%m%d') AS run
 // The file id of each kind of proof, read by proofOf.
 const PROOF_COLUMNS = PROOF_KINDS.map((kind) => `parcel.${PROOF_FILES[kind].column} AS ${kind}`).join(', ');
 
+// Uses the same predicate for details, list, totals and writes. No linked driver means no assigned-only access.
+const ASSIGNED_TO = `EXISTS (SELECT 1 FROM employees assigned
+  WHERE assigned.id = parcel.assigned_driver_id AND assigned.organization_id = parcel.organization_id
+    AND assigned.user_id = ? AND assigned.personnel_type = 'driver' AND assigned.employment_status <> 'terminated')`;
+
 // A parcel and what it points to. Every query adds its own conditions after the company's.
 const PARCEL_SELECT = `
   SELECT parcel.id, parcel.tracking_number AS trackingNumber, parcel.lifecycle_status AS status,
@@ -78,7 +83,7 @@ const PARCEL_SELECT = `
          parcel.recipient_secondary_phone AS recipientSecondaryPhone, parcel.delivery_address AS deliveryAddress,
          parcel.delivery_city_zone AS deliveryCityZone, parcel.delivery_landmark AS deliveryLandmark,
          parcel.weight_kg AS weightKg, parcel.is_fragile AS isFragile, parcel.delivery_fee AS deliveryFee,
-         parcel.cod_amount AS codAmount, parcel.delivery_attempt_count AS deliveryAttemptCount,
+         parcel.cod_amount AS codAmount, parcel.collected_amount AS collectedAmount, parcel.delivery_attempt_count AS deliveryAttemptCount,
          parcel.failed_reason_code AS failedReasonCode, parcel.delivered_at AS deliveredAt,
          parcel.delivered_latitude AS deliveredLatitude, parcel.delivered_longitude AS deliveredLongitude,
          parcel.created_at AS createdAt, parcel.updated_at AS updatedAt, ${PROOF_COLUMNS}
@@ -128,6 +133,7 @@ function toRecord(row: Row): ParcelRecord {
     isFragile: Boolean(Number(row.isFragile)),
     deliveryFee: String(row.deliveryFee),
     codAmount: String(row.codAmount),
+    collectedAmount: text(row.collectedAmount ?? null),
     deliveryAttemptCount: Number(row.deliveryAttemptCount),
     failedReasonCode: text(row.failedReasonCode),
     deliveredAt: (row.deliveredAt as Date | null) ?? null,
@@ -166,9 +172,13 @@ export class ParcelsRepository {
   constructor(private readonly database: DataSource) {}
 
   // Every value is a parameter and the sort comes from SORT_COLUMNS; the id breaks ties, so pages never overlap.
-  async list(organizationId: string, query: ListParcelsQueryDto): Promise<{ items: ParcelRecord[]; total: number }> {
+  async list(organizationId: string, query: ListParcelsQueryDto, assignedUserId?: string): Promise<{ items: ParcelRecord[]; total: number }> {
     const conditions: string[] = [];
     const parameters: unknown[] = [organizationId];
+    if (assignedUserId) {
+      conditions.push(ASSIGNED_TO);
+      parameters.push(assignedUserId);
+    }
     if (query.search) {
       conditions.push(`(${SEARCHED.map((column) => `${column} LIKE ?`).join(' OR ')})`);
       parameters.push(...SEARCHED.map(() => containsPattern(query.search!)));
@@ -198,11 +208,11 @@ export class ParcelsRepository {
 
   // Over the whole company, whatever the search and filter, in one pass: the parcels per status, and the drivers of
   // the out_for_delivery row.
-  async counts(organizationId: string): Promise<ParcelCounts> {
+  async counts(organizationId: string, assignedUserId?: string): Promise<ParcelCounts> {
     const rows: { status: ParcelStatus; total: string; drivers: string }[] = await this.database.query(
       `SELECT lifecycle_status AS status, COUNT(*) AS total, COUNT(DISTINCT assigned_driver_id) AS drivers
-         FROM parcels WHERE organization_id = ? GROUP BY lifecycle_status`,
-      [organizationId],
+         FROM parcels parcel WHERE organization_id = ?${assignedUserId ? ` AND ${ASSIGNED_TO}` : ''} GROUP BY lifecycle_status`,
+      assignedUserId ? [organizationId, assignedUserId] : [organizationId],
     );
     const statuses = Object.fromEntries(PARCEL_STATUSES.map((status) => [status, 0])) as Record<ParcelStatus, number>;
     for (const row of rows) statuses[row.status] = Number(row.total);
@@ -212,14 +222,19 @@ export class ParcelsRepository {
 
   // The parcel, its history and its proof files at once; another company's history is never answered, as its parcel
   // isn't found.
-  async find(organizationId: string, id: string): Promise<StoredParcelDetails | null> {
-    const [row, events] = await Promise.all([this.findRow(this.database.manager, organizationId, id), this.events(id)]);
-    return row ? { ...toRecord(row), events, proofFileIds: proofOf(row) } : null;
+  async find(organizationId: string, id: string, assignedUserId?: string): Promise<StoredParcelDetails | null> {
+    const row = await this.findRow(this.database.manager, organizationId, id, assignedUserId);
+    return row ? { ...toRecord(row), events: await this.events(id), proofFileIds: proofOf(row) } : null;
+  }
+
+  async isAssignedTo(organizationId: string, id: string, userId: string, manager = this.database.manager): Promise<boolean> {
+    const rows = await manager.query(`SELECT parcel.id FROM parcels parcel WHERE parcel.organization_id = ? AND parcel.id = ? AND ${ASSIGNED_TO}`, [organizationId, id, userId]);
+    return rows.length > 0;
   }
 
   // Where the parcel is now, or null when it isn't in the company.
-  async statusOf(organizationId: string, id: string): Promise<ParcelStatus | null> {
-    const [row] = await this.database.query('SELECT lifecycle_status AS status FROM parcels WHERE id = ? AND organization_id = ?', [id, organizationId]);
+  async statusOf(organizationId: string, id: string, assignedUserId?: string): Promise<ParcelStatus | null> {
+    const [row] = await this.database.query(`SELECT lifecycle_status AS status FROM parcels parcel WHERE id = ? AND organization_id = ?${assignedUserId ? ` AND ${ASSIGNED_TO}` : ''}`, assignedUserId ? [id, organizationId, assignedUserId] : [id, organizationId]);
     return row ? (row.status as ParcelStatus) : null;
   }
 
@@ -359,10 +374,11 @@ export class ParcelsRepository {
 
   // Points one kind of proof at a file the caller has just saved, while the parcel is out for delivery. The file it
   // replaces is answered, not deleted: that happens once this has committed.
-  attachProof(organizationId: string, id: string, kind: ProofKind, fileId: string | null): Promise<ProofResult> {
+  attachProof(organizationId: string, id: string, kind: ProofKind, fileId: string | null, assignedUserId?: string): Promise<ProofResult> {
     return this.database.transaction(WRITES, async (manager) => {
       const locked = await this.lock(manager, organizationId, id);
       if (!locked) return { status: 'not_found' };
+      if (assignedUserId && !(await this.isAssignedTo(organizationId, id, assignedUserId, manager))) return { status: 'not_found' };
       if (locked.status !== 'out_for_delivery') return { status: 'wrong_status' };
       await manager.update(Parcel, { organizationId, id }, { [PROOF_FILES[kind].property]: fileId });
       return { status: 'updated', previousFileId: locked.proof[kind] };
@@ -372,10 +388,11 @@ export class ParcelsRepository {
   // Confirms the delivery of a parcel out for delivery whose signature and photo are uploaded. The history keeps the
   // driver, vehicle and run it was delivered with. The assigned driver must collect exactly the COD due. The cash stays
   // pending: only the COD handover settles it.
-  deliver(organizationId: string, id: string, actorId: string, values: DeliveryValues, audit: AuditStep): Promise<ParcelResult> {
+  deliver(organizationId: string, id: string, actorId: string, values: DeliveryValues, audit: AuditStep, assignedOnly = false): Promise<ParcelResult> {
     return this.database.transaction(WRITES, async (manager) => {
       const locked = await this.lock(manager, organizationId, id);
       if (!locked) return { status: 'not_found' };
+      if (assignedOnly && !(await this.isAssignedTo(organizationId, id, actorId, manager))) return { status: 'not_found' };
       if (locked.status !== 'out_for_delivery') return { status: 'wrong_status' };
       const before = (await this.findOne(manager, organizationId, id))!;
       const own = await manager
@@ -391,6 +408,7 @@ export class ParcelsRepository {
       if (PROOF_KINDS.some((kind) => PROOF_FILES[kind].required && locked.proof[kind] === null)) return { status: 'proof_missing' };
       await manager.update(Parcel, { organizationId, id }, {
         lifecycleStatus: 'delivered',
+        collectedAmount: values.collected,
         deliveredAt: () => 'CURRENT_TIMESTAMP',
         // DECIMAL(10, 8) and DECIMAL(11, 8): more digits would only be rounded.
         deliveredLatitude: values.latitude === null ? null : values.latitude.toFixed(8),
@@ -429,6 +447,29 @@ export class ParcelsRepository {
     }
   }
 
+  // Any company's parcel, by its tracking number alone (unique across companies), for the public tracking page. A
+  // draft hasn't been handed over yet, and a suspended company's parcels aren't shown.
+  async track(trackingNumber: string): Promise<ParcelTracking | null> {
+    const [parcel]: Row[] = await this.database.query(
+      `SELECT parcel.id, parcel.tracking_number AS trackingNumber, parcel.lifecycle_status AS status, company.name AS company
+         FROM parcels parcel
+         JOIN organizations company ON company.id = parcel.organization_id
+        WHERE parcel.tracking_number = ? AND parcel.lifecycle_status <> 'draft' AND company.is_active = TRUE`,
+      [trackingNumber],
+    );
+    if (!parcel) return null;
+    const events: Row[] = await this.database.query(
+      `SELECT status, event_timestamp AS at FROM parcel_events WHERE parcel_id = ? ORDER BY event_timestamp, id`,
+      [parcel.id],
+    );
+    return {
+      trackingNumber: String(parcel.trackingNumber),
+      status: parcel.status as ParcelStatus,
+      company: String(parcel.company),
+      events: events.map((event) => ({ status: event.status as ParcelStatus, at: event.at as Date })),
+    };
+  }
+
   private async events(parcelId: string): Promise<ParcelEventRecord[]> {
     const rows: Row[] = await this.database.query(
       `SELECT event.id, event.status, event.event_timestamp AS at, event.hub_location AS hubLocation,
@@ -457,8 +498,8 @@ export class ParcelsRepository {
     return row ? { status: row.status as ParcelStatus, proof: proofOf(row) } : null;
   }
 
-  private async findRow(manager: EntityManager, organizationId: string, id: string): Promise<Row | undefined> {
-    const [row] = await manager.query(`${PARCEL_SELECT} AND parcel.id = ?`, [organizationId, id]);
+  private async findRow(manager: EntityManager, organizationId: string, id: string, assignedUserId?: string): Promise<Row | undefined> {
+    const [row] = await manager.query(`${PARCEL_SELECT} AND parcel.id = ?${assignedUserId ? ` AND ${ASSIGNED_TO}` : ''}`, assignedUserId ? [organizationId, id, assignedUserId] : [organizationId, id]);
     return row;
   }
 

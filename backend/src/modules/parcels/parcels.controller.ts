@@ -6,25 +6,28 @@ import type { AuthenticatedRequest } from '../../common/types/authenticated-requ
 import { imageOrPdfUploadOptions, type UploadedFileInput } from '../storage';
 import { AssignParcelDto, CreateParcelDto, DeliverParcelDto, ListParcelsQueryDto, StatusMoveDto } from './dto/parcel.dto';
 import { type ParcelsActor, ParcelsService } from './parcels.service';
+import { type ParcelRequest, RequireParcelPermission } from './parcel-access.guard';
 
-const actor = (request: AuthenticatedRequest): ParcelsActor => ({
+const actor = (request: ParcelRequest): ParcelsActor => ({
   tenant: request.tenant!,
   userId: request.user!.id,
   meta: requestMeta(request),
+  assignedOnly: request.parcelAssignedOnly,
 });
 
-// The parcels of the company named by X-Organization-Id (checked by RolesGuard). Reading needs parcels.view; each
+// The parcels of the company named by X-Organization-Id. Reading needs parcels.view; each
 // change needs its own permission, which replaces it: creating a waybill parcels.create, moving it through pickup,
 // hub and failure parcels.update_status, sending it out with a driver parcels.dispatch, recording its cash and proof
-// parcels.mark_delivered. The fixed paths come before :parcelId.
+// parcels.mark_delivered. ParcelAccessGuard implements assigned-driver reads and delivery proof; other actions use
+// RolesGuard's full-scope policy. The fixed paths come before :parcelId.
 @Controller('parcels')
-@RequirePermission('parcels.view')
 export class ParcelsController {
   constructor(private readonly parcels: ParcelsService) {}
 
   @Get()
-  list(@Query() query: ListParcelsQueryDto, @Req() request: AuthenticatedRequest) {
-    return this.parcels.list(request.tenant!, query);
+  @RequireParcelPermission('parcels.view', true)
+  list(@Query() query: ListParcelsQueryDto, @Req() request: ParcelRequest) {
+    return this.parcels.list(request.tenant!, query, request.parcelAssignedOnly ? request.user!.id : undefined);
   }
 
   // The merchants and zones the new parcel form chooses from.
@@ -43,8 +46,9 @@ export class ParcelsController {
   }
 
   @Get(':parcelId')
-  get(@Param('parcelId') id: string, @Req() request: AuthenticatedRequest) {
-    return this.parcels.get(request.tenant!, id);
+  @RequireParcelPermission('parcels.view')
+  get(@Param('parcelId') id: string, @Req() request: ParcelRequest) {
+    return this.parcels.get(request.tenant!, id, request.user!.id, request.parcelAssignedOnly);
   }
 
   @Post()
@@ -64,8 +68,8 @@ export class ParcelsController {
   // The driver hands the parcel over and takes its cash. 200 like the other actions on a parcel.
   @Post(':parcelId/delivery')
   @HttpCode(200)
-  @RequirePermission('parcels.mark_delivered')
-  deliver(@Param('parcelId') id: string, @Body() body: DeliverParcelDto, @Req() request: AuthenticatedRequest) {
+  @RequireParcelPermission('parcels.mark_delivered')
+  deliver(@Param('parcelId') id: string, @Body() body: DeliverParcelDto, @Req() request: ParcelRequest) {
     return this.parcels.deliver(actor(request), id, body);
   }
 
@@ -79,21 +83,21 @@ export class ParcelsController {
   // Proof of delivery, while the parcel is out for delivery: one file per kind (signature, photo or note, in a form
   // field named "file"), each replacing the one before, then the confirmation. Images, and a PDF for the note.
   @Post(':parcelId/proof/:kind')
-  @RequirePermission('parcels.mark_delivered')
+  @RequireParcelPermission('parcels.mark_delivered')
   @UseInterceptors(FileInterceptor('file', imageOrPdfUploadOptions))
   uploadProof(
     @Param('parcelId') id: string,
     @Param('kind') kind: string,
     @UploadedFile() file: UploadedFileInput | undefined,
-    @Req() request: AuthenticatedRequest,
+    @Req() request: ParcelRequest,
   ) {
     return this.parcels.uploadProof(actor(request), id, kind, file);
   }
 
   @Delete(':parcelId/proof/:kind')
   @HttpCode(204)
-  @RequirePermission('parcels.mark_delivered')
-  removeProof(@Param('parcelId') id: string, @Param('kind') kind: string, @Req() request: AuthenticatedRequest) {
+  @RequireParcelPermission('parcels.mark_delivered')
+  removeProof(@Param('parcelId') id: string, @Param('kind') kind: string, @Req() request: ParcelRequest) {
     return this.parcels.removeProof(actor(request), id, kind);
   }
 }
