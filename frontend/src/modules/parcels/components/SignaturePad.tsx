@@ -1,7 +1,8 @@
 import { useRef, useState, type PointerEvent } from 'react';
+import { useTranslation } from 'react-i18next';
 
 // Draws with a mouse, finger or stylus. White with a dark line in every theme, so the signature is always readable.
-// "Use signature" hands it over as a PNG file.
+// "{t('deliver.useSignature')}" hands it over as a PNG file.
 export function SignaturePad({
 	onSave,
 	disabled = false,
@@ -9,6 +10,7 @@ export function SignaturePad({
 	onSave: (file: File) => void;
 	disabled?: boolean;
 }) {
+	const { t } = useTranslation('parcels');
 	const canvas = useRef<HTMLCanvasElement>(null);
 	const [drawn, setDrawn] = useState(false);
 
@@ -76,7 +78,7 @@ export function SignaturePad({
 				width={600}
 				height={200}
 				role="img"
-				aria-label="Recipient signature pad"
+				aria-label={t('deliver.signaturePad')}
 				className="h-40 w-full cursor-crosshair touch-none rounded-box border border-base-300 bg-white"
 				onPointerDown={start}
 				onPointerMove={draw}
@@ -88,7 +90,7 @@ export function SignaturePad({
 					disabled={!drawn || disabled}
 					onClick={save}
 				>
-					Use signature
+					{t('deliver.useSignature')}
 				</button>
 				<button
 					type="button"
@@ -96,11 +98,9 @@ export function SignaturePad({
 					disabled={!drawn || disabled}
 					onClick={clear}
 				>
-					Clear
+					{t('deliver.clear')}
 				</button>
-				<p className="text-sm text-[var(--color-slate)]">
-					Ask the recipient to sign, then use the signature.
-				</p>
+				<p className="text-sm text-[var(--color-slate)]">{t('deliver.signHint')}</p>
 			</div>
 		</div>
 	);

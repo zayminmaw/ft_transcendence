@@ -81,6 +81,7 @@ function preview({ seconds = 900, mimeType = 'image/png', reject = false } = {})
 					(...args) => state[name](...args),
 				]),
 			),
+			'react-i18next': { useTranslation: () => ({ t: (key) => key }) },
 			'@global-components': { ImageViewer: 'viewer' },
 			'@utils/upload': { PDF_TYPE: 'application/pdf' },
 		},

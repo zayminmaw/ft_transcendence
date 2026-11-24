@@ -89,6 +89,8 @@ test('the delivery page requires the parcel capability and sends the actual ente
 					];
 				},
 			},
+			'react-i18next': { useTranslation: () => ({ t: (key) => key }) },
+			'../errors': { parcelFormError: (_t, error) => error.message },
 			'react-router-dom': {
 				useParams: () => ({ parcelId: '7' }),
 				useNavigate: () => () => {},

@@ -1,4 +1,6 @@
 import { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { parcelFormError } from '../errors';
 import { useIsMutating, useMutation, useQueryClient } from '@tanstack/react-query';
 import { tenantQueryKey } from '@utils/query-keys';
 import { fileProblem, PDF_TYPE } from '@utils/upload';
@@ -23,9 +25,12 @@ export function useProofBusy(parcelId: string) {
 // One kind of proof of a parcel out for delivery: checking and uploading a file (with how far it has got, 0 to
 // 100), replacing the one before, and removing it. The saved file shows in the parcel's cached details at once.
 export function useProofFile(parcelId: string, kind: ProofKind, accept: string[]) {
+	const { t } = useTranslation('parcels');
 	const queryClient = useQueryClient();
 	const [progress, setProgress] = useState(0);
-	const [problem, setProblem] = useState<string | null>(null);
+	const [problem, setProblem] = useState<
+		Error | 'proof.maxSize' | 'proof.imageType' | 'proof.imageOrPdf' | 'proof.connection' | null
+	>(null);
 	const detailsKey = tenantQueryKey('parcels', 'details', parcelId);
 	const refreshProof = useCallback(async () => {
 		await queryClient.refetchQueries(
@@ -42,8 +47,10 @@ export function useProofFile(parcelId: string, kind: ProofKind, accept: string[]
 	const failed = (error: Error) => {
 		setProblem(
 			error instanceof ApiError && error.status === 413
-				? 'Choose a file of at most 10 MB.'
-				: refusalMessage(error, 'Check your connection and try again.'),
+				? 'proof.maxSize'
+				: error instanceof ApiError && error.status < 500
+					? error
+					: 'proof.connection',
 		);
 		void queryClient.invalidateQueries({ queryKey: detailsKey });
 	};
@@ -78,9 +85,11 @@ export function useProofFile(parcelId: string, kind: ProofKind, accept: string[]
 			const wrong = fileProblem(file, accept, MAX_BYTES);
 			setProblem(
 				wrong === 'size'
-					? 'Choose a file of at most 10 MB.'
+					? 'proof.maxSize'
 					: wrong === 'type'
-						? `Choose a JPEG, PNG or WebP image${accept.includes(PDF_TYPE) ? ', or a PDF' : ''}.`
+						? accept.includes(PDF_TYPE)
+							? 'proof.imageOrPdf'
+							: 'proof.imageType'
 						: null,
 			);
 			if (!wrong) upload.mutate(file);
@@ -93,6 +102,7 @@ export function useProofFile(parcelId: string, kind: ProofKind, accept: string[]
 			remove.mutate();
 		},
 		isRemoving: remove.isPending,
-		problem,
+		problem:
+			problem instanceof Error ? parcelFormError(t, problem) : problem ? t(problem) : null,
 	};
 }
