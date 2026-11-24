@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '@global-components';
 import { tenantQueryKey } from '@utils/query-keys';
@@ -13,8 +13,9 @@ export function useMerchantLedger(clientId: string) {
 	const { t } = useTranslation('billing');
 	const [page, setPage] = useState(1);
 	const [pageSize, setPageSizeValue] = useState(10);
+	const merchantKey = tenantQueryKey('clients', 'ledger', clientId);
 	const query = useQuery({
-		queryKey: tenantQueryKey('clients', 'ledger', clientId, { page, pageSize }),
+		queryKey: [...merchantKey, { page, pageSize }],
 		queryFn: () =>
 			apiRequest<LedgerPage>(
 				`billing/clients/${encodeURIComponent(clientId)}/ledger?${new URLSearchParams({
@@ -22,7 +23,10 @@ export function useMerchantLedger(clientId: string) {
 					pageSize: String(pageSize),
 				})}`,
 			),
-		placeholderData: keepPreviousData,
+		placeholderData: (previous, previousQuery) =>
+			merchantKey.every((part, index) => previousQuery?.queryKey[index] === part)
+				? previous
+				: undefined,
 	});
 
 	// One toast per failed load: errorUpdatedAt changes only when a new failure arrives.
@@ -37,6 +41,9 @@ export function useMerchantLedger(clientId: string) {
 		entries: query.data?.items ?? [],
 		total: query.data?.total ?? 0,
 		isPending: query.isPending,
+		ledgerError: error,
+		isFetching: query.isFetching,
+		retryLedger: query.refetch,
 		page,
 		setPage,
 		pageSize,

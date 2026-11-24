@@ -77,8 +77,8 @@ export function ClientsPage() {
 			cell: (client) => (
 				<div>
 					<p>{client.contactPersonName}</p>
-					<p className="text-xs text-[var(--color-slate)]" dir="ltr">
-						{client.mobile1}
+					<p className="text-xs text-[var(--color-slate)]">
+						<span dir="ltr">{client.mobile1}</span>
 					</p>
 				</div>
 			),

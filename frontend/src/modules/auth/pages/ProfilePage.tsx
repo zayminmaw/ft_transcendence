@@ -52,7 +52,7 @@ export function ProfilePage() {
 						<h2 className="truncate text-xl font-semibold">{name}</h2>
 						{user.displayName && (
 							<p className="truncate text-sm text-[var(--color-slate)]">
-								{user.username}
+								<span dir="ltr">{user.username}</span>
 							</p>
 						)}
 					</div>
@@ -69,9 +69,13 @@ export function ProfilePage() {
 				<DisplayNameForm current={user.displayName} />
 				<dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-6 gap-y-2 text-sm">
 					<dt className="text-[var(--color-slate)]">{t('profile.username')}</dt>
-					<dd className="truncate">{user.username}</dd>
+					<dd className="truncate">
+						<span dir="ltr">{user.username}</span>
+					</dd>
 					<dt className="text-[var(--color-slate)]">{t('profile.email')}</dt>
-					<dd className="truncate">{user.email}</dd>
+					<dd className="truncate">
+						<span dir="ltr">{user.email}</span>
+					</dd>
 					<dt className="text-[var(--color-slate)]">{t('profile.memberSince')}</dt>
 					<dd>{formatDate(user.createdAt, i18n.language)}</dd>
 				</dl>

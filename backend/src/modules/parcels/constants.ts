@@ -6,7 +6,8 @@ export const PARCEL_STATUSES = [
 export type ParcelStatus = (typeof PARCEL_STATUSES)[number];
 
 // The moves POST /parcels/:id/status makes (parcels.update_status), each from the one status it may follow. Out for
-// delivery comes only from an assignment (parcels.dispatch); delivered will come from proof of delivery.
+// delivery comes only from an assignment (parcels.dispatch); delivered comes only from recording the delivery
+// (parcels.mark_delivered), which also records the cash the driver collected.
 export const STATUS_MOVES = {
   picked_up: 'pickup_scheduled',
   in_hub_sorted: 'picked_up',
@@ -40,6 +41,12 @@ export const ON_DUTY_STATUSES = ['available', 'on_pickup', 'out_for_delivery'] a
 export const VEHICLE_CATEGORIES = ['motorcycle', 'van'] as const;
 
 export const PARCEL_NOT_FOUND = { message: "That parcel isn't in this company.", code: 'PARCEL_NOT_FOUND' };
+// The public tracking page's answer for a number it can't show, whatever the reason: it never tells an unknown number
+// from a parcel it hides.
+export const TRACKING_NOT_FOUND = { message: 'No parcel has this tracking number.', code: 'TRACKING_NOT_FOUND' };
+// What an upper-cased tracking number can look like (waybills print TRC-23456789AB); anything else names no parcel and
+// never reaches the database.
+export const TRACKING_PATTERN = /^[A-Z0-9-]{1,64}$/;
 export const PARCEL_CLIENT_UNAVAILABLE = {
   message: 'Choose an active merchant of this company.',
   code: 'PARCEL_CLIENT_UNAVAILABLE',
@@ -47,6 +54,14 @@ export const PARCEL_CLIENT_UNAVAILABLE = {
 export const PARCEL_DRIVER_UNAVAILABLE = {
   message: 'Choose a driver of this company who is on duty.',
   code: 'PARCEL_DRIVER_UNAVAILABLE',
+};
+export const PARCEL_COD_MISMATCH = {
+  message: "The cash collected isn't the amount due on the parcel, so the delivery was not recorded.",
+  code: 'PARCEL_COD_MISMATCH',
+};
+export const PARCEL_NOT_YOUR_PARCEL = {
+  message: 'This parcel is assigned to another driver.',
+  code: 'PARCEL_NOT_YOUR_PARCEL',
 };
 export const PARCEL_WRONG_STATUS = {
   message: 'The parcel has moved on since you opened it. Refresh to see where it is now.',

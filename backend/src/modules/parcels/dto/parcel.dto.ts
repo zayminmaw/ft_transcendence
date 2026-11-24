@@ -59,6 +59,13 @@ export class StatusMoveDto {
   notes?: string | null;
 }
 
+// Recording a delivery. The cash is what the driver took at the door; for now it must be the amount due, since a
+// partial collection needs the merchant's approval and isn't supported.
+export class DeliverParcelDto {
+  @Amount() collectedAmount!: string;
+  @OptionalText(NOTES_MAX_LENGTH) notes?: string | null;
+}
+
 export class AssignParcelDto {
   @Id() driverId!: string;
   @OptionalText(NOTES_MAX_LENGTH) notes?: string | null;

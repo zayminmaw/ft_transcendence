@@ -83,10 +83,10 @@ export function MemberPicker({
 									/>
 									<span className="flex min-w-0 flex-1 flex-col">
 										<span className="truncate font-medium">
-											{member.username}
+											<span dir="ltr">{member.username}</span>
 										</span>
 										<span className="truncate text-sm text-[var(--color-slate)]">
-											{member.email}
+											<span dir="ltr">{member.email}</span>
 										</span>
 									</span>
 									<span className="badge badge-sm shrink-0 border-base-300 bg-base-100">

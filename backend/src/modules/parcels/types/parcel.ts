@@ -28,6 +28,8 @@ export interface ParcelRecord {
   codAmount: string;
   deliveryAttemptCount: number;
   failedReasonCode: string | null;
+  // When the delivery was recorded; null until then.
+  deliveredAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -48,6 +50,15 @@ export interface ParcelEventRecord {
 
 export interface ParcelDetails extends ParcelRecord {
   events: ParcelEventRecord[];
+}
+
+// What the public tracking page shows of a parcel: its status, the company carrying it and when each step happened.
+// Never the recipient, the address, the money or who handled it.
+export interface ParcelTracking {
+  trackingNumber: string;
+  status: ParcelStatus;
+  company: string;
+  events: { status: ParcelStatus; at: Date }[];
 }
 
 // Over the whole company, whatever the search and filter: parcels per status, and the drivers out with parcels now.

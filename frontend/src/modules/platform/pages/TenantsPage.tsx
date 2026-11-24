@@ -21,7 +21,9 @@ const columns: TableColumn<TenantListItem>[] = [
 		cell: (tenant) => (
 			<div>
 				<p>{tenant.name}</p>
-				<p className="text-sm font-normal text-[var(--color-slate)]">{tenant.slug}</p>
+				<p className="text-sm font-normal text-[var(--color-slate)]">
+					<span dir="ltr">{tenant.slug}</span>
+				</p>
 			</div>
 		),
 	},

@@ -93,9 +93,13 @@ export function PeopleAccessPage({ tab = 'members' }: { tab?: 'members' | 'roles
 				<div>
 					<p className="font-medium">{shownName(member)}</p>
 					{member.displayName && (
-						<p className="text-xs text-[var(--color-slate)]">{member.username}</p>
+						<p className="text-xs text-[var(--color-slate)]">
+							<span dir="ltr">{member.username}</span>
+						</p>
 					)}
-					<p className="text-xs text-[var(--color-slate)]">{member.email}</p>
+					<p className="text-xs text-[var(--color-slate)]">
+						<span dir="ltr">{member.email}</span>
+					</p>
 				</div>
 			),
 		},
