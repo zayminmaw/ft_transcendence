@@ -69,9 +69,10 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection {
 					if (!this.isRejection(error)) {
 						this.logger.warn(`WebSocket handshake failed: ${error instanceof Error ? error.message : 'unknown error'}`);
 					}
-					// Only an expired token is worth a refresh; anything else (no membership, a password to change) stays
-					// refused with a new token too, so the client must not retry it.
-					next(new Error(error instanceof Error && error.name === 'TokenExpiredError' ? 'TokenExpired' : 'Unauthorized'));
+					// TokenExpired: refresh and retry. Unauthorized (no membership, a password to change) stays refused with a
+					// new token too. Unavailable is an unexpected failure, such as a database outage, worth retrying later.
+					const expired = error instanceof Error && error.name === 'TokenExpiredError';
+					next(new Error(expired ? 'TokenExpired' : this.isRejection(error) ? 'Unauthorized' : 'Unavailable'));
 				},
 			);
 		});
