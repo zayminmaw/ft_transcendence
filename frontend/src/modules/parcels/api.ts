@@ -60,6 +60,8 @@ export type Parcel = {
 	codAmount: string;
 	deliveryAttemptCount: number;
 	failedReasonCode: FailureReason | null;
+	// When the delivery was recorded; null until then.
+	deliveredAt: string | null;
 	createdAt: string;
 	updatedAt: string;
 };
@@ -117,10 +119,25 @@ export type NewParcelValues = {
 	notes: string | null;
 };
 
-// POST /api/parcels/:id/status: one step forward. Out for delivery comes from an assignment; delivered from proof
-// of delivery.
+// POST /api/parcels/:id/status: one step forward. Out for delivery comes from an assignment; delivered from
+// recording the delivery (below).
 export type StatusMove =
 	| { status: 'picked_up'; notes?: string }
 	| { status: 'in_hub_sorted'; hubLocation: string; notes?: string }
 	| { status: 'failed_attempt'; reasonCode: FailureReason; notes?: string }
 	| { status: 'returned_to_sender'; notes: string };
+
+// POST /api/parcels/:id/delivery: the driver hands the parcel over and takes the cash. The cash must be exactly the
+// amount due; the API refuses anything else.
+export type DeliveryValues = { collectedAmount: string; notes: string | null };
+
+// /api/tracking/:trackingNumber, open to anyone: what the public tracking page shows of a parcel. Never the
+// recipient, the address, the money or who handled it.
+export type ParcelTracking = {
+	trackingNumber: string;
+	status: ParcelStatus;
+	// The courier company carrying it.
+	company: string;
+	// Oldest first.
+	events: { status: ParcelStatus; at: string }[];
+};

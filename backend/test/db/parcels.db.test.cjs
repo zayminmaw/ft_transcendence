@@ -225,6 +225,33 @@ test('a failed attempt counts, keeps its reason and driver, and goes out again o
   ]);
 });
 
+test('tracking finds any company\'s parcel by its number, with only its status and times', async () => {
+  const parcel = await sortedParcel();
+  const tracked = await parcels.track(parcel.trackingNumber);
+  assert.deepEqual(Object.keys(tracked).sort(), ['company', 'events', 'status', 'trackingNumber']);
+  assert.deepEqual([tracked.trackingNumber, tracked.status, tracked.company], [parcel.trackingNumber, 'in_hub_sorted', 'Parcels Meridian']);
+  assert.deepEqual(tracked.events.map((event) => event.status), ['pickup_scheduled', 'picked_up', 'in_hub_sorted']);
+  assert.deepEqual(Object.keys(tracked.events[0]).sort(), ['at', 'status']);
+  assert.ok(tracked.events.every((event) => event.at instanceof Date));
+
+  const elsewhere = await newParcel({ clientId: clients.harbor }, harbor);
+  assert.equal((await parcels.track(elsewhere.trackingNumber)).company, 'Parcels Harbor');
+  assert.equal(await parcels.track('TRC-NOSUCHPARC'), null);
+});
+
+test('tracking hides a draft and the parcels of a suspended company', async () => {
+  const draft = await newParcel();
+  await database.query("UPDATE parcels SET lifecycle_status = 'draft' WHERE id = ?", [draft.id]);
+  assert.equal(await parcels.track(draft.trackingNumber), null);
+
+  const closed = (await database.getRepository(Organization).save({
+    name: 'Parcels Closed', slug: 'parcels-closed', contactEmail: 'ops@closed.db.test', isActive: false,
+  })).id;
+  const merchant = await insertClient(closed, 'SHUT', 'Shut Shop', true);
+  const hidden = await newParcel({ clientId: merchant }, closed);
+  assert.equal(await parcels.track(hidden.trackingNumber), null);
+});
+
 test('the list searches, filters by queue or status, sorts and pages within one company; the counts cover the company', async () => {
   await newParcel({ recipientName: 'Omar 100% T.', clientId: clients.field }, meridian);
   await newParcel({ recipientName: 'Harbor only', clientId: clients.harbor }, harbor);
@@ -288,6 +315,70 @@ test('the audit row is written in the change and a failed audit undoes the chang
   const before = (await parcels.list(meridian, query())).total;
   await assert.rejects(parcels.create(meridian, clerk, values(), null, failing), /audit down/);
   assert.equal((await parcels.list(meridian, query())).total, before);
+});
+
+// A parcel out with leen, ready to deliver; its cash due is 120.00.
+async function outParcel(extra) {
+  const parcel = await sortedParcel(extra);
+  return (await parcels.assign(meridian, parcel.id, clerk, drivers.leen, null, noAudit)).parcel;
+}
+const deliver = (id, collected = '120.00', actor = clerk, organizationId = meridian, audit = noAudit) =>
+  parcels.deliver(organizationId, id, actor, { collected, notes: null }, audit);
+
+test('a delivery needs the exact cash due, marks the parcel delivered with the time, and keeps who took it out', async () => {
+  const parcel = await outParcel();
+  assert.deepEqual(parcel.deliveredAt, null);
+  // Less, more, or nothing: refused, and the parcel is still out with no step added.
+  for (const wrong of ['119.99', '120.01', '0.00']) assert.deepEqual(await deliver(parcel.id, wrong), { status: 'cod_mismatch' });
+  const stuck = await parcels.find(meridian, parcel.id);
+  assert.deepEqual([stuck.status, stuck.deliveredAt, steps(stuck).at(-1)], ['out_for_delivery', null, 'out_for_delivery']);
+
+  const seen = [];
+  const { parcel: done } = await deliver(parcel.id, '120.00', clerk, meridian, async (_manager, before, after) => { seen.push([before.status, after.status]); });
+  assert.deepEqual([done.status, done.deliveredAt instanceof Date], ['delivered', true]);
+  assert.deepEqual(seen, [['out_for_delivery', 'delivered']]);
+  const details = await parcels.find(meridian, parcel.id);
+  const last = details.events.at(-1);
+  assert.deepEqual([last.status, last.driver.name, last.vehicle.tag, last.run.id, last.actor.userId], [
+    'delivered', 'Leen Mansour', 'V-012', parcel.run.id, String(clerk),
+  ]);
+  // The parcel stays with its driver, and delivering again is a move from the wrong status.
+  assert.equal(details.driver.id, drivers.leen);
+  assert.deepEqual(await deliver(parcel.id), { status: 'wrong_status' });
+});
+
+test('only a parcel that is out for delivery, in the company, can be delivered', async () => {
+  assert.deepEqual(await deliver((await newParcel()).id), { status: 'wrong_status' });
+  assert.deepEqual(await deliver((await sortedParcel()).id), { status: 'wrong_status' });
+  assert.deepEqual(await deliver('999999'), { status: 'not_found' });
+  const parcel = await outParcel();
+  assert.deepEqual(await deliver(parcel.id, '120.00', clerk, harbor), { status: 'not_found' });
+  assert.equal((await parcels.find(meridian, parcel.id)).status, 'out_for_delivery');
+});
+
+test('a driver\'s own account delivers only what is assigned to them; an account that is no driver\'s may deliver any', async () => {
+  const leenUser = (await database.getRepository(User).save({ username: 'leen.account', email: 'leen@parcels.db.test', passwordHash: 'x' })).id;
+  const samirUser = (await database.getRepository(User).save({ username: 'samir.account', email: 'samir@parcels.db.test', passwordHash: 'x' })).id;
+  await database.query('UPDATE employees SET user_id = ? WHERE id = ?', [leenUser, drivers.leen]);
+  await database.query('UPDATE employees SET user_id = ? WHERE id = ?', [samirUser, drivers.samir]);
+  const parcel = await outParcel();
+  assert.deepEqual(await deliver(parcel.id, '120.00', samirUser), { status: 'not_assigned_driver' });
+  assert.equal((await parcels.find(meridian, parcel.id)).status, 'out_for_delivery');
+  assert.equal((await deliver(parcel.id, '120.00', leenUser)).status, 'updated');
+  // The clerk is no driver, so may deliver any parcel (a dispatcher closing a run).
+  assert.equal((await deliver((await outParcel()).id)).status, 'updated');
+});
+
+test('two deliveries at once record one delivery, and a failing audit undoes it', async () => {
+  const parcel = await outParcel();
+  const results = await Promise.all([deliver(parcel.id), deliver(parcel.id)]);
+  assert.deepEqual(results.map((result) => result.status).sort(), ['updated', 'wrong_status']);
+  assert.equal(steps(await parcels.find(meridian, parcel.id)).filter((step) => step === 'delivered').length, 1);
+
+  const other = await outParcel();
+  await assert.rejects(deliver(other.id, '120.00', clerk, meridian, async () => { throw new Error('audit down'); }), /audit down/);
+  const after = await parcels.find(meridian, other.id);
+  assert.deepEqual([after.status, after.deliveredAt, steps(after).at(-1)], ['out_for_delivery', null, 'out_for_delivery']);
 });
 
 // The service adds the merchant's pending COD to the dispatch and return transactions; the repository alone doesn't.

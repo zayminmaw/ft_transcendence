@@ -1,11 +1,8 @@
 import { createBrowserRouter, type RouteObject } from 'react-router-dom';
-import { organizationsRoutes } from '@modules/organizations';
 import { clientsRoutes } from '@modules/clients';
-import { staffRoutes } from '@modules/staff';
 import { driversRoutes } from '@modules/drivers';
 import { assetsRoutes } from '@modules/assets';
 import { parcelsRoutes, parcelTrackingRoutes } from '@modules/parcels';
-import { billingRoutes } from '@modules/billing';
 import { rbacRoutes } from '@modules/rbac';
 import { contactsRoutes } from '@modules/contacts';
 import { auditRoutes } from '@modules/audit';
@@ -35,13 +32,10 @@ const allowed = (module: keyof typeof MODULE_ACCESS, routes: RouteObject[]) =>
 	}));
 
 const workspaceRoutes = [
-	...allowed('organizations', organizationsRoutes),
 	...allowed('clients', clientsRoutes),
-	...allowed('staff', staffRoutes),
 	...allowed('drivers', driversRoutes),
 	...allowed('assets', assetsRoutes),
 	...allowed('parcels', parcelsRoutes),
-	...allowed('billing', billingRoutes),
 	...allowed('rbac', rbacRoutes),
 	...allowed('contacts', contactsRoutes),
 	// The audit page checks admin.audit_logs itself (see AuditLogPage).

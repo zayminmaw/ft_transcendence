@@ -18,8 +18,9 @@ export function DetailItem({
 	return (
 		<div className="min-w-0">
 			<dt className="text-sm text-[var(--color-slate)]">{label}</dt>
-			<dd className={`mt-1 break-words ${valueClassName}`} dir={ltr ? 'ltr' : undefined}>
-				{children}
+			{/* dir sits on an inner span, so the value stays next to its label on an Arabic page. */}
+			<dd className={`mt-1 break-words ${valueClassName}`}>
+				{ltr ? <span dir="ltr">{children}</span> : children}
 			</dd>
 			{note && <dd className="mt-1 text-xs text-[var(--color-slate)]">{note}</dd>}
 		</div>

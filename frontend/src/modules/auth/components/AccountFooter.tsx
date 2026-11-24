@@ -1,8 +1,9 @@
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { useLogout } from '../hooks';
+import { LegalLinks } from './LegalLinks';
 
-// The bottom of the sidebar: your profile and the way out. Who is logged in shows in the card at the top
+// The bottom of the sidebar: your profile, the way out and the legal pages. Who is logged in shows in the card at the top
 // (WorkspaceSwitcher).
 export function AccountFooter() {
 	const { t } = useTranslation('auth');
@@ -28,6 +29,7 @@ export function AccountFooter() {
 					{t('account.logOutFailed')}
 				</p>
 			)}
+			<LegalLinks className="mt-3 px-3" />
 		</div>
 	);
 }

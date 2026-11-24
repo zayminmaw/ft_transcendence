@@ -67,7 +67,9 @@ export function displayValue(
 		return formatDate(value, language, { dateStyle: 'medium', timeStyle: 'short' });
 	}
 	if (Array.isArray(value))
-		return value.map((item) => displayValue(t, item, language)).join(', ');
+		return value
+			.map((item) => displayValue(t, item, language))
+			.join(t('list.separator', { ns: 'common' }));
 	if (typeof value === 'object') {
 		const record = value as Record<string, unknown>;
 		const name = record.username ?? record.name ?? record.title;

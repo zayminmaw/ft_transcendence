@@ -4,6 +4,8 @@ const request = require('supertest');
 const { ParcelsModule } = require('../dist/modules/parcels');
 const { ParcelsRepository } = require('../dist/modules/parcels/parcels.repository');
 const { CodRepository } = require('../dist/modules/billing/cod.repository');
+const { LedgerHistoryRepository } = require('../dist/modules/billing/ledger-history.repository');
+const { PayoutsRepository } = require('../dist/modules/billing/payouts.repository');
 const { hashPassword } = require('../dist/modules/users/password');
 const { PASSWORD, as, createAuthApp, createFakeStore, tokenFor } = require('./helpers/auth-app.cjs');
 
@@ -17,7 +19,7 @@ function parcelRow(id, values = {}) {
     id, trackingNumber: `TRC-ABCDEFGH${id}`, status: 'pickup_scheduled', client: { id: '7', code: 'PAPER', name: 'Paper & Co.' },
     driver: null, vehicle: null, run: null, recipientName: 'Maya N.', recipientPhone: '+962 7 9555 0101', recipientSecondaryPhone: null,
     deliveryAddress: '22 Rainbow Street', deliveryCityZone: 'Central', deliveryLandmark: null, weightKg: '1.20', isFragile: false,
-    deliveryFee: '7.00', codAmount: '120.00', deliveryAttemptCount: 0, failedReasonCode: null,
+    deliveryFee: '7.00', codAmount: '120.00', deliveryAttemptCount: 0, failedReasonCode: null, deliveredAt: null,
     createdAt: new Date('2026-11-01T00:00:00Z'), updatedAt: new Date('2026-11-01T00:00:00Z'), ...values,
   };
 }
@@ -42,7 +44,12 @@ function fakeParcels() {
       dispatchDrivers: answer('dispatchDrivers', []),
       create: answer('create', { status: 'created', parcel: parcelRow('2') }),
       move: answer('move', { status: 'updated', parcel: parcelRow('1', { status: 'picked_up' }) }),
+      deliver: answer('deliver', { status: 'updated', parcel: parcelRow('1', { status: 'delivered' }) }),
       assign: answer('assign', { status: 'updated', parcel: parcelRow('1', { status: 'out_for_delivery' }) }),
+      track: answer('track', {
+        trackingNumber: 'TRC-ABCDEFGH1', status: 'picked_up', company: 'Meridian',
+        events: [{ status: 'pickup_scheduled', at: new Date('2026-11-01T08:00:00Z') }, { status: 'picked_up', at: new Date('2026-11-01T09:00:00Z') }],
+      }),
     },
   };
 }
@@ -58,7 +65,7 @@ async function parcelsApp(t) {
   const passwordHash = await hashPassword(PASSWORD);
   const store = createFakeStore();
   const parcels = fakeParcels();
-  store.rolePermissions.set('1', new Set(['parcels.view', 'parcels.create', 'parcels.dispatch', 'parcels.update_status']));
+  store.rolePermissions.set('1', new Set(['parcels.view', 'parcels.create', 'parcels.dispatch', 'parcels.update_status', 'parcels.mark_delivered']));
   store.rolePermissions.set('2', new Set(['parcels.view', 'parcels.update_status']));
   store.rolePermissions.set('3', new Set(['parcels.view']));
   store.rolePermissions.set('4', new Set(['drivers.view']));
@@ -67,7 +74,10 @@ async function parcelsApp(t) {
     store.users.push({ id, username, email: `${username}@demo.example.test`, passwordHash, isActive: true, lastLoginAt: null });
     store.memberships.push({ organizationId, userId: id, roleId, isActive: true });
   }
-  const { server } = await createAuthApp(t, store, { imports: [ParcelsModule], overrides: [[ParcelsRepository, parcels.repository], [CodRepository, {}]] });
+  const { server } = await createAuthApp(t, store, {
+    imports: [ParcelsModule],
+    overrides: [[ParcelsRepository, parcels.repository], [CodRepository, {}], [LedgerHistoryRepository, {}], [PayoutsRepository, {}]],
+  });
   const tokens = {};
   for (const [, username] of people) tokens[username] = await tokenFor(server, username);
   return { server, parcels, tokens };
@@ -99,6 +109,9 @@ test('each change needs its own permission; no parcels.view, no parcels', async 
   await as(request(server).post('/api/parcels').send(newParcel()), tokens.sami).expect(403);
   await as(request(server).post('/api/parcels/1/assignment').send({ driverId: '3' }), tokens.sami).expect(403);
   await as(request(server).post('/api/parcels/1/status').send({ status: 'picked_up' }), tokens.farah).expect(403);
+  for (const reader of ['sami', 'farah', 'omar']) {
+    await as(request(server).post('/api/parcels/1/delivery').send({ collectedAmount: '120.00' }), tokens[reader]).expect(403);
+  }
   await as(request(server).get('/api/parcels/form-options'), tokens.dana).expect(200);
   for (const reader of ['farah', 'sami']) await as(request(server).get('/api/parcels/dispatch-drivers'), tokens[reader]).expect(403);
   await as(request(server).get('/api/parcels/dispatch-drivers'), tokens.dana).expect(200);
@@ -165,4 +178,52 @@ test('an assignment names a driver; one off duty or elsewhere is a conflict', as
   assert.deepEqual(parcels.calls.find(([call]) => call === 'assign').slice(1), ['1', '1', '10', '3', 'Fragile']);
   parcels.next.assign = { status: 'driver_unavailable' };
   assert.equal((await assign({ driverId: '3' }).expect(409)).body.code, 'PARCEL_DRIVER_UNAVAILABLE');
+});
+
+test('tracking is open to anyone with the number, answers only status and times, and is rate limited', async (t) => {
+  const { server, parcels, tokens } = await parcelsApp(t);
+  // No account, no company: the number alone. It is looked up as the waybill prints it.
+  const tracked = (await request(server).get('/api/tracking/%20trc-abcdefgh1%20').expect(200)).body;
+  assert.deepEqual(tracked, {
+    trackingNumber: 'TRC-ABCDEFGH1', status: 'picked_up', company: 'Meridian',
+    events: [{ status: 'pickup_scheduled', at: '2026-11-01T08:00:00.000Z' }, { status: 'picked_up', at: '2026-11-01T09:00:00.000Z' }],
+  });
+  assert.deepEqual(parcels.calls.filter(([call]) => call === 'track'), [['track', 'TRC-ABCDEFGH1']]);
+  // Signed in to another company changes nothing.
+  await as(request(server).get('/api/tracking/TRC-ABCDEFGH1'), tokens.karim).expect(200);
+
+  parcels.next.track = null;
+  assert.equal((await request(server).get('/api/tracking/TRC-UNKNOWN').expect(404)).body.code, 'TRACKING_NOT_FOUND');
+  // A malformed number never reaches the repository.
+  const before = parcels.calls.length;
+  await request(server).get(`/api/tracking/${encodeURIComponent("TRC-1' OR 1=1")}`).expect(404);
+  await request(server).get(`/api/tracking/${'A'.repeat(65)}`).expect(404);
+  assert.equal(parcels.calls.length, before);
+
+  // 30 lookups a minute per address: this test has made 5.
+  for (let index = 0; index < 25; index++) await request(server).get('/api/tracking/TRC-UNKNOWN').expect(404);
+  assert.equal((await request(server).get('/api/tracking/TRC-UNKNOWN').expect(429)).body.code, 'TRACKING_TOO_MANY_LOOKUPS');
+  // The sign-in limits are counted apart: signing in still works.
+  await tokenFor(server, 'dana');
+});
+
+test('a delivery names the cash collected; a mismatch, another driver\'s parcel or a parcel that moved on is refused', async (t) => {
+  const { server, parcels, tokens } = await parcelsApp(t);
+  const deliver = (body, id = '1') => as(request(server).post(`/api/parcels/${id}/delivery`).send(body), tokens.dana);
+  for (const bad of [{}, { collectedAmount: '' }, { collectedAmount: 'abc' }, { collectedAmount: '12.345' }, { collectedAmount: '-1.00' }, { collectedAmount: 120 }, { collectedAmount: '120.00', extra: 1 }]) {
+    await deliver(bad).expect(400);
+  }
+  const done = (await deliver({ collectedAmount: ' 120.5 ', notes: ' Left with the guard ' }).expect(200)).body;
+  assert.equal(done.status, 'delivered');
+  // The cash goes down as saved, and the company and the actor come from the token, never from the body.
+  assert.deepEqual(parcels.calls.find(([call]) => call === 'deliver').slice(1), ['1', '1', '10', { collected: '120.50', notes: 'Left with the guard' }]);
+  await deliver({ collectedAmount: '120.00' }, 'abc').expect(404);
+  parcels.next.deliver = { status: 'cod_mismatch' };
+  assert.equal((await deliver({ collectedAmount: '100.00' }).expect(409)).body.code, 'PARCEL_COD_MISMATCH');
+  parcels.next.deliver = { status: 'not_assigned_driver' };
+  assert.equal((await deliver({ collectedAmount: '120.00' }).expect(403)).body.code, 'PARCEL_NOT_YOUR_PARCEL');
+  parcels.next.deliver = { status: 'wrong_status' };
+  assert.equal((await deliver({ collectedAmount: '120.00' }).expect(409)).body.code, 'PARCEL_WRONG_STATUS');
+  parcels.next.deliver = { status: 'not_found' };
+  assert.equal((await deliver({ collectedAmount: '120.00' }).expect(404)).body.code, 'PARCEL_NOT_FOUND');
 });

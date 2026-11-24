@@ -8,7 +8,7 @@ import { useCan, useCurrentWorkspace } from '../hooks';
 
 // A page your role in the open company must allow; otherwise "no access", inside the dashboard. CompanyBoundary runs
 // first, so this only shows in a company you belong to: anywhere else is still "Workspace not found".
-// `label` is the page's name as the sidebar shows it, e.g. 'workspace.nav.billing'.
+// `label` is the page's name as the sidebar shows it, e.g. 'workspace.nav.parcels'.
 export function RequirePermission({
 	permission,
 	label,
