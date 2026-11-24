@@ -7,7 +7,7 @@ export type ParcelStatus = (typeof PARCEL_STATUSES)[number];
 
 // The moves POST /parcels/:id/status makes (parcels.update_status), each from the one status it may follow. Out for
 // delivery comes only from an assignment (parcels.dispatch); delivered comes only from recording the delivery
-// (parcels.mark_delivered), which also records the cash the driver collected.
+// (parcels.mark_delivered), which requires proof and records the cash the driver collected.
 export const STATUS_MOVES = {
   picked_up: 'pickup_scheduled',
   in_hub_sorted: 'picked_up',
@@ -34,6 +34,17 @@ export const PARCEL_QUEUES = {
 export const PARCEL_FILTERS = [...Object.keys(PARCEL_QUEUES), ...PARCEL_STATUSES] as (keyof typeof PARCEL_QUEUES | ParcelStatus)[];
 export type ParcelFilter = (typeof PARCEL_FILTERS)[number];
 export const PARCEL_SORTS = ['createdAt', 'tracking', 'merchant'] as const;
+
+// The files proof of delivery keeps, by the name the API uses, with the `parcels` column holding each one's file id.
+// The signature and photo are images; the delivery note (the paper the recipient signed) may also be a PDF. A
+// delivery needs the signature and the photo; the note is optional.
+export const PROOF_FILES = {
+  signature: { column: 'signature_file_id', property: 'signatureFileId', pdf: false, required: true },
+  photo: { column: 'doorstep_photo_file_id', property: 'doorstepPhotoFileId', pdf: false, required: true },
+  note: { column: 'delivery_note_file_id', property: 'deliveryNoteFileId', pdf: true, required: false },
+} as const;
+export type ProofKind = keyof typeof PROOF_FILES;
+export const PROOF_KINDS = Object.keys(PROOF_FILES) as ProofKind[];
 
 // Drivers who are working: a parcel can go to them. Off duty and suspended drivers can't take parcels.
 export const ON_DUTY_STATUSES = ['available', 'on_pickup', 'out_for_delivery'] as const;
@@ -67,3 +78,13 @@ export const PARCEL_WRONG_STATUS = {
   message: 'The parcel has moved on since you opened it. Refresh to see where it is now.',
   code: 'PARCEL_WRONG_STATUS',
 };
+
+export const PARCEL_PROOF_MISSING = {
+  message: 'Add the recipient signature and the doorstep photo before confirming the delivery.',
+  code: 'PARCEL_PROOF_MISSING',
+};
+export const PARCEL_PROOF_TYPE = {
+  message: 'The signature and the doorstep photo must be JPEG, PNG or WebP images.',
+  code: 'PARCEL_PROOF_TYPE',
+};
+export const PARCEL_PROOF_KIND = { message: 'There is no such proof of delivery.', code: 'PARCEL_PROOF_KIND' };

@@ -58,12 +58,27 @@ export type Parcel = {
 	isFragile: boolean;
 	deliveryFee: string;
 	codAmount: string;
+	collectedAmount: string | null;
 	deliveryAttemptCount: number;
 	failedReasonCode: FailureReason | null;
-	// When the delivery was recorded; null until then.
+	// Set once the delivery is confirmed; the location is where the device was then, if it shared it.
 	deliveredAt: string | null;
+	deliveryLocation: { latitude: string; longitude: string } | null;
 	createdAt: string;
 	updatedAt: string;
+};
+
+// The files of a proof of delivery: the recipient's signature and the doorstep photo (both required, images), and
+// the delivery note the recipient signed on paper (optional, an image or a PDF).
+export type ProofKind = 'signature' | 'photo' | 'note';
+
+// One proof file. `url` is a signed link that opens it for 10 to 15 minutes, with no login.
+export type ProofFile = {
+	id: string;
+	name: string;
+	mimeType: string;
+	sizeBytes: number;
+	url: string;
 };
 
 // One step of the history, oldest first. An assignment names the driver, vehicle and run it went out with; a failed
@@ -81,7 +96,20 @@ export type ParcelEvent = {
 	notes: string | null;
 };
 
-export type ParcelDetails = Parcel & { events: ParcelEvent[] };
+// The proof is uploaded while the parcel is out for delivery and kept once it is delivered.
+export type ParcelDetails = Parcel & {
+	canRecordDelivery: boolean;
+	events: ParcelEvent[];
+	proof: Record<ProofKind, ProofFile | null>;
+};
+
+// POST /api/parcels/:id/delivery, once the signature and photo are uploaded: both coordinates or neither.
+export type DeliveryValues = {
+	collectedAmount: string;
+	latitude: number | null;
+	longitude: number | null;
+	notes: string | null;
+};
 
 export type ParcelList = {
 	items: Parcel[];
@@ -119,25 +147,18 @@ export type NewParcelValues = {
 	notes: string | null;
 };
 
-// POST /api/parcels/:id/status: one step forward. Out for delivery comes from an assignment; delivered from
-// recording the delivery (below).
+// POST /api/parcels/:id/status: one step forward. Out for delivery comes from an assignment; delivered from proof
+// of delivery (POST /api/parcels/:id/delivery).
 export type StatusMove =
 	| { status: 'picked_up'; notes?: string }
 	| { status: 'in_hub_sorted'; hubLocation: string; notes?: string }
 	| { status: 'failed_attempt'; reasonCode: FailureReason; notes?: string }
 	| { status: 'returned_to_sender'; notes: string };
 
-// POST /api/parcels/:id/delivery: the driver hands the parcel over and takes the cash. The cash must be exactly the
-// amount due; the API refuses anything else.
-export type DeliveryValues = { collectedAmount: string; notes: string | null };
-
-// /api/tracking/:trackingNumber, open to anyone: what the public tracking page shows of a parcel. Never the
-// recipient, the address, the money or who handled it.
+// The public tracking answer contains no recipient, address, proof or payment data.
 export type ParcelTracking = {
 	trackingNumber: string;
 	status: ParcelStatus;
-	// The courier company carrying it.
 	company: string;
-	// Oldest first.
 	events: { status: ParcelStatus; at: string }[];
 };

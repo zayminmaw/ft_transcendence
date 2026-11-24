@@ -18,6 +18,7 @@ export type Workspace = {
 	role: { code: string; name: string };
 	// What that role allows there (the API's own rule), e.g. "parcels.view": what the interface may offer.
 	permissions: string[];
+	assignedPermissions?: string[];
 };
 export type Me = {
 	user: AccountUser;

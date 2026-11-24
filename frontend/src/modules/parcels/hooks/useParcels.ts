@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useToast, type TableSort } from '@global-components';
 import { useDebounced } from '@hooks/useDebounced';
@@ -110,12 +110,15 @@ export function useAssignableParcels() {
 
 // One parcel with its history. `enabled: false` loads nothing; isParcelPending is then false.
 export function useParcelDetails(parcelId: string, enabled = true) {
-	const { data, isLoading } = useQuery({
+	const { data, isLoading, refetch } = useQuery({
 		queryKey: tenantQueryKey('parcels', 'details', parcelId),
 		queryFn: () => apiRequest<ParcelDetails>(parcelPath(parcelId)),
 		enabled,
 	});
-	return { parcel: data, isParcelPending: isLoading };
+	const refreshParcel = useCallback(async () => {
+		await refetch({ cancelRefetch: false, throwOnError: true });
+	}, [refetch]);
+	return { parcel: data, isParcelPending: isLoading, refreshParcel };
 }
 
 // The drivers on duty, with their vehicle and today's run. Under the parcels key, so an assignment refreshes the
