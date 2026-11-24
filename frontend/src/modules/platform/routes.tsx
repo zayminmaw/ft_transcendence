@@ -1,12 +1,12 @@
 import { Navigate } from 'react-router-dom';
 import type { RouteObject } from 'react-router-dom';
-import { ModulePage } from '@global-components';
 import { PlatformLayout } from './components/PlatformLayout';
 import { TenantsPage } from './pages/TenantsPage';
 import { TenantActivityPage } from './pages/TenantActivityPage';
 import { CreateTenantPage } from './pages/CreateTenantPage';
 import { TenantDetailsPage } from './pages/TenantDetailsPage';
 import { TenantAdministratorsPage } from './pages/TenantAdministratorsPage';
+import { PlatformNotFoundPage } from './pages/PlatformNotFoundPage';
 
 // Layout routes only. Authentication and platform authorization are separate future work.
 export const platformRoutes: RouteObject[] = [
@@ -22,12 +22,7 @@ export const platformRoutes: RouteObject[] = [
 			{ path: 'tenants/:tenantId/administrators', element: <TenantAdministratorsPage /> },
 			{
 				path: '*',
-				element: (
-					<ModulePage
-						title="Page not found"
-						description="Choose a page from the platform navigation to continue."
-					/>
-				),
+				element: <PlatformNotFoundPage />,
 			},
 		],
 	},

@@ -9,19 +9,21 @@ import { StatusDialog } from '../components/StatusDialog';
 import { useTenantDetails } from '../hooks/useTenants';
 
 export function TenantDetailsPage() {
+	const { t } = useTranslation('platform');
 	const { tenantId = '' } = useParams();
 	const { tenant, isTenantPending, isTenantError } = useTenantDetails(tenantId);
 
-	if (isTenantPending) return <ModulePage title="Tenant" description="Loading tenant…" />;
+	if (isTenantPending)
+		return <ModulePage title={t('details.title')} description={t('common.loadingTenant')} />;
 	if (isTenantError || !tenant) {
 		return (
 			<div className="flex flex-col gap-6">
 				<ModulePage
-					title="Something went wrong"
-					description="This tenant couldn't be loaded. Go back to the tenant list and try again."
+					title={t('common.loadFailedTitle')}
+					description={t('common.loadFailed')}
 				/>
 				<Link to="/platform/tenants" className="btn w-fit border-0 bg-base-200 md:px-8">
-					Back to tenants
+					{t('common.backToTenants')}
 				</Link>
 			</div>
 		);
@@ -30,7 +32,7 @@ export function TenantDetailsPage() {
 }
 
 function TenantDetailsView({ tenant }: { tenant: TenantDetails }) {
-	const { i18n } = useTranslation();
+	const { t, i18n } = useTranslation('platform');
 	const [statusOpen, setStatusOpen] = useState(false);
 	const [editOpen, setEditOpen] = useState(false);
 	const suspended = !tenant.isActive;
@@ -40,25 +42,22 @@ function TenantDetailsView({ tenant }: { tenant: TenantDetails }) {
 		<div className="flex flex-col gap-6">
 			<ModulePage
 				title={tenant.name}
-				description={`${tenant.slug} · Created ${createdAt}`}
+				description={t('details.description', { slug: tenant.slug, date: createdAt })}
 				actions={
 					<button
 						type="button"
 						className="btn btn-primary w-full md:w-auto md:px-8"
 						onClick={() => setStatusOpen(true)}
 					>
-						{suspended ? 'Reactivate tenant' : 'Suspend tenant'}
+						{suspended ? t('details.reactivate') : t('details.suspend')}
 					</button>
 				}
 			/>
 
 			{suspended && (
 				<div role="status" className="rounded-box border border-base-300 p-4 text-sm">
-					<p className="font-medium">Tenant access is suspended.</p>
-					<p className="mt-1 text-[var(--color-slate)]">
-						Members cannot open this company in the tenant portal or API. Organization,
-						delivery and accounting records are retained.
-					</p>
+					<p className="font-medium">{t('details.suspendedTitle')}</p>
+					<p className="mt-1 text-[var(--color-slate)]">{t('details.suspendedText')}</p>
 				</div>
 			)}
 
@@ -70,49 +69,59 @@ function TenantDetailsView({ tenant }: { tenant: TenantDetails }) {
 					>
 						<div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
 							<h2 id="tenant-profile-title" className="text-lg font-semibold">
-								Organization
+								{t('details.organization')}
 							</h2>
 							<button
 								type="button"
 								className="btn btn-sm w-fit border-0 bg-base-200"
 								onClick={() => setEditOpen(true)}
 							>
-								Edit details
+								{t('details.edit')}
 							</button>
 						</div>
 						<dl className="mt-6 grid grid-cols-1 gap-5 md:grid-cols-2">
 							<div className="min-w-0">
 								<dt className="text-sm text-[var(--color-slate)]">
-									Organization name
+									{t('fields.organizationName')}
 								</dt>
 								<dd className="mt-1 font-medium break-words">{tenant.name}</dd>
 							</div>
 							<div className="min-w-0">
-								<dt className="text-sm text-[var(--color-slate)]">Slug</dt>
+								<dt className="text-sm text-[var(--color-slate)]">
+									{t('fields.slug')}
+								</dt>
 								<dd className="mt-1 font-medium break-words">
 									<span dir="ltr">{tenant.slug}</span>
 								</dd>
 							</div>
 							<div className="min-w-0">
-								<dt className="text-sm text-[var(--color-slate)]">Contact email</dt>
+								<dt className="text-sm text-[var(--color-slate)]">
+									{t('fields.contactEmail')}
+								</dt>
 								<dd className="mt-1 font-medium break-words">
 									<span dir="ltr">{tenant.contactEmail}</span>
 								</dd>
 							</div>
 							<div className="min-w-0">
-								<dt className="text-sm text-[var(--color-slate)]">Phone</dt>
+								<dt className="text-sm text-[var(--color-slate)]">
+									{t('fields.phone')}
+								</dt>
 								<dd className="mt-1 font-medium break-words">
 									<span dir="ltr">{tenant.contactPhone ?? '—'}</span>
 								</dd>
 							</div>
 							<div className="min-w-0">
-								<dt className="text-sm text-[var(--color-slate)]">Address</dt>
+								<dt className="text-sm text-[var(--color-slate)]">
+									{t('fields.address')}
+								</dt>
 								<dd className="mt-1 font-medium break-words">
 									{tenant.address ?? '—'}
 								</dd>
 							</div>
 							<div className="min-w-0">
-								<dt className="text-sm text-[var(--color-slate)]">Created</dt>
+								<dt className="text-sm text-[var(--color-slate)]">
+									{t('fields.created')}
+								</dt>
 								<dd className="mt-1 font-medium break-words">{createdAt}</dd>
 							</div>
 						</dl>
@@ -125,22 +134,22 @@ function TenantDetailsView({ tenant }: { tenant: TenantDetails }) {
 						<div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
 							<div>
 								<h2 id="tenant-admins-title" className="text-lg font-semibold">
-									Tenant administrators
+									{t('details.administrators')}
 								</h2>
 								<p className="mt-1 text-sm text-[var(--color-slate)]">
-									Company access only. Platform roles are managed separately.
+									{t('details.administratorsNote')}
 								</p>
 							</div>
 							<Link
 								to={`/platform/tenants/${tenant.id}/administrators`}
 								className="btn btn-sm w-fit border-0 bg-base-200"
 							>
-								Manage administrators
+								{t('details.manageAdministrators')}
 							</Link>
 						</div>
 						{tenant.administrators.length === 0 ? (
 							<p className="mt-6 text-sm text-[var(--color-slate)]">
-								No active tenant administrator.
+								{t('details.noAdministrator')}
 							</p>
 						) : (
 							<ul className="mt-6 flex flex-col gap-3">
@@ -150,15 +159,22 @@ function TenantDetailsView({ tenant }: { tenant: TenantDetails }) {
 										className="flex flex-col gap-1 rounded-box bg-base-200 p-4 sm:flex-row sm:items-center sm:justify-between"
 									>
 										<div className="min-w-0">
-											<p className="font-medium">{admin.username}</p>
+											<p className="font-medium">
+												<span dir="ltr">{admin.username}</span>
+											</p>
 											<p className="text-sm break-words text-[var(--color-slate)]">
-												{admin.email}
+												<span dir="ltr">{admin.email}</span>
 											</p>
 										</div>
 										<p className="text-sm text-[var(--color-slate)]">
 											{admin.accountActive
-												? `Since ${formatDate(admin.joinedAt, i18n.language)}`
-												: 'Account deactivated'}
+												? t('details.since', {
+														date: formatDate(
+															admin.joinedAt,
+															i18n.language,
+														),
+													})
+												: t('common.accountDeactivated')}
 										</p>
 									</li>
 								))}
@@ -169,26 +185,27 @@ function TenantDetailsView({ tenant }: { tenant: TenantDetails }) {
 
 				<aside className="flex flex-col gap-6">
 					<section className="rounded-box bg-base-200 p-6 md:p-8">
-						<h2 className="text-lg font-semibold">Memberships</h2>
+						<h2 className="text-lg font-semibold">{t('details.memberships')}</h2>
 						<dl className="mt-6 grid grid-cols-2 gap-4">
 							<div>
-								<dt className="text-sm text-[var(--color-slate)]">Members</dt>
+								<dt className="text-sm text-[var(--color-slate)]">
+									{t('details.members')}
+								</dt>
 								<dd className="mt-1 text-[2rem] font-medium leading-tight">
 									{formatNumber(tenant.membership.members, i18n.language)}
 								</dd>
 							</div>
 							<div>
-								<dt className="text-sm text-[var(--color-slate)]">Active users</dt>
+								<dt className="text-sm text-[var(--color-slate)]">
+									{t('details.activeUsers')}
+								</dt>
 								<dd className="mt-1 text-[2rem] font-medium leading-tight">
 									{formatNumber(tenant.membership.activeMembers, i18n.language)}
 								</dd>
 							</div>
 						</dl>
 					</section>
-					<TipCard
-						title="Suspend access. Retain history."
-						description="Suspension denies tenant portal and API access while preserving organization records, delivery history and accounting history."
-					/>
+					<TipCard title={t('details.tipTitle')} description={t('details.tipText')} />
 				</aside>
 			</div>
 

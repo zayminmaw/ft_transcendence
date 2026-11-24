@@ -6,52 +6,52 @@ import { formatNumber } from '@utils/format';
 import type { TenantListItem, TenantStatusFilter } from '../api';
 import { useTenants } from '../hooks/useTenants';
 
-const statusFilters = [
-	{ value: 'all', label: 'All tenants' },
-	{ value: 'active', label: 'Active' },
-	{ value: 'suspended', label: 'Suspended' },
-];
-
-const columns: TableColumn<TenantListItem>[] = [
-	{
-		key: 'name',
-		header: 'Organization',
-		sortable: true,
-		className: 'font-medium',
-		cell: (tenant) => (
-			<div>
-				<p>{tenant.name}</p>
-				<p className="text-sm font-normal text-[var(--color-slate)]">
-					<span dir="ltr">{tenant.slug}</span>
-				</p>
-			</div>
-		),
-	},
-	{
-		key: 'administrator',
-		header: 'Tenant administrator',
-		cell: (tenant) => tenant.administrator ?? 'None assigned',
-	},
-	{
-		key: 'members',
-		header: 'Active members',
-		sortable: true,
-		cell: (tenant) => tenant.activeMembers,
-	},
-	{
-		key: 'status',
-		header: 'Access status',
-		cell: (tenant) => (tenant.isActive ? 'Active' : 'Suspended'),
-	},
-	{
-		key: 'action',
-		header: 'Action',
-		cell: (tenant) => <Link to={`/platform/tenants/${tenant.id}`}>Manage</Link>,
-	},
-];
-
 export function TenantsPage() {
-	const { i18n } = useTranslation();
+	const { t, i18n } = useTranslation('platform');
+	const statusFilters = (['all', 'active', 'suspended'] as const).map((value) => ({
+		value,
+		label: t(`tenants.filters.${value}`),
+	}));
+
+	const columns: TableColumn<TenantListItem>[] = [
+		{
+			key: 'name',
+			header: t('tenants.columns.organization'),
+			sortable: true,
+			className: 'font-medium',
+			cell: (tenant) => (
+				<div>
+					<p>{tenant.name}</p>
+					<p className="text-sm font-normal text-[var(--color-slate)]">
+						<span dir="ltr">{tenant.slug}</span>
+					</p>
+				</div>
+			),
+		},
+		{
+			key: 'administrator',
+			header: t('tenants.columns.administrator'),
+			cell: (tenant) => tenant.administrator ?? t('tenants.noAdministrator'),
+		},
+		{
+			key: 'members',
+			header: t('tenants.columns.members'),
+			sortable: true,
+			cell: (tenant) => tenant.activeMembers,
+		},
+		{
+			key: 'status',
+			header: t('tenants.columns.status'),
+			cell: (tenant) => (tenant.isActive ? t('common.active') : t('common.suspended')),
+		},
+		{
+			key: 'action',
+			header: t('tenants.columns.action'),
+			cell: (tenant) => (
+				<Link to={`/platform/tenants/${tenant.id}`}>{t('tenants.manage')}</Link>
+			),
+		},
+	];
 	const {
 		tenants,
 		total,
@@ -71,38 +71,38 @@ export function TenantsPage() {
 
 	const tenantStats: AnalyticsItem[] = [
 		{
-			label: 'Total tenants',
+			label: t('tenants.stats.total'),
 			value: formatNumber(counts?.total, i18n.language),
-			description: 'Organization records',
+			description: t('tenants.stats.totalNote'),
 		},
 		{
-			label: 'Active',
+			label: t('tenants.stats.active'),
 			value: formatNumber(counts?.active, i18n.language),
-			description: 'Portal access enabled',
+			description: t('tenants.stats.activeNote'),
 		},
 		{
-			label: 'Suspended',
+			label: t('tenants.stats.suspended'),
 			value: formatNumber(counts?.suspended, i18n.language),
-			description: 'History retained',
+			description: t('tenants.stats.suspendedNote'),
 		},
 		{
-			label: 'Members',
+			label: t('tenants.stats.members'),
 			value: formatNumber(counts?.members, i18n.language),
-			description: 'People with portal access',
+			description: t('tenants.stats.membersNote'),
 		},
 	];
 
 	return (
 		<div className="flex flex-col gap-4">
 			<ModulePage
-				title="Tenant administration"
-				description="Organization access, tenant ownership, and management activity."
+				title={t('tenants.title')}
+				description={t('tenants.description')}
 				actions={
 					<Link
 						to="/platform/tenants/new"
 						className="btn btn-primary w-full md:w-auto md:px-12"
 					>
-						Create tenant
+						{t('tenants.create')}
 					</Link>
 				}
 			/>
@@ -110,14 +110,14 @@ export function TenantsPage() {
 			<section aria-labelledby="tenants-table-title" className="mt-4 flex flex-col gap-4">
 				<div>
 					<h2 id="tenants-table-title" className="font-medium">
-						Tenants
+						{t('tenants.heading')}
 					</h2>
 					<p className="mt-1 text-xs text-[var(--color-slate)]">
-						Organizations using Transcend
+						{t('tenants.subheading')}
 					</p>
 				</div>
 				<Table
-					caption="Tenants"
+					caption={t('tenants.heading')}
 					columns={columns}
 					rows={tenants}
 					getRowKey={(tenant) => tenant.id}
@@ -125,11 +125,11 @@ export function TenantsPage() {
 					onSortChange={setSort}
 					search={{
 						value: search,
-						placeholder: 'Search by name or slug',
+						placeholder: t('tenants.search'),
 						onChange: setSearch,
 					}}
 					filter={{
-						label: 'Access status',
+						label: t('tenants.columns.status'),
 						options: statusFilters,
 						value: status,
 						onChange: (value) => setStatus(value as TenantStatusFilter),
@@ -141,7 +141,7 @@ export function TenantsPage() {
 						onPageChange: setPage,
 						onPageSizeChange: setPageSize,
 					}}
-					emptyMessage={isPending ? 'Loading tenants…' : 'No tenants match this search.'}
+					emptyMessage={isPending ? t('tenants.loading') : t('tenants.empty')}
 				/>
 			</section>
 		</div>

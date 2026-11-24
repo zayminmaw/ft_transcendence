@@ -1,7 +1,9 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Dialog, useToast } from '@global-components';
 import type { TenantDetails } from '../api';
 import { useTenantMutations } from '../hooks/useTenantMutations';
+import { platformErrorKey } from '../errors';
 
 export function StatusDialog({
 	tenant,
@@ -12,6 +14,7 @@ export function StatusDialog({
 	open: boolean;
 	onClose: () => void;
 }) {
+	const { t } = useTranslation('platform');
 	const { toast } = useToast();
 	const { setTenantActive, isSettingActive, setActiveError, resetSetActive } =
 		useTenantMutations();
@@ -30,12 +33,10 @@ export function StatusDialog({
 		<Dialog
 			open={open}
 			onClose={close}
-			title={suspended ? `Reactivate ${tenant.name}?` : `Suspend ${tenant.name}?`}
-			description={
-				suspended
-					? 'Members with active memberships regain access to this company.'
-					: 'All members lose access to this company. Their accounts and other company memberships are not affected.'
-			}
+			title={t(suspended ? 'status.reactivateTitle' : 'status.suspendTitle', {
+				name: tenant.name,
+			})}
+			description={suspended ? t('status.reactivateText') : t('status.suspendText')}
 			onSubmit={(event) => {
 				event.preventDefault();
 				setTenantActive(
@@ -45,7 +46,9 @@ export function StatusDialog({
 							close();
 							toast({
 								variant: 'success',
-								title: suspended ? 'Tenant reactivated' : 'Tenant suspended',
+								title: suspended
+									? t('status.reactivated')
+									: t('status.suspendedToast'),
 							});
 						},
 					},
@@ -54,47 +57,52 @@ export function StatusDialog({
 			actions={
 				<>
 					<button type="button" className="btn border-0 bg-base-200" onClick={close}>
-						Cancel
+						{t('common.cancel')}
 					</button>
 					<button
 						type="submit"
 						className={`btn ${suspended ? 'btn-primary' : 'btn-neutral'}`}
 						disabled={isSettingActive || needsAdministrator}
 					>
-						{suspended ? 'Reactivate tenant' : 'Suspend tenant'}
+						{suspended ? t('details.reactivate') : t('details.suspend')}
 					</button>
 				</>
 			}
 		>
 			{needsAdministrator && (
 				<p role="status" className="alert alert-warning alert-soft text-sm">
-					{tenant.name} has no active administrator. Assign one on the administrators page
-					before reactivating it.
+					{t('status.needsAdministrator', { name: tenant.name })}
 				</p>
 			)}
 			{setActiveError && (
 				<p role="alert" className="alert alert-error alert-soft text-sm">
-					{setActiveError.message}
+					{t(platformErrorKey(setActiveError))}
 				</p>
 			)}
 			<dl className="grid grid-cols-3 gap-4 rounded-box bg-base-200 p-4">
 				<div>
-					<dt className="text-xs text-[var(--color-slate)]">Current access</dt>
-					<dd className="mt-1 font-semibold">{suspended ? 'Suspended' : 'Active'}</dd>
+					<dt className="text-xs text-[var(--color-slate)]">
+						{t('status.currentAccess')}
+					</dt>
+					<dd className="mt-1 font-semibold">
+						{suspended ? t('common.suspended') : t('common.active')}
+					</dd>
 				</div>
 				<div>
-					<dt className="text-xs text-[var(--color-slate)]">New access</dt>
-					<dd className="mt-1 font-semibold">{suspended ? 'Active' : 'Suspended'}</dd>
+					<dt className="text-xs text-[var(--color-slate)]">{t('status.newAccess')}</dt>
+					<dd className="mt-1 font-semibold">
+						{suspended ? t('common.active') : t('common.suspended')}
+					</dd>
 				</div>
 				<div>
-					<dt className="text-xs text-[var(--color-slate)]">Records</dt>
-					<dd className="mt-1 font-semibold">Retained</dd>
+					<dt className="text-xs text-[var(--color-slate)]">{t('status.records')}</dt>
+					<dd className="mt-1 font-semibold">{t('status.retained')}</dd>
 				</div>
 			</dl>
 
 			<div>
 				<label htmlFor="status-reason" className="mb-2 block text-sm font-medium">
-					{suspended ? 'Reason (optional)' : 'Reason for suspension *'}
+					{suspended ? t('status.reasonOptional') : t('status.reasonRequired')}
 				</label>
 				<textarea
 					id="status-reason"
@@ -104,11 +112,13 @@ export function StatusDialog({
 					required={!suspended}
 					value={reason}
 					onChange={(event) => setReason(event.target.value)}
-					placeholder={suspended ? 'Access review completed' : 'Access review requested'}
+					placeholder={
+						suspended
+							? t('status.reactivatePlaceholder')
+							: t('status.suspendPlaceholder')
+					}
 				/>
-				<p className="mt-1 text-xs text-[var(--color-slate)]">
-					Recorded in the tenant activity log with your account.
-				</p>
+				<p className="mt-1 text-xs text-[var(--color-slate)]">{t('status.recorded')}</p>
 			</div>
 		</Dialog>
 	);
