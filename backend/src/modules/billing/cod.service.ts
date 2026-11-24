@@ -134,10 +134,16 @@ export class CodService {
     }
   }
 
-  // The same reference came again. The same driver gets the sheet it already has; nothing new is recorded.
+  // A reference identifies one handover, including its driver, cash and parcel set. Order does not matter on retry.
   private async again(manager: EntityManager | null, settlement: DriverCodSettlement, body: ReconcileCodDto): Promise<SettlementView> {
-    if (settlement.driverId !== body.driverId) throw new ConflictException(COD_REFERENCE_REUSED);
+    if (settlement.driverId !== body.driverId || toCents(settlement.totalCashDropped) !== toCents(body.totalCashDropped)) {
+      throw new ConflictException(COD_REFERENCE_REUSED);
+    }
     const parcels = (await this.cod.settledParcels(manager, settlement.id)).map((parcel) => ({ ...parcel, clientId: '', deliveryFee: '0.00', deliveredAt: null }));
+    const requestedIds = new Set(body.parcelIds);
+    if (requestedIds.size !== body.parcelIds.length || parcels.length !== requestedIds.size || parcels.some((parcel) => !requestedIds.has(parcel.id))) {
+      throw new ConflictException(COD_REFERENCE_REUSED);
+    }
     return this.view(settlement, body.settlementReference, parcels, true);
   }
 

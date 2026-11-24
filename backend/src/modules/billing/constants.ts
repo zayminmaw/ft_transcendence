@@ -6,7 +6,7 @@ export const COD_PARCELS_NOT_ELIGIBLE = {
   message: "Some of these parcels can't be settled. They must be delivered by this driver, in this company, and not settled before.",
   code: 'COD_PARCELS_NOT_ELIGIBLE',
 };
-export const COD_REFERENCE_REUSED = { message: 'This settlement reference was used for another driver.', code: 'COD_REFERENCE_REUSED' };
+export const COD_REFERENCE_REUSED = { message: 'This settlement reference was used for a different handover. Use a new reference if the driver, cash or parcels differ.', code: 'COD_REFERENCE_REUSED' };
 // The cash must be exactly what the parcels were collected for, DEC-13's zero tolerance. A handover that differs is
 // refused and nothing is stored. The amounts are in the message, because only the message and code reach the client.
 export const codDiscrepancy = (expected: string, counted: string) => ({

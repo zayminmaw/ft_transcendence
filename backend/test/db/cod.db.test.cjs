@@ -170,6 +170,96 @@ test('the same reference again answers with the same sheet and records nothing n
   assert.deepEqual([theirs.repeated, theirs.id === first.id], [false, false]);
 });
 
+test('a reused reference rejects changed cash or parcels and leaves the new handover unsettled', async () => {
+  const one = await merchant(meridian, '250.00');
+  const drv = await driver(meridian);
+  const a = await parcel(meridian, one, drv, '100.00', '7.00');
+  const zero = await parcel(meridian, one, drv, '0.00', '0.00');
+  const b = await parcel(meridian, one, drv, '100.00', '7.00');
+  const c = await parcel(meridian, one, drv, '50.00', '7.00');
+  const first = await service.reconcile(actor(meridian), body(drv, [a, zero], '100.00', 'SAME-HANDOVER'));
+  const before = await counts();
+  const ledgerBefore = await ledgerOf(one);
+
+  for (const [ids, cash] of [
+    [[a, zero], '99.99'], [[a, zero], '100.01'], [[a], '100.00'],
+    [[a, zero, b], '200.00'], [[b, zero], '100.00'], [[c], '50.00'],
+  ]) {
+    const error = await refused(service.reconcile(actor(meridian), body(drv, ids, cash, 'SAME-HANDOVER')));
+    assert.equal(error.code, 'COD_REFERENCE_REUSED');
+    assert.deepEqual(await counts(), before);
+    assert.deepEqual(await ledgerOf(one), ledgerBefore);
+    assert.deepEqual(await balances(one), ['93.00', '150.00']);
+  }
+  assert.deepEqual((await service.waiting(actor(meridian).tenant, drv)).parcels.map((row) => row.id), [b, c]);
+  // Reordering the identical parcel set and normalizing cash are genuine retries, including its zero-COD parcel.
+  const retry = await service.reconcile(actor(meridian), body(drv, [zero, a], '0000100.00', 'SAME-HANDOVER'));
+  assert.deepEqual([retry.id, retry.repeated, retry.totalCashDropped], [first.id, true, '100.00']);
+  assert.deepEqual(await counts(), before);
+  // The refused later handover remains available and succeeds with its own reference.
+  assert.equal((await service.reconcile(actor(meridian), body(drv, [c], '50.00', 'LATER-HANDOVER'))).repeated, false);
+  assert.deepEqual(await balances(one), ['136.00', '100.00']);
+});
+
+test('concurrent reordered retries record one handover', async () => {
+  const one = await merchant(meridian, '150.00');
+  const drv = await driver(meridian);
+  const a = await parcel(meridian, one, drv, '100.00', '7.00');
+  const b = await parcel(meridian, one, drv, '50.00', '7.00');
+  const before = await counts();
+  const results = await Promise.all([
+    service.reconcile(actor(meridian), body(drv, [a, b], '150.00', 'RACE-REORDERED')),
+    service.reconcile(actor(meridian), body(drv, [b, a], '150.00', 'RACE-REORDERED')),
+  ]);
+  assert.equal(results[0].id, results[1].id);
+  assert.deepEqual(results.map((row) => row.repeated).sort(), [false, true]);
+  assert.deepEqual(await counts(), before.map((count, index) => count + [1, 2, 4, 1][index]));
+  assert.deepEqual(await balances(one), ['136.00', '0.00']);
+});
+
+test('concurrent different handovers using the same reference accept one and refuse the other', async () => {
+  const one = await merchant(meridian, '200.00');
+  const drv = await driver(meridian);
+  const a = await parcel(meridian, one, drv, '100.00', '7.00');
+  const b = await parcel(meridian, one, drv, '100.00', '7.00');
+  const before = await counts();
+  const results = await Promise.allSettled([
+    service.reconcile(actor(meridian), body(drv, [a], '100.00', 'RACE-DIFFERENT')),
+    service.reconcile(actor(meridian), body(drv, [b], '100.00', 'RACE-DIFFERENT')),
+  ]);
+  const accepted = results.filter((row) => row.status === 'fulfilled');
+  const rejected = results.filter((row) => row.status === 'rejected');
+  assert.equal(accepted.length, 1);
+  assert.equal(accepted[0].value.repeated, false);
+  assert.equal(rejected.length, 1);
+  assert.equal(typeof rejected[0].reason.getStatus, 'function', rejected[0].reason.message);
+  assert.equal(rejected[0].reason.getStatus(), 409);
+  assert.equal(rejected[0].reason.getResponse().code, 'COD_REFERENCE_REUSED');
+  assert.deepEqual(await counts(), before.map((count, index) => count + [1, 1, 2, 1][index]));
+  assert.deepEqual(await balances(one), ['93.00', '100.00']);
+  const recorded = accepted[0].value.parcels[0].id;
+  assert.deepEqual((await service.waiting(actor(meridian).tenant, drv)).parcels.map((row) => row.id), [recorded === a ? b : a]);
+});
+
+test('different references cannot settle the same parcels twice under read-committed isolation', async () => {
+  const one = await merchant(meridian, '100.00');
+  const drv = await driver(meridian);
+  const p = await parcel(meridian, one, drv, '100.00', '7.00');
+  const before = await counts();
+  const results = await Promise.allSettled([
+    service.reconcile(actor(meridian), body(drv, [p], '100.00', 'RACE-REF-FIRST')),
+    service.reconcile(actor(meridian), body(drv, [p], '100.00', 'RACE-REF-SECOND')),
+  ]);
+  const accepted = results.filter((row) => row.status === 'fulfilled');
+  const rejected = results.filter((row) => row.status === 'rejected');
+  assert.equal(accepted.length, 1);
+  assert.equal(accepted[0].value.repeated, false);
+  assert.equal(rejected.length, 1);
+  assert.equal(rejected[0].reason.getResponse().code, 'COD_PARCELS_NOT_ELIGIBLE');
+  assert.deepEqual(await counts(), before.map((count, index) => count + [1, 1, 2, 1][index]));
+  assert.deepEqual(await balances(one), ['93.00', '0.00']);
+});
+
 test('two identical requests at once record one handover', async () => {
   const one = await merchant(meridian, '100.00');
   const drv = await driver(meridian);

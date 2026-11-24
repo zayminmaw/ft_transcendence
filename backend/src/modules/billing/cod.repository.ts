@@ -18,7 +18,9 @@ export class CodRepository {
   constructor(private readonly database: DataSource) {}
 
   inTransaction<T>(work: (manager: EntityManager) => Promise<T>): Promise<T> {
-    return this.database.transaction(work);
+    // Parcel and merchant rows are explicitly locked. Avoid gap locks on as-yet absent collections, so competing
+    // handovers can reach the unique-reference check and then compare the committed sheet after rollback.
+    return this.database.transaction('READ COMMITTED', work);
   }
 
   // A driver of this company: the employee must belong to it, not only exist.
