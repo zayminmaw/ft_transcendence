@@ -124,3 +124,14 @@ export type StatusMove =
 	| { status: 'in_hub_sorted'; hubLocation: string; notes?: string }
 	| { status: 'failed_attempt'; reasonCode: FailureReason; notes?: string }
 	| { status: 'returned_to_sender'; notes: string };
+
+// /api/tracking/:trackingNumber, open to anyone: what the public tracking page shows of a parcel. Never the
+// recipient, the address, the money or who handled it.
+export type ParcelTracking = {
+	trackingNumber: string;
+	status: ParcelStatus;
+	// The courier company carrying it.
+	company: string;
+	// Oldest first.
+	events: { status: ParcelStatus; at: string }[];
+};

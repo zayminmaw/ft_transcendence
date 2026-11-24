@@ -19,6 +19,8 @@ export function PayoutDialog({
 	const { t } = useTranslation('billing');
 	const { toast } = useToast();
 	const { payMerchant, isPaying, payError, resetPay } = usePayout();
+	// Keep the attempted amount even if a refresh shows that the payout has already cleared the balance.
+	const [initialAmount] = useState(client.balance);
 	const [fieldError, setFieldError] = useState<'amount' | 'wireReference' | null>(null);
 	const close = () => {
 		resetPay();
@@ -78,7 +80,7 @@ export function PayoutDialog({
 				required
 				inputMode="decimal"
 				dir="ltr"
-				defaultValue={client.balance}
+				defaultValue={initialAmount}
 				error={fieldError === 'amount' ? t('payout.errors.amount') : undefined}
 			/>
 			<Input

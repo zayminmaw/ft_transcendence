@@ -20,7 +20,7 @@ export function ClientDetailsPage() {
 	const can = useCan();
 	const { client, isClientPending, clientError } = useClientDetails(clientId);
 	const [confirmOpen, setConfirmOpen] = useState(false);
-	const [payoutOpen, setPayoutOpen] = useState(false);
+	const [payoutClientId, setPayoutClientId] = useState<string | null>(null);
 
 	if (isClientPending)
 		return <span className="loading loading-spinner" aria-label={t('page.loading')} />;
@@ -193,7 +193,7 @@ export function ClientDetailsPage() {
 								<button
 									type="button"
 									className="btn btn-neutral mt-6 w-full"
-									onClick={() => setPayoutOpen(true)}
+									onClick={() => setPayoutClientId(client.id)}
 								>
 									{t('details.payOut')}
 								</button>
@@ -207,11 +207,12 @@ export function ClientDetailsPage() {
 				</aside>
 			</div>
 
-			{owed && payoutOpen && (
+			{/* A refresh after a lost payout response can show zero; keep the attempt open so its reference can be retried. */}
+			{payoutClientId === client.id && balance !== undefined && (
 				<PayoutDialog
 					client={{ id: client.id, businessName: client.businessName, balance }}
-					open={payoutOpen}
-					onClose={() => setPayoutOpen(false)}
+					open
+					onClose={() => setPayoutClientId(null)}
 				/>
 			)}
 			<ArchiveClientDialog

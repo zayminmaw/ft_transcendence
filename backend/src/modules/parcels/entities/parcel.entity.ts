@@ -1,7 +1,7 @@
 import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
 import { PARCEL_STATUSES, type ParcelStatus } from '../constants';
 
-// Mirrors `parcels`, without the proof-of-delivery columns, which only POD will write. The client, driver and asset
+// Mirrors `parcels`, without the proof columns (signature, photo, delivery location), which nothing writes yet. The client, driver and asset
 // tables belong to other modules, so the repository joins them in SQL rather than through relations.
 @Entity('parcels')
 export class Parcel {
@@ -65,6 +65,10 @@ export class Parcel {
 
   @Column({ name: 'failed_reason_code', type: 'varchar', length: 64, nullable: true })
   failedReasonCode!: string | null;
+
+  // Set when the delivery is recorded.
+  @Column({ name: 'delivered_at', type: 'timestamp', nullable: true })
+  deliveredAt!: Date | null;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamp' })
   createdAt!: Date;
