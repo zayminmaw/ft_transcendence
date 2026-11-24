@@ -15,8 +15,11 @@ function uploadOptions(mimeTypes: string[], message: string): MulterOptions {
   };
 }
 
+// The image types a browser shows, for a module that accepts more but wants an image for one of its files.
+export const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+
 export const imageUploadOptions = uploadOptions(
-  ['image/jpeg', 'image/png', 'image/webp'],
+  IMAGE_TYPES,
   'Only JPEG, PNG or WebP images can be uploaded.',
 );
 
@@ -27,4 +30,10 @@ export const documentUploadOptions = uploadOptions(
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   ],
   'Only PDF or Word documents can be uploaded.',
+);
+
+// A photo or a scan of a paper: an image or a PDF, both of which a browser can show.
+export const imageOrPdfUploadOptions = uploadOptions(
+  [...IMAGE_TYPES, 'application/pdf'],
+  'Only JPEG, PNG or WebP images or PDF documents can be uploaded.',
 );

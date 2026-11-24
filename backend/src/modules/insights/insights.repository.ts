@@ -67,22 +67,24 @@ export class InsightsRepository {
 
   // A company's members and visits over the range. Only current active members count (active membership and active
   // account), under the role they hold now, so every number agrees with the others. Another company's rows are never
-  // read: every query filters by `organizationId`.
-  async activity(organizationId: string, from: string, to: string): Promise<ActivityCounts> {
+  // read: every query filters by `organizationId`. All the counts are read in one repeatable-read transaction, so they
+  // come from one snapshot: a member who first connects while this runs is in every number or in none.
+  activity(organizationId: string, from: string, to: string): Promise<ActivityCounts> {
     const { days } = utcWindow(from, to);
-    // The activity rows of this company's current active members inside the range.
-    const rows = () => this.days
-      .createQueryBuilder('d')
-      .innerJoin(OrganizationMember, 'm', 'm.organizationId = d.organizationId AND m.userId = d.userId AND m.isActive = true')
-      .innerJoin(User, 'u', 'u.id = d.userId AND u.isActive = true')
-      .innerJoin(Role, 'r', 'r.id = m.roleId')
-      .where('d.organizationId = :organizationId', { organizationId })
-      .andWhere('d.day BETWEEN :from AND :to', { from, to });
+    return this.days.manager.transaction('REPEATABLE READ', async (manager) => {
+      // The activity rows of this company's current active members inside the range.
+      const rows = () => manager
+        .createQueryBuilder(CompanyActivityDay, 'd')
+        .innerJoin(OrganizationMember, 'm', 'm.organizationId = d.organizationId AND m.userId = d.userId AND m.isActive = true')
+        .innerJoin(User, 'u', 'u.id = d.userId AND u.isActive = true')
+        .innerJoin(Role, 'r', 'r.id = m.roleId')
+        .where('d.organizationId = :organizationId', { organizationId })
+        .andWhere('d.day BETWEEN :from AND :to', { from, to });
 
-    const [totals, perDay, perRole, total, hasHistory] = await Promise.all([
-      rows().select('COUNT(DISTINCT d.userId)', 'active').addSelect('COALESCE(SUM(d.visits), 0)', 'visits').getRawOne<{ active: string; visits: string }>(),
-      rows().select("DATE_FORMAT(d.day, '%Y-%m-%d')", 'day').addSelect('COUNT(DISTINCT d.userId)', 'members').groupBy('d.day').getRawMany<{ day: string; members: string }>(),
-      rows()
+      // One connection, so these run one after the other.
+      const totals = await rows().select('COUNT(DISTINCT d.userId)', 'active').addSelect('COALESCE(SUM(d.visits), 0)', 'visits').getRawOne<{ active: string; visits: string }>();
+      const perDay = await rows().select("DATE_FORMAT(d.day, '%Y-%m-%d')", 'day').addSelect('COUNT(DISTINCT d.userId)', 'members').groupBy('d.day').getRawMany<{ day: string; members: string }>();
+      const perRole = await rows()
         .select('r.code', 'roleCode')
         .addSelect('r.name', 'roleName')
         .addSelect('COUNT(DISTINCT d.userId)', 'members')
@@ -91,24 +93,25 @@ export class InsightsRepository {
         .addGroupBy('r.name')
         .orderBy('members', 'DESC')
         .addOrderBy('r.name')
-        .getRawMany<{ roleCode: string; roleName: string; members: string }>(),
+        .getRawMany<{ roleCode: string; roleName: string; members: string }>();
       // The company's current active members, whether or not they were active in the range.
-      this.days.manager
+      const total = await manager
         .createQueryBuilder(OrganizationMember, 'm')
         .innerJoin(User, 'u', 'u.id = m.userId AND u.isActive = true')
         .where('m.organizationId = :organizationId AND m.isActive = true', { organizationId })
-        .getCount(),
-      this.days.exists({ where: { organizationId } }),
-    ]);
-    const byDay = new Map(perDay.map((row) => [row.day, count(row.members)]));
-    return {
-      hasHistory,
-      members: { active: count(totals?.active), total },
-      visits: count(totals?.visits),
-      // One entry for every day, so a day with no one still shows as zero.
-      activeByDay: days.map((day) => ({ day, members: byDay.get(day) ?? 0 })),
-      activeByRole: perRole.map((row) => ({ roleCode: row.roleCode, roleName: row.roleName, members: count(row.members) })),
-    };
+        .getCount();
+      const hasHistory = await manager.exists(CompanyActivityDay, { where: { organizationId } });
+
+      const byDay = new Map(perDay.map((row) => [row.day, count(row.members)]));
+      return {
+        hasHistory,
+        members: { active: count(totals?.active), total },
+        visits: count(totals?.visits),
+        // One entry for every day, so a day with no one still shows as zero.
+        activeByDay: days.map((day) => ({ day, members: byDay.get(day) ?? 0 })),
+        activeByRole: perRole.map((row) => ({ roleCode: row.roleCode, roleName: row.roleName, members: count(row.members) })),
+      };
+    });
   }
 
   // What the company changed and a few security counts, from the audit rows it already has. Counts only, never a name

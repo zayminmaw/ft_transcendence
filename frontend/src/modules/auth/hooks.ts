@@ -52,8 +52,10 @@ export function useRoleName() {
 // What your role allows in the open company: can('billing.view'). Only decides what to show; the API decides what
 // happens.
 export function useCan() {
-	const permissions = useCurrentWorkspace()?.permissions;
-	return (code: string) => permissions?.includes(code) === true;
+	const workspace = useCurrentWorkspace();
+	return (code: string, allowAssigned = false) =>
+		workspace?.permissions.includes(code) === true ||
+		(allowAssigned && workspace?.assignedPermissions?.includes(code) === true);
 }
 
 export function useLogin() {

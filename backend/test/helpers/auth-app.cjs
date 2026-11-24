@@ -57,7 +57,7 @@ function createFakeStore() {
   const store = {
     users: [], sessions: [], audit: [], auditEntries: [], auditRows: [], insightCalls: [], insightResults: {}, workspaces: new Map(), platformAdmins: new Set(), lastLogins: [],
     // Company access for the guard: memberships ({ organizationId, userId, roleId, isActive }) and each role's codes.
-    memberships: [], rolePermissions: new Map(),
+    memberships: [], rolePermissions: new Map(), assignedRolePermissions: new Map(),
     // Roles for the people list and the roles you may give: { id, code, name, description }.
     roles: [],
     // Stored file rows: { id, organizationId, uploadedByUserId, storedName, originalName, mimeType, sizeBytes, createdAt }.
@@ -183,12 +183,13 @@ function createFakeStore() {
       findActiveWorkspaces: async (userId) => store.workspaces.get(userId) ?? [],
     },
     permissions: {
-      findScope: async (roleId, code) => (store.rolePermissions.get(roleId)?.has(code) ? 'all' : undefined),
+      findScope: async (roleId, code) => store.rolePermissions.get(roleId)?.has(code) ? 'all' : store.assignedRolePermissions.get(roleId)?.has(code) ? 'assigned_only' : undefined,
       grantedOf: async (roleId, codes) => new Set(codes.filter((code) => store.rolePermissions.get(roleId)?.has(code))),
-      // By role code, sorted, like the real query (every fake permission has full scope).
-      grantedCodes: async (roleCodes) => Object.fromEntries(roleCodes.map((code) => {
+      // By role code and scope, sorted, like the real query.
+      grantedCodes: async (roleCodes, scope = 'all') => Object.fromEntries(roleCodes.map((code) => {
         const role = store.roles.find((candidate) => candidate.code === code);
-        return [code, role ? [...(store.rolePermissions.get(String(role.id)) ?? [])].sort() : []];
+        const grants = scope === 'assigned_only' ? store.assignedRolePermissions : store.rolePermissions;
+        return [code, role ? [...(grants.get(String(role.id)) ?? [])].sort() : []];
       })),
     },
     platformRoles: { hasPlatformAccess: async (userId) => store.platformAdmins.has(userId) },
@@ -246,7 +247,7 @@ function createFakeStore() {
     auditRepository: {
       list: async (scope, query) => {
         const ids = query.recordId?.split(',');
-        const showAccess = query.module === 'audit' || query.resourceType === 'audit_log';
+        const showAccess = ['audit', 'insights'].includes(query.module) || ['audit_log', 'activity_insight'].includes(query.resourceType);
         const rows = store.auditRows.filter((row) => auditInScope(scope, row)
           && (showAccess || row.category !== 'access')
           && (!query.module || row.module === query.module)

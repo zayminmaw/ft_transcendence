@@ -5,7 +5,7 @@ import { RequirePermission } from '../../common/decorators/require-permission.de
 import type { AuthenticatedRequest } from '../../common/types/authenticated-request';
 import { PermissionPolicyService } from '../rbac';
 import { auditLogView } from './audit-log.view';
-import { AuditReadDeniedFilter } from './audit-read-denied.filter';
+import { AuditReadDeniedFilter, PlatformAuditReadDeniedFilter } from './audit-read-denied.filter';
 import { READ_PERMISSIONS } from './audit-resources';
 import { type AuditScope, AuditRepository } from './audit.repository';
 import { AuditService } from './audit.service';
@@ -61,14 +61,14 @@ export class AuditController {
 
 	@Get('platform/audit-logs')
 	@PlatformAdmin()
-	@UseFilters(AuditReadDeniedFilter)
+	@UseFilters(PlatformAuditReadDeniedFilter)
 	platformList(@Query() query: ListAuditLogsDto) {
 		return this.page({ kind: 'platform' }, query, false, new Set());
 	}
 
 	@Get('platform/audit-logs/:id')
 	@PlatformAdmin()
-	@UseFilters(AuditReadDeniedFilter)
+	@UseFilters(PlatformAuditReadDeniedFilter)
 	platformDetail(@Param('id') id: string) {
 		return this.one({ kind: 'platform' }, id, new Set());
 	}

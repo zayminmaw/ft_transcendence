@@ -218,6 +218,6 @@ The following table demonstrates the exact running balance ledger transformation
 
 ## 5. Idempotency & Error Handling Controls
 
-1. **Idempotent Reconciliation:** Repeating a COD reconciliation request with the same `settlement_reference` returns the existing verified settlement sheet without creating duplicate ledger entries or increasing merchant balance twice.
+1. **Idempotent Reconciliation:** Repeating a COD reconciliation request with the same `settlement_reference`, driver, cash amount and parcel set returns the existing verified settlement sheet without creating duplicate ledger entries or increasing merchant balance twice. Parcel order may differ. A reused reference with different handover details returns `409 COD_REFERENCE_REUSED` and records nothing.
 2. **Preventing Double Charging on Invoicing:** When an invoice is issued, it itemizes parcels whose delivery fees and COD amounts have already been posted to the ledger during daily operations. The invoice creation does **not** post duplicate debit/credit entries to `merchant_ledger_entries`.
 3. **Negative Balance Protection:** If a merchant's balance goes negative (e.g. high volume of delivery fees or returns with zero COD collections), `clients.current_balance` drops below zero (e.g. `-$45.00`). In this case, Transcend generates an invoice where `net_amount_due` is payable **by** the merchant to the courier.

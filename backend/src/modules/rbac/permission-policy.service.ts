@@ -5,8 +5,8 @@ import { PermissionsRepository } from './permissions.repository';
 export class PermissionPolicyService {
 	constructor(private readonly permissions: PermissionsRepository) {}
 
-	// The one rule for HTTP (RolesGuard) and notifications: assigned_only is denied until resource ownership
-	// policies exist.
+	// Full-scope HTTP routes (RolesGuard) and tenant-wide notifications use this rule. Assigned parcel routes use
+	// their own guard and resource ownership checks; a partial grant must never open a tenant-wide room.
 	async canAccess(roleId: string, permission: string): Promise<boolean> {
 		return (await this.permissions.findScope(roleId, permission)) === 'all';
 	}

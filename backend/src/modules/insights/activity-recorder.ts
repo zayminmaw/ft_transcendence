@@ -17,33 +17,36 @@ export class ActivityRecorder {
   // Who has already been written today, so a reconnect does not write again. Emptied when the UTC day changes.
   private seenDay?: string;
   private readonly seen = new Set<string>();
+  // The last UTC day the old rows were deleted successfully, so a failed delete is tried again on a later connect.
+  private purgedDay?: string;
+  private purging = false;
 
   constructor(
     private readonly repository: InsightsRepository,
     @Optional() @Inject(ACTIVITY_NOW) private readonly now: () => Date = () => new Date(),
   ) {}
 
-  // The member connected to the company today. One write per member, company and UTC day for this process. The first
-  // call of a new day also deletes rows past the retention.
+  // The member connected to the company today. One write per member, company and UTC day for this process. Rows past
+  // the retention are deleted once a day, on the first connect that finds that not done yet.
   async markActive(organizationId: string, userId: string): Promise<void> {
     const today = this.today();
-    const newDay = this.seenDay !== today;
-    if (newDay) {
+    if (this.seenDay !== today) {
       this.seenDay = today;
       this.seen.clear();
     }
     const key = `${organizationId}:${userId}`;
-    if (this.seen.has(key)) return;
-    // Added before the write, so two sockets connecting together make one write.
-    this.seen.add(key);
-    try {
-      await this.repository.markActive(organizationId, userId, today);
-    } catch (error) {
-      // Allow a retry on the next connect.
-      this.seen.delete(key);
-      this.warn('Recording activity failed', error);
+    if (!this.seen.has(key)) {
+      // Added before the write, so two sockets connecting together make one write.
+      this.seen.add(key);
+      try {
+        await this.repository.markActive(organizationId, userId, today);
+      } catch (error) {
+        // Allow a retry on the next connect.
+        this.seen.delete(key);
+        this.warn('Recording activity failed', error);
+      }
     }
-    if (newDay) await this.purge(today);
+    if (this.purgedDay !== today) await this.purge(today);
   }
 
   // The member came online in the company (a real offline to online change, not a reconnect inside the grace).
@@ -55,12 +58,19 @@ export class ActivityRecorder {
     }
   }
 
+  // Marks the day done only when the delete worked. One delete at a time, so connections arriving together do not each
+  // run it.
   private async purge(today: string): Promise<void> {
+    if (this.purging) return;
+    this.purging = true;
     const cutoff = new Date(Date.parse(`${today}T00:00:00Z`) - ACTIVITY_RETENTION_DAYS * DAY_MS).toISOString().slice(0, 10);
     try {
       await this.repository.purgeBefore(cutoff);
+      this.purgedDay = today;
     } catch (error) {
       this.warn('Deleting old activity failed', error);
+    } finally {
+      this.purging = false;
     }
   }
 
