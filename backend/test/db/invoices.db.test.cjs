@@ -167,3 +167,44 @@ test('a failure while saving the lines leaves no invoice behind', async () => {
   assert.equal((await database.query('SELECT COUNT(*) AS n FROM invoices WHERE client_id = ?', [id]))[0].n, '0');
   assert.equal((await service.create(actor(meridian), body(id))).items[0].parcelId, taken);
 });
+
+test('a lost create response is recovered without changing the draft, ledger or audit', async () => {
+  const id = await merchant(meridian);
+  const parcelId = await parcel(meridian, id, { fee: '7.25' });
+  const original = await service.create(actor(meridian), { ...body(id), notes: 'Saved snapshot' });
+  const counts = async () => (await database.query(
+    'SELECT (SELECT COUNT(*) FROM invoices WHERE client_id = ?) AS invoices, (SELECT COUNT(*) FROM merchant_ledger_entries WHERE client_id = ?) AS ledger, (SELECT COUNT(*) FROM audit_logs WHERE resource_type = ? AND record_id = ?) AS audit',
+    [id, id, 'invoice', original.id],
+  ))[0];
+  const before = await counts();
+  assert.equal((await refused(service.create(actor(meridian), body(id)))).code, 'INVOICE_NOTHING_TO_BILL');
+  await database.query("UPDATE parcels SET delivery_fee = '99.00' WHERE id = ?", [parcelId]);
+  const page = await service.list(actor(meridian).tenant, { ...body(id), page: 1, pageSize: 10 });
+  assert.equal(page.total, 1);
+  assert.equal(page.items[0].id, original.id);
+  assert.deepEqual(await service.detail(actor(meridian).tenant, page.items[0].id), original);
+  assert.equal((await service.detail(actor(meridian).tenant, original.id)).items[0].deliveryFee, '7.25');
+  assert.deepEqual(await counts(), before);
+});
+
+test('invoice list filters exact periods, pages newest first and stays within the company', async () => {
+  const id = await merchant(meridian);
+  const created = [];
+  for (let i = 0; i < 12; i++) {
+    await parcel(meridian, id);
+    created.push(await service.create(actor(meridian), body(id)));
+  }
+  await parcel(meridian, id, { deliveredAt: '2026-11-15 10:00:00' });
+  const november = await service.create(actor(meridian), body(id, '2026-11-01', '2026-11-30'));
+  const query = { ...body(id), page: 1, pageSize: 10 };
+  const first = await service.list(actor(meridian).tenant, query);
+  const second = await service.list(actor(meridian).tenant, { ...query, page: 2 });
+  assert.equal(first.total, 12);
+  assert.equal(second.total, 12);
+  assert.deepEqual([...first.items, ...second.items].map((item) => item.id), created.map((item) => item.id).reverse());
+  assert.equal((await service.list(actor(meridian).tenant, { ...query, periodStart: '2026-11-01', periodEnd: undefined })).items[0].id, november.id);
+  assert.equal((await service.list(actor(harbor).tenant, query)).total, 0);
+  for (const invoiceId of [created[0].id, '999999999', 'abc', '0']) {
+    assert.equal((await refused(service.detail(actor(harbor).tenant, invoiceId))).code, 'INVOICE_NOT_FOUND');
+  }
+});

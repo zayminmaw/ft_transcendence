@@ -1,4 +1,6 @@
+import { useTranslation } from 'react-i18next';
 import { Input } from '@global-components';
+import { useRoleName } from '@modules/auth';
 import type { TenantMember } from '../api';
 import { MEMBER_LIST_LIMIT } from '../constants';
 
@@ -24,20 +26,20 @@ export function MemberPicker({
 	onChange: (userId: string) => void;
 	onCreateNew: () => void;
 }) {
+	const { t } = useTranslation('platform');
+	const roleName = useRoleName();
 	// Nobody to choose and nothing typed: the company has no candidates, so there is nothing to search either.
 	if (!search && !isPending && !isError && members.length === 0) {
 		return (
 			<div role="status" className="rounded-box border border-base-300 p-4 text-sm">
-				<p className="font-medium">{tenantName} has no members to choose.</p>
-				<p className="mt-1 text-[var(--color-slate)]">
-					Current and removed members appear here, except its administrators.
-				</p>
+				<p className="font-medium">{t('picker.noMembers', { name: tenantName })}</p>
+				<p className="mt-1 text-[var(--color-slate)]">{t('picker.noMembersNote')}</p>
 				<button
 					type="button"
 					className="btn btn-sm mt-3 border-0 bg-base-200"
 					onClick={onCreateNew}
 				>
-					Create a new account instead
+					{t('picker.createInstead')}
 				</button>
 			</div>
 		);
@@ -45,25 +47,25 @@ export function MemberPicker({
 
 	return (
 		<fieldset className="flex flex-col gap-2">
-			<legend className="sr-only">Member</legend>
+			<legend className="sr-only">{t('picker.member')}</legend>
 			<Input
-				label="Member *"
+				label={t('picker.memberRequired')}
 				type="search"
-				placeholder="Search by username or email"
+				placeholder={t('picker.search')}
 				autoComplete="off"
 				value={search}
 				onChange={(event) => onSearch(event.target.value)}
 			/>
 			<div className="max-h-64 overflow-y-auto rounded-box border border-base-300">
 				{isPending ? (
-					<p className="p-4 text-sm text-[var(--color-slate)]">Loading members…</p>
+					<p className="p-4 text-sm text-[var(--color-slate)]">{t('picker.loading')}</p>
 				) : isError ? (
 					<p role="alert" className="p-4 text-sm text-error">
-						Members couldn't be loaded.
+						{t('picker.failed')}
 					</p>
 				) : members.length === 0 ? (
 					<p className="p-4 text-sm text-[var(--color-slate)]">
-						No members match “{search}”.
+						{t('picker.noMatch', { search })}
 					</p>
 				) : (
 					<ul className="divide-y divide-base-300">
@@ -90,7 +92,9 @@ export function MemberPicker({
 										</span>
 									</span>
 									<span className="badge badge-sm shrink-0 border-base-300 bg-base-100">
-										{member.removed ? 'Removed' : member.role.name}
+										{member.removed
+											? t('picker.removed')
+											: roleName(member.role)}
 									</span>
 								</label>
 							</li>
@@ -99,10 +103,9 @@ export function MemberPicker({
 				)}
 			</div>
 			<p className="text-xs text-[var(--color-slate)]">
-				{members.length >= MEMBER_LIST_LIMIT
-					? `Showing the first ${MEMBER_LIST_LIMIT}. Search to find others. `
-					: ''}
-				Their company role becomes Tenant administrator. Removed members are added back.
+				{members.length >= MEMBER_LIST_LIMIT &&
+					`${t('picker.limited', { limit: MEMBER_LIST_LIMIT })} `}
+				{t('picker.note')}
 			</p>
 		</fieldset>
 	);

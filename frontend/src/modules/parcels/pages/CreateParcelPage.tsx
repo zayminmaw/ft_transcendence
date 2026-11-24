@@ -1,10 +1,12 @@
 import { useState, type FormEvent } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button, Input, ModulePage, Select, Textarea, TipCard, useToast } from '@global-components';
 import { useCompanyPath } from '@hooks/useCompanyPath';
 import type { NewParcelValues } from '../api';
 import { useParcelMutations } from '../hooks/useParcelMutations';
 import { useParcelFormOptions } from '../hooks/useParcels';
+import { parcelFormError } from '../errors';
 
 // The fields as typed: the API trims them and clears an optional one left empty. The checkbox is sent only when
 // ticked, so it becomes a boolean here.
@@ -19,12 +21,13 @@ function valuesOf(form: HTMLFormElement): NewParcelValues {
 // /parcels/new: a waybill for one of the company's merchants, with its pickup scheduled. The API draws the tracking
 // number.
 export function CreateParcelPage() {
+	const { t } = useTranslation('parcels');
 	const navigate = useNavigate();
 	const companyPath = useCompanyPath();
 	const { toast } = useToast();
 	const { options, isOptionsPending } = useParcelFormOptions();
 	const { createParcel, isCreating } = useParcelMutations();
-	const [error, setError] = useState<string | null>(null);
+	const [error, setError] = useState<Error | null>(null);
 	const clients = options?.clients ?? [];
 
 	const onSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -34,24 +37,21 @@ export function CreateParcelPage() {
 			onSuccess: (parcel) => {
 				toast({
 					variant: 'success',
-					title: 'Parcel created',
-					description: `${parcel.trackingNumber} is waiting for pickup.`,
+					title: t('create.created'),
+					description: t('create.createdText', { tracking: parcel.trackingNumber }),
 				});
 				navigate(companyPath(`parcels/${parcel.id}`));
 			},
-			onError: (failure) => setError(failure.message),
+			onError: setError,
 		});
 	};
 
 	return (
 		<div className="flex flex-col gap-6">
 			<Link to={companyPath('parcels')} className="link link-hover w-fit text-sm">
-				Back to dispatch
+				{t('common.backToDispatch')}
 			</Link>
-			<ModulePage
-				title="New parcel"
-				description="Create a waybill and schedule its pickup from the merchant."
-			/>
+			<ModulePage title={t('create.title')} description={t('create.description')} />
 			<div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
 				<form
 					onSubmit={onSubmit}
@@ -59,13 +59,13 @@ export function CreateParcelPage() {
 				>
 					{error && (
 						<p role="alert" className="rounded-box bg-error/10 p-4 text-sm text-error">
-							{error}
+							{parcelFormError(t, error)}
 						</p>
 					)}
 					<div>
 						<Select
 							name="clientId"
-							label="Merchant"
+							label={t('common.merchant')}
 							required
 							disabled={isOptionsPending}
 							options={clients.map((client) => ({
@@ -75,24 +75,26 @@ export function CreateParcelPage() {
 						/>
 						{!isOptionsPending && clients.length === 0 && (
 							<p className="mt-1 text-xs text-[var(--color-slate)]">
-								This company has no active merchants yet. Add a client first.
+								{t('create.noMerchants')}
 							</p>
 						)}
 					</div>
 
 					<fieldset className="flex flex-col gap-4">
-						<legend className="mb-4 text-lg font-semibold">Recipient</legend>
+						<legend className="mb-4 text-lg font-semibold">
+							{t('create.recipient')}
+						</legend>
 						<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
 							<Input
 								name="recipientName"
-								label="Recipient name"
+								label={t('create.recipientName')}
 								required
 								maxLength={128}
 								autoComplete="off"
 							/>
 							<Input
 								name="recipientPhone"
-								label="Recipient phone"
+								label={t('details.recipientPhone')}
 								type="tel"
 								required
 								dir="ltr"
@@ -101,21 +103,21 @@ export function CreateParcelPage() {
 						</div>
 						<Input
 							name="recipientSecondaryPhone"
-							label="Second phone"
+							label={t('create.secondPhone')}
 							type="tel"
 							dir="ltr"
 							autoComplete="off"
 						/>
 						<Textarea
 							name="deliveryAddress"
-							label="Delivery address"
+							label={t('details.deliveryAddress')}
 							required
 							rows={2}
 						/>
 						<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
 							<Input
 								name="deliveryCityZone"
-								label="Delivery zone"
+								label={t('common.deliveryZone')}
 								required
 								maxLength={64}
 								list="parcel-zones"
@@ -123,7 +125,7 @@ export function CreateParcelPage() {
 							/>
 							<Input
 								name="deliveryLandmark"
-								label="Landmark"
+								label={t('create.landmark')}
 								maxLength={128}
 								autoComplete="off"
 							/>
@@ -136,10 +138,12 @@ export function CreateParcelPage() {
 					</fieldset>
 
 					<fieldset className="flex flex-col gap-4">
-						<legend className="mb-4 text-lg font-semibold">Package</legend>
+						<legend className="mb-4 text-lg font-semibold">
+							{t('create.package')}
+						</legend>
 						<Input
 							name="weightKg"
-							label="Weight (kg)"
+							label={t('create.weight')}
 							required
 							type="number"
 							min="0.01"
@@ -153,16 +157,18 @@ export function CreateParcelPage() {
 								type="checkbox"
 								className="checkbox checkbox-sm"
 							/>
-							Fragile
+							{t('details.fragile')}
 						</label>
 					</fieldset>
 
 					<fieldset className="flex flex-col gap-4">
-						<legend className="mb-4 text-lg font-semibold">Charges</legend>
+						<legend className="mb-4 text-lg font-semibold">
+							{t('create.charges')}
+						</legend>
 						<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
 							<Input
 								name="deliveryFee"
-								label="Delivery fee"
+								label={t('common.deliveryFee')}
 								required
 								type="number"
 								min="0"
@@ -171,7 +177,7 @@ export function CreateParcelPage() {
 							/>
 							<Input
 								name="codAmount"
-								label="COD amount"
+								label={t('common.codAmount')}
 								required
 								type="number"
 								min="0"
@@ -181,7 +187,12 @@ export function CreateParcelPage() {
 						</div>
 					</fieldset>
 
-					<Textarea name="notes" label="Pickup notes" rows={2} maxLength={2000} />
+					<Textarea
+						name="notes"
+						label={t('create.pickupNotes')}
+						rows={2}
+						maxLength={2000}
+					/>
 
 					<div className="flex flex-wrap gap-3">
 						<button
@@ -189,17 +200,14 @@ export function CreateParcelPage() {
 							className="btn border-0 bg-base-200"
 							onClick={() => navigate(companyPath('parcels'))}
 						>
-							Cancel
+							{t('common.cancel')}
 						</button>
 						<Button type="submit" disabled={isCreating || clients.length === 0}>
-							{isCreating ? 'Creating…' : 'Create parcel'}
+							{isCreating ? t('create.creating') : t('create.submit')}
 						</Button>
 					</div>
 				</form>
-				<TipCard
-					title="One waybill per parcel."
-					description="The tracking number is generated when you save. It goes on the barcode and is what the recipient uses to track the parcel."
-				/>
+				<TipCard title={t('create.tipTitle')} description={t('create.tipText')} />
 			</div>
 		</div>
 	);

@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { DataSource, type EntityManager } from 'typeorm';
 import type { Client } from '../clients/entities/client.entity';
+import type { InvoiceQueryDto } from './dto/invoice-query.dto';
 import { InvoiceItem } from './entities/invoice-item.entity';
 import { Invoice } from './entities/invoice.entity';
 import { LedgerRepository } from './ledger.repository';
@@ -23,6 +24,30 @@ export class InvoicesRepository {
   // the second one sees the parcels the first one took.
   lockClient(manager: EntityManager, organizationId: string, clientId: string): Promise<Client | null> {
     return this.ledger.lockClient(manager, organizationId, clientId);
+  }
+
+  async list(organizationId: string, query: InvoiceQueryDto): Promise<{ items: Invoice[]; total: number }> {
+    const builder = this.database.getRepository(Invoice).createQueryBuilder('invoice')
+      .where('invoice.organizationId = :organizationId AND invoice.clientId = :clientId', { organizationId, clientId: query.clientId });
+    if (query.periodStart !== undefined) builder.andWhere('invoice.billingPeriodStart = :periodStart', { periodStart: query.periodStart });
+    if (query.periodEnd !== undefined) builder.andWhere('invoice.billingPeriodEnd = :periodEnd', { periodEnd: query.periodEnd });
+    const [items, total] = await builder.orderBy('invoice.createdAt', 'DESC').addOrderBy('invoice.id', 'DESC')
+      .skip((query.page - 1) * query.pageSize).take(query.pageSize).getManyAndCount();
+    return { items, total };
+  }
+
+  find(organizationId: string, id: string): Promise<Invoice | null> {
+    return this.database.getRepository(Invoice).findOneBy({ organizationId, id });
+  }
+
+  async items(organizationId: string, invoiceId: string): Promise<BillableParcel[]> {
+    const rows: ParcelRow[] = await this.database.manager.createQueryBuilder()
+      .select('ii.parcel_id', 'id').addSelect('p.tracking_number', 'trackingNumber')
+      .addSelect('ii.delivery_fee', 'deliveryFee').from('invoice_items', 'ii')
+      .innerJoin('invoices', 'invoice', 'invoice.id = ii.invoice_id AND invoice.organization_id = :organizationId', { organizationId })
+      .innerJoin('parcels', 'p', 'p.id = ii.parcel_id')
+      .where('ii.invoice_id = :invoiceId', { invoiceId }).orderBy('ii.id', 'ASC').getRawMany();
+    return rows.map((row) => ({ id: String(row.id), trackingNumber: row.trackingNumber, deliveryFee: String(row.deliveryFee) }));
   }
 
   // Delivered in the period (the last day included), with a delivery fee, and not on any invoice yet.

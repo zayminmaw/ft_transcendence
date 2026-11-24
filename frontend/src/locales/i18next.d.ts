@@ -9,7 +9,9 @@ import type common from './en/common.json';
 import type contacts from './en/contacts.json';
 import type drivers from './en/drivers.json';
 import type insights from './en/insights.json';
+import type platform from './en/platform.json';
 import type marketing from './en/marketing.json';
+import type parcels from './en/parcels.json';
 import type rbac from './en/rbac.json';
 
 declare module 'i18next' {
@@ -25,7 +27,9 @@ declare module 'i18next' {
 			contacts: typeof contacts;
 			drivers: typeof drivers;
 			insights: typeof insights;
+			platform: typeof platform;
 			marketing: typeof marketing;
+			parcels: typeof parcels;
 			rbac: typeof rbac;
 		};
 	}

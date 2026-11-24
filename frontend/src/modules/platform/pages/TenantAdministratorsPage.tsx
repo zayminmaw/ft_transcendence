@@ -10,20 +10,23 @@ import { RevokeAdministratorDialog } from '../components/RevokeAdministratorDial
 import { useTenantDetails } from '../hooks/useTenants';
 
 export function TenantAdministratorsPage() {
+	const { t } = useTranslation('platform');
 	const { tenantId = '' } = useParams();
 	const { tenant, isTenantPending, isTenantError } = useTenantDetails(tenantId);
 
 	if (isTenantPending)
-		return <ModulePage title="Tenant administrators" description="Loading tenant…" />;
+		return (
+			<ModulePage title={t('administrators.title')} description={t('common.loadingTenant')} />
+		);
 	if (isTenantError || !tenant) {
 		return (
 			<div className="flex flex-col gap-6">
 				<ModulePage
-					title="Something went wrong"
-					description="This tenant couldn't be loaded. Go back to the tenant list and try again."
+					title={t('common.loadFailedTitle')}
+					description={t('common.loadFailed')}
 				/>
 				<Link to="/platform/tenants" className="btn w-fit border-0 bg-base-200 md:px-8">
-					Back to tenants
+					{t('common.backToTenants')}
 				</Link>
 			</div>
 		);
@@ -32,43 +35,49 @@ export function TenantAdministratorsPage() {
 }
 
 function TenantAdministratorsView({ tenant }: { tenant: TenantDetails }) {
-	const { i18n } = useTranslation();
+	const { t, i18n } = useTranslation('platform');
 	const [assignOpen, setAssignOpen] = useState(false);
 	const [revoking, setRevoking] = useState<TenantAdministrator | null>(null);
 
 	const columns: TableColumn<TenantAdministrator>[] = [
 		{
 			key: 'administrator',
-			header: 'Administrator',
+			header: t('administrators.columns.administrator'),
 			cell: (admin) => (
 				<div>
-					<p className="font-medium">{admin.username}</p>
-					<p className="text-sm text-[var(--color-slate)]">{admin.email}</p>
+					<p className="font-medium">
+						<span dir="ltr">{admin.username}</span>
+					</p>
+					<p className="text-sm text-[var(--color-slate)]">
+						<span dir="ltr">{admin.email}</span>
+					</p>
 				</div>
 			),
 		},
 		{
 			key: 'added',
-			header: 'Added',
+			header: t('administrators.columns.added'),
 			cell: (admin) => (
 				<div>
 					<p>{formatDate(admin.joinedAt, i18n.language)}</p>
 					{!admin.accountActive && (
-						<p className="text-sm text-[var(--color-slate)]">Account deactivated</p>
+						<p className="text-sm text-[var(--color-slate)]">
+							{t('common.accountDeactivated')}
+						</p>
 					)}
 				</div>
 			),
 		},
 		{
 			key: 'action',
-			header: 'Action',
+			header: t('administrators.columns.action'),
 			cell: (admin) => (
 				<button
 					type="button"
 					className="btn btn-sm border-0 bg-base-200"
 					onClick={() => setRevoking(admin)}
 				>
-					Revoke
+					{t('administrators.revoke')}
 				</button>
 			),
 		},
@@ -77,32 +86,32 @@ function TenantAdministratorsView({ tenant }: { tenant: TenantDetails }) {
 	return (
 		<div className="flex flex-col gap-6">
 			<ModulePage
-				title="Tenant administrators"
-				description={`${tenant.name} · These memberships grant company access only. Platform roles are managed separately.`}
+				title={t('administrators.title')}
+				description={t('administrators.description', { name: tenant.name })}
 				actions={
 					<button
 						type="button"
 						className="btn btn-primary w-full md:w-auto md:px-8"
 						onClick={() => setAssignOpen(true)}
 					>
-						Assign administrator
+						{t('administrators.assign')}
 					</button>
 				}
 			/>
 
 			<Table
-				caption={`${tenant.name} administrators`}
+				caption={t('administrators.caption', { name: tenant.name })}
 				columns={columns}
 				rows={tenant.administrators}
 				getRowKey={(admin) => admin.id}
-				emptyMessage="No active tenant administrator. Assign one before reactivating the tenant."
+				emptyMessage={t('administrators.empty')}
 			/>
 
 			<Link
 				to={`/platform/tenants/${tenant.id}`}
 				className="btn w-fit border-0 bg-base-200 md:px-8"
 			>
-				Back to tenant
+				{t('administrators.back')}
 			</Link>
 
 			{/* Mounted only while open, so each one starts empty. */}

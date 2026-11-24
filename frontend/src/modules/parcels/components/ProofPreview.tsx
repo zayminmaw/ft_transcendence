@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ImageViewer } from '@global-components';
+import { useTranslation } from 'react-i18next';
 import { PDF_TYPE } from '@utils/upload';
 
 // A link to a file on this device for as long as the component shows it; null until it is ready. The link is made and
@@ -23,6 +24,7 @@ function useObjectUrl(file: File) {
 const frame = 'w-full rounded-box border border-base-300 bg-base-200';
 
 function Pdf({ src, name, onError }: { src: string; name: string; onError?: () => void }) {
+	const { t } = useTranslation('parcels');
 	return (
 		<div className="flex flex-col gap-2">
 			<iframe title={name} src={src} onError={onError} className={`${frame} h-72`} />
@@ -32,15 +34,16 @@ function Pdf({ src, name, onError }: { src: string; name: string; onError?: () =
 				rel="noreferrer"
 				className="link link-hover w-fit text-sm"
 			>
-				Open {name}
+				{t('proof.open', { name })}
 			</a>
 		</div>
 	);
 }
 
 function Picture({ src, label, onError }: { src: string; label: string; onError?: () => void }) {
+	const { t } = useTranslation('parcels');
 	return (
-		<ImageViewer src={src} label={`View ${label}`} className="!rounded-box w-full">
+		<ImageViewer src={src} label={t('proof.view', { label })} className="!rounded-box w-full">
 			<img
 				src={src}
 				alt={label}
@@ -94,6 +97,7 @@ function Saved({
 	label: string;
 	onRefresh: () => Promise<void>;
 }) {
+	const { t } = useTranslation('parcels');
 	const expiry = proofLinkExpiresAt(saved.url);
 	const [state, setState] = useState<'ready' | 'refreshing' | 'failed'>(() =>
 		expiry !== null && Date.now() >= expiry - 30_000 ? 'refreshing' : 'ready',
@@ -125,12 +129,12 @@ function Saved({
 			<div className="flex flex-col gap-2 text-sm" aria-live="polite">
 				<p role={state === 'failed' ? 'alert' : 'status'}>
 					{state === 'failed'
-						? `Could not refresh ${label}. Try again.`
-						: `Refreshing ${label}…`}
+						? t('proof.refreshFailed', { label })
+						: t('proof.refreshing', { label })}
 				</p>
 				{state === 'failed' && (
 					<button type="button" className="btn btn-sm w-fit" onClick={refresh}>
-						Retry
+						{t('proof.retry')}
 					</button>
 				)}
 			</div>

@@ -1,10 +1,12 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import type { RequestMeta } from '../../common/context/request-meta';
 import type { TenantContext } from '../../common/types/authenticated-request';
+import { ID_PATTERN } from '../../common/ids';
 import { AuditService } from '../audit';
 import type { CreateInvoiceDto } from './dto/create-invoice.dto';
+import type { InvoiceQueryDto } from './dto/invoice-query.dto';
 import type { Invoice } from './entities/invoice.entity';
-import { INVOICE_BAD_PERIOD, INVOICE_DUE_DAYS, INVOICE_MERCHANT_NOT_FOUND, INVOICE_NOTHING_TO_BILL } from './invoice.constants';
+import { INVOICE_BAD_PERIOD, INVOICE_DUE_DAYS, INVOICE_MERCHANT_NOT_FOUND, INVOICE_NOT_FOUND, INVOICE_NOTHING_TO_BILL } from './invoice.constants';
 import { InvoicesRepository } from './invoices.repository';
 import { fromCents, toCents } from './money';
 import type { BillableParcel, InvoiceView } from './types/invoice';
@@ -34,6 +36,27 @@ const view = (invoice: Invoice, parcels: BillableParcel[]): InvoiceView => ({
 @Injectable()
 export class InvoicesService {
   constructor(private readonly invoices: InvoicesRepository, private readonly audit: AuditService) {}
+
+  async list(tenant: TenantContext, query: InvoiceQueryDto) {
+    if (query.periodStart && query.periodEnd && query.periodStart > query.periodEnd) throw new BadRequestException(INVOICE_BAD_PERIOD);
+    const { items, total } = await this.invoices.list(tenant.organizationId, query);
+    return {
+      items: items.map((invoice) => ({
+        id: invoice.id, invoiceNumber: invoice.invoiceNumber, clientId: invoice.clientId,
+        periodStart: invoice.billingPeriodStart, periodEnd: invoice.billingPeriodEnd, status: invoice.status,
+        totalDeliveries: invoice.totalDeliveries, totalDeliveryFees: invoice.totalDeliveryFees,
+        totalCodCollected: invoice.totalCodCollected, netAmountDue: invoice.netAmountDue, createdAt: invoice.createdAt.toISOString(),
+      })),
+      total, page: query.page, pageSize: query.pageSize,
+    };
+  }
+
+  async detail(tenant: TenantContext, invoiceId: string): Promise<InvoiceView> {
+    if (!ID_PATTERN.test(invoiceId)) throw new NotFoundException(INVOICE_NOT_FOUND);
+    const invoice = await this.invoices.find(tenant.organizationId, invoiceId);
+    if (!invoice) throw new NotFoundException(INVOICE_NOT_FOUND);
+    return view(invoice, await this.invoices.items(tenant.organizationId, invoice.id));
+  }
 
   async create(actor: InvoiceActor, body: CreateInvoiceDto): Promise<InvoiceView> {
     if (body.periodStart > body.periodEnd) throw new BadRequestException(INVOICE_BAD_PERIOD);

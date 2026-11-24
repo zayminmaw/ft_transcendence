@@ -1,4 +1,6 @@
+import type { ParseKeys } from 'i18next';
 import { useForm, useWatch } from 'react-hook-form';
+import { useTranslation } from 'react-i18next';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useNavigate } from 'react-router-dom';
 import { Button, Input, ModulePage, PasswordInput, TipCard, useToast } from '@global-components';
@@ -8,8 +10,10 @@ import type { CreateTenantValues } from '../api';
 import { CREATE_TENANT_DEFAULT_VALUES, CREATE_TENANT_FIELD_ERRORS } from '../constants';
 import { useTenantMutations } from '../hooks/useTenantMutations';
 import { createTenantSchema } from '../schemas/createTenantSchema';
+import { platformErrorKey } from '../errors';
 
 export function CreateTenantPage() {
+	const { t } = useTranslation('platform');
 	const navigate = useNavigate();
 	const { toast } = useToast();
 	const { createTenant, isCreating } = useTenantMutations();
@@ -29,12 +33,14 @@ export function CreateTenantPage() {
 		control,
 		name: ['organization.name', 'administrator.username'],
 	});
+	// Every message is a translation key, translated here so it follows a language switch.
+	const fieldError = (message?: string) => message && t(message as ParseKeys<'platform'>);
 
 	const review = [
-		{ label: 'Company', value: orgName.trim() || '—' },
-		{ label: 'New administrator', value: username.trim() || '—' },
-		{ label: 'Role', value: 'Tenant administrator' },
-		{ label: 'Access', value: 'This company only' },
+		{ label: t('create.reviewCompany'), value: orgName.trim() || '—' },
+		{ label: t('create.reviewAdministrator'), value: username.trim() || '—' },
+		{ label: t('create.reviewRole'), value: t('create.roleValue') },
+		{ label: t('create.reviewAccess'), value: t('create.accessValue') },
 	];
 
 	const onSubmit = handleSubmit((values) =>
@@ -42,19 +48,23 @@ export function CreateTenantPage() {
 			onSuccess: ({ tenant, administrator }) => {
 				toast({
 					variant: 'success',
-					title: 'Tenant created',
-					description: `${tenant.name} is ready. ${administrator.username} can now log in.`,
+					title: t('create.created'),
+					description: t('create.createdText', {
+						tenant: tenant.name,
+						username: administrator.username,
+					}),
 				});
 				navigate(`/platform/tenants/${tenant.id}`, { replace: true });
 			},
 			onError: (error) => {
 				const field = fromErrorCode(CREATE_TENANT_FIELD_ERRORS, error);
-				if (field) setError(field, { message: error.message }, { shouldFocus: true });
+				if (field)
+					setError(field, { message: platformErrorKey(error) }, { shouldFocus: true });
 				else
 					toast({
 						variant: 'error',
-						title: "Couldn't create the tenant",
-						description: error.message,
+						title: t('create.failed'),
+						description: t(platformErrorKey(error)),
 					});
 			},
 		}),
@@ -62,10 +72,7 @@ export function CreateTenantPage() {
 
 	return (
 		<div className="flex flex-col gap-6">
-			<ModulePage
-				title="Create tenant & administrator"
-				description="Set up the company and its first administrator in one step. Both are required."
-			/>
+			<ModulePage title={t('create.title')} description={t('create.description')} />
 			<div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
 				<form
 					noValidate
@@ -73,13 +80,13 @@ export function CreateTenantPage() {
 					className="flex flex-col gap-6 rounded-box border border-base-300 p-4 md:p-8"
 				>
 					<section className="flex flex-col gap-4">
-						<h2 className="text-lg font-semibold">Organization</h2>
+						<h2 className="text-lg font-semibold">{t('create.organization')}</h2>
 						<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
 							<Input
-								label="Organization name"
+								label={t('fields.organizationName')}
 								placeholder="Meridian Courier"
 								required
-								error={errors.organization?.name?.message}
+								error={fieldError(errors.organization?.name?.message)}
 								{...register('organization.name', {
 									// The slug follows the name until it is edited by hand.
 									onChange: (event: { target: { value: string } }) => {
@@ -92,34 +99,35 @@ export function CreateTenantPage() {
 								})}
 							/>
 							<Input
-								label="Organization slug"
+								label={t('fields.organizationSlug')}
 								placeholder="meridian-courier"
 								required
 								autoCapitalize="none"
 								spellCheck={false}
-								error={errors.organization?.slug?.message}
+								dir="ltr"
+								error={fieldError(errors.organization?.slug?.message)}
 								{...register('organization.slug')}
 							/>
 							<Input
-								label="Contact email"
+								label={t('fields.contactEmail')}
 								type="email"
 								placeholder="office@meridian.example.test"
 								required
-								error={errors.organization?.contactEmail?.message}
+								error={fieldError(errors.organization?.contactEmail?.message)}
 								{...register('organization.contactEmail')}
 							/>
 							<Input
-								label="Phone (optional)"
+								label={t('fields.phoneOptional')}
 								type="tel"
 								placeholder="+962 7 9000 0000"
-								error={errors.organization?.contactPhone?.message}
+								error={fieldError(errors.organization?.contactPhone?.message)}
 								{...register('organization.contactPhone')}
 							/>
 							<Input
-								label="Address (optional)"
+								label={t('fields.addressOptional')}
 								placeholder="14 Al-Madina Street, Amman"
 								containerClassName="md:col-span-2"
-								error={errors.organization?.address?.message}
+								error={fieldError(errors.organization?.address?.message)}
 								{...register('organization.address')}
 							/>
 						</div>
@@ -127,47 +135,42 @@ export function CreateTenantPage() {
 
 					<section className="flex flex-col gap-4">
 						<div>
-							<h2 className="text-lg font-semibold">
-								First tenant administrator · Required
-							</h2>
+							<h2 className="text-lg font-semibold">{t('create.administrator')}</h2>
 							<p className="mt-2 text-sm text-slate">
-								A new account is created with this tenant. Company permissions only.
+								{t('create.administratorNote')}
 							</p>
 						</div>
 						<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
 							<Input
-								label="Username"
+								label={t('fields.username')}
 								placeholder="lina.haddad"
 								required
 								autoComplete="off"
 								autoCapitalize="none"
 								spellCheck={false}
-								error={errors.administrator?.username?.message}
+								dir="ltr"
+								error={fieldError(errors.administrator?.username?.message)}
 								{...register('administrator.username')}
 							/>
 							<Input
-								label="Login email"
+								label={t('fields.loginEmail')}
 								type="email"
 								placeholder="lina@meridian.example.test"
 								required
 								autoComplete="off"
-								error={errors.administrator?.email?.message}
+								error={fieldError(errors.administrator?.email?.message)}
 								{...register('administrator.email')}
 							/>
 							<PasswordInput
-								label="Initial password"
+								label={t('fields.initialPassword')}
 								required
 								autoComplete="new-password"
 								containerClassName="md:col-span-2"
-								error={errors.administrator?.password?.message}
+								error={fieldError(errors.administrator?.password?.message)}
 								{...register('administrator.password')}
 							/>
 						</div>
-						<p className="text-xs text-slate">
-							8-128 characters with an upper-case letter, a lower-case letter, a
-							number and a symbol. Hand over credentials securely. Passwords are
-							hidden from confirmation and audit records.
-						</p>
+						<p className="text-xs text-slate">{t('create.passwordNote')}</p>
 					</section>
 
 					<div className="flex flex-col gap-2 sm:flex-row">
@@ -176,7 +179,7 @@ export function CreateTenantPage() {
 							className="btn border-0 bg-base-200"
 							onClick={() => navigate(-1)}
 						>
-							Cancel
+							{t('common.cancel')}
 						</button>
 						<Button type="submit" disabled={isCreating}>
 							{isCreating && (
@@ -185,13 +188,13 @@ export function CreateTenantPage() {
 									aria-hidden="true"
 								/>
 							)}
-							{isCreating ? 'Creating…' : 'Create tenant & administrator'}
+							{isCreating ? t('create.creating') : t('create.submit')}
 						</Button>
 					</div>
 				</form>
 				<aside className="flex flex-col gap-6">
 					<section className="rounded-box bg-base-200 p-6 md:p-8">
-						<h2 className="text-lg font-semibold">Review before creating</h2>
+						<h2 className="text-lg font-semibold">{t('create.review')}</h2>
 						<dl className="mt-6 flex flex-col gap-5">
 							{review.map((item) => (
 								<div key={item.label}>
@@ -203,10 +206,7 @@ export function CreateTenantPage() {
 							))}
 						</dl>
 					</section>
-					<TipCard
-						title="A company starts with its administrator."
-						description="Create the company, account and membership together. The administrator logs in, then creates company users."
-					/>
+					<TipCard title={t('create.tipTitle')} description={t('create.tipText')} />
 				</aside>
 			</div>
 		</div>

@@ -29,6 +29,8 @@ function trackingPage(t, firstAnswer) {
 		new URL('../src/modules/parcels/hooks/useParcels.ts', import.meta.url),
 		{
 			react: {},
+			'react-i18next': { useTranslation: () => ({ t: (key) => key }) },
+			'../errors': {},
 			'@tanstack/react-query': {
 				keepPreviousData,
 				useQuery(options) {
@@ -57,7 +59,9 @@ function trackingPage(t, firstAnswer) {
 		new URL('../src/modules/parcels/pages/TrackParcelPage.tsx', import.meta.url),
 		{
 			react: { useEffect() {} },
-			'react-i18next': {},
+			'react-i18next': {
+				useTranslation: () => ({ t: (key) => key, i18n: { language: 'en' } }),
+			},
 			'react-router-dom': {
 				useParams: () => ({ trackingNumber: number }),
 				useNavigate: () => (path) => navigations.push(path),

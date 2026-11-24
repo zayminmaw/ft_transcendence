@@ -125,6 +125,8 @@ flowchart TD
 
 ### Flow C: Merchant Invoicing & Periodic Settlement
 
+**Draft recovery API:** If the response to `POST /api/billing/invoices` is lost, the same POST can return `409 INVOICE_NOTHING_TO_BILL` after the draft committed. Use `GET /api/billing/invoices?clientId=<id>&periodStart=YYYY-MM-DD&periodEnd=YYYY-MM-DD` to find it, then `GET /api/billing/invoices/:invoiceId` for the original draft and saved item fees. Both reads require `billing.create_invoice` and are scoped to the active company. Period filters are optional exact matches; the list uses `page` and `pageSize` (defaults 1 and 10; sizes 10, 25 or 50) and returns newest first with a total. These reads do not create an invoice or ledger entry.
+
 ```mermaid
 sequenceDiagram
     autonumber
