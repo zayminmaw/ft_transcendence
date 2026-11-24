@@ -205,6 +205,7 @@
 		},
 		"errors": {
 			"company": "Enter a company name with at least 2 characters.",
+			"companyMax": "Enter a company name with no more than 120 characters.",
 			"drivers": "Enter the number of drivers, starting from 1.",
 			"driversMax": "Enter a number up to 100,000."
 		}
@@ -238,7 +239,7 @@
 				},
 				"retention": {
 					"title": "6. Retention & Your Rights",
-					"content": "Audit-trail entries, which record who did what and when, are kept for a fixed period from the time of the action: 365 days for sign-ins and other security events, 180 days for changes to company data and platform administration, and 90 days for records of who viewed the audit trail or activity reports. They cannot be deleted before that period ends. Logistics and financial ledger records are kept for as long as your organization needs them for its operations and accounts. Users have the right to inspect their personal information, request corrections, or request account deactivation through their organization administrator."
+					"content": "Audit-trail entries, which record who did what and when, have minimum retention periods from the time of the action: 365 days for sign-ins and other security events, 180 days for changes to company data and platform administration, and 90 days for records of who viewed the audit trail or activity reports. They cannot be deleted before these periods end and are not automatically deleted afterward. Logistics and financial ledger records are kept for as long as your organization needs them for its operations and accounts. Users have the right to inspect their personal information, request corrections, or request account deactivation through their organization administrator."
 				},
 				"updates": {
 					"title": "7. Updates & Contact",

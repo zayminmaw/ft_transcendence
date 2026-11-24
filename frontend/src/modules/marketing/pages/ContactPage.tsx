@@ -11,7 +11,11 @@ const key = (value: ParseKeys<'marketing'>) => value;
 
 // Messages are translation keys, translated when shown.
 const briefSchema = z.object({
-	company: z.string().trim().min(2, key('contact.errors.company')).max(120),
+	company: z
+		.string()
+		.trim()
+		.min(2, key('contact.errors.company'))
+		.max(120, key('contact.errors.companyMax')),
 	drivers: z
 		.string()
 		.regex(/^[1-9]\d*$/, key('contact.errors.drivers'))
