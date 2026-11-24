@@ -1,7 +1,7 @@
 import { createHmac, randomUUID } from 'node:crypto';
 import { mkdir, open, unlink, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException, StreamableFile } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException, StreamableFile } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Environment } from '../../common/config/environment';
 import { safeEqual } from '../../common/safe-equal';
@@ -23,6 +23,7 @@ const FILE_TYPE_MISMATCH = { message: 'The file is not the type it says it is.',
 // an account (a profile picture) belong to no company: the *AccountFile methods, which never reach a company's file.
 @Injectable()
 export class StorageService {
+  private readonly logger = new Logger(StorageService.name);
   private readonly root: string;
   // Derived from JWT_SECRET, so a link signature can never be mistaken for (or turned into) a token.
   private readonly signingKey: Buffer;
@@ -56,6 +57,12 @@ export class StorageService {
     return this.link(await this.require(organizationId, id));
   }
 
+  // The file's details and a signed link at once, from one lookup: what a record shows for each of its files.
+  async linked(organizationId: string, id: string): Promise<FileView & { url: string }> {
+    const record = await this.require(organizationId, id);
+    return { ...this.view(record), url: this.link(record) };
+  }
+
   async accountFileUrl(id: string): Promise<string> {
     return this.link(await this.require(null, id));
   }
@@ -66,6 +73,16 @@ export class StorageService {
 
   async deleteAccountFile(id: string): Promise<void> {
     await this.remove(await this.require(null, id));
+  }
+
+  // For a file the owning record already let go of (replaced, removed, or never attached): the change is saved, so a
+  // file left behind is logged, not thrown. `organizationId` null is a file of an account.
+  async deleteQuietly(organizationId: string | null, id: string): Promise<void> {
+    try {
+      await this.remove(await this.require(organizationId, id));
+    } catch (error) {
+      this.logger.warn(`Could not delete file ${id}: ${error instanceof Error ? error.message : 'unknown error'}`);
+    }
   }
 
   // For the public signed-link route. Any bad, tampered or expired link gets the same 403. Returns the seconds the

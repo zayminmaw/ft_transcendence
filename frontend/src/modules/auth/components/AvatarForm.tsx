@@ -2,10 +2,10 @@ import { type ChangeEvent, useRef, useState } from 'react';
 import type { ParseKeys } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { ApiError } from '@services/api-client';
+import { fileProblem, IMAGE_TYPES } from '@utils/upload';
 import { useRemoveAvatar, useUploadAvatar } from '../hooks';
 
-// The API's rule: one JPEG, PNG or WebP image of at most 2 MB. Checked here first, so a wrong file is never sent.
-const TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+// The API's rule: one JPEG, PNG or WebP image of at most 2 MB.
 const MAX_BYTES = 2 * 1024 * 1024;
 
 type Message = ParseKeys<'auth'>;
@@ -34,8 +34,11 @@ export function AvatarForm({ hasPicture }: { hasPicture: boolean }) {
 		event.target.value = '';
 		setDone(null);
 		if (!file) return;
-		if (!TYPES.includes(file.type)) return setError('profile.pictureWrongType');
-		if (file.size > MAX_BYTES) return setError('profile.pictureTooLarge');
+		const problem = fileProblem(file, IMAGE_TYPES, MAX_BYTES);
+		if (problem)
+			return setError(
+				problem === 'type' ? 'profile.pictureWrongType' : 'profile.pictureTooLarge',
+			);
 		setError(null);
 		upload.mutate(file, { onSuccess: () => setDone('profile.pictureSaved'), onError: failed });
 	};
@@ -75,7 +78,7 @@ export function AvatarForm({ hasPicture }: { hasPicture: boolean }) {
 				<input
 					ref={input}
 					type="file"
-					accept={TYPES.join(',')}
+					accept={IMAGE_TYPES.join(',')}
 					className="hidden"
 					tabIndex={-1}
 					aria-hidden="true"

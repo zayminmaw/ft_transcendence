@@ -13,7 +13,7 @@ function setup({ failing = false } = {}) {
   };
   const clock = { time: new Date('2026-11-08T10:00:00Z') };
   const recorder = new ActivityRecorder(repository, () => clock.time);
-  return { calls, clock, recorder };
+  return { calls, clock, recorder, repository };
 }
 const writes = (calls, name) => calls.filter(([call]) => call === name);
 
@@ -66,6 +66,20 @@ test('a failing repository never throws, and the write is tried again on the nex
   await recorder.recordVisit('1', '10');
   await recorder.markActive('1', '10');
   assert.equal(writes(calls, 'markActive').length, 2);
+});
+
+test('a delete that fails is tried again on a later connect, and not again once it worked', async () => {
+  const { calls, recorder, repository } = setup();
+  let failures = 1;
+  const purge = repository.purgeBefore;
+  repository.purgeBefore = async (...args) => { if (failures-- > 0) { calls.push(['purgeBefore', ...args]); throw new Error('database down'); } return purge(...args); };
+  await recorder.markActive('1', '10');
+  assert.equal(writes(calls, 'purgeBefore').length, 1);
+  // A member already written today still gives the delete its second chance.
+  await recorder.markActive('1', '10');
+  assert.equal(writes(calls, 'purgeBefore').length, 2);
+  await recorder.markActive('1', '11');
+  assert.equal(writes(calls, 'purgeBefore').length, 2);
 });
 
 test('recordVisit adds a visit for today in UTC', async () => {

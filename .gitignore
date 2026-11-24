@@ -13,3 +13,4 @@ Thumbs.db
 .docker-local/
 .agents/
 .codex/
+en.*.pdf

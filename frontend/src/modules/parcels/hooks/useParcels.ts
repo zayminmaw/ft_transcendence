@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useToast, type TableSort } from '@global-components';
 import { useDebounced } from '@hooks/useDebounced';
 import { tenantQueryKey } from '@utils/query-keys';
-import { apiRequest } from '@services/api-client';
+import { apiRequest, retryServerErrors } from '@services/api-client';
 import { parcelErrorKey } from '../errors';
 import {
 	parcelPath,
@@ -15,6 +15,7 @@ import {
 	type ParcelListParams,
 	type ParcelQueue,
 	type ParcelSortKey,
+	type ParcelTracking,
 } from '../api';
 
 function listPath(params: ParcelListParams) {
@@ -112,12 +113,15 @@ export function useAssignableParcels() {
 
 // One parcel with its history. `enabled: false` loads nothing; isParcelPending is then false.
 export function useParcelDetails(parcelId: string, enabled = true) {
-	const { data, isLoading } = useQuery({
+	const { data, isLoading, refetch } = useQuery({
 		queryKey: tenantQueryKey('parcels', 'details', parcelId),
 		queryFn: () => apiRequest<ParcelDetails>(parcelPath(parcelId)),
 		enabled,
 	});
-	return { parcel: data, isParcelPending: isLoading };
+	const refreshParcel = useCallback(async () => {
+		await refetch({ cancelRefetch: false, throwOnError: true });
+	}, [refetch]);
+	return { parcel: data, isParcelPending: isLoading, refreshParcel };
 }
 
 // The drivers on duty, with their vehicle and today's run. Under the parcels key, so an assignment refreshes the
@@ -138,4 +142,22 @@ export function useParcelFormOptions() {
 		queryFn: () => apiRequest<ParcelFormOptions>('parcels/form-options'),
 	});
 	return { options: data, isOptionsPending: isPending };
+}
+
+// A parcel on the public tracking page, by its waybill number: any company's, without signing in, so not under the
+// tenant key. Waybill numbers are upper case, so "trc-…" and "TRC-…" share one answer.
+export function useParcelTracking(trackingNumber: string | undefined) {
+	const number = trackingNumber?.trim().toUpperCase() ?? '';
+	const { data, error, isLoading, refetch } = useQuery({
+		queryKey: ['tracking', number],
+		queryFn: () => apiRequest<ParcelTracking>(`tracking/${encodeURIComponent(number)}`),
+		enabled: number !== '',
+		retry: retryServerErrors,
+	});
+	return {
+		tracked: data,
+		trackingError: error,
+		isTrackingPending: isLoading,
+		refetchTracking: refetch,
+	};
 }

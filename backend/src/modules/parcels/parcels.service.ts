@@ -1,20 +1,27 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import type { EntityManager } from 'typeorm';
 import type { RequestMeta } from '../../common/context/request-meta';
 import { ID_PATTERN } from '../../common/ids';
 import type { TenantContext } from '../../common/types/authenticated-request';
 import { type AuditAction, AuditService } from '../audit';
 import { PendingCodService } from '../billing';
-import { PARCEL_CLIENT_UNAVAILABLE, PARCEL_DRIVER_UNAVAILABLE, PARCEL_NOT_FOUND, PARCEL_WRONG_STATUS } from './constants';
-import type { AssignParcelDto, CreateParcelDto, ListParcelsQueryDto, StatusMoveDto } from './dto/parcel.dto';
-import { type AuditStep, type ParcelResult, ParcelsRepository, type Refusal } from './parcels.repository';
-import type { ParcelRecord } from './types/parcel';
+import { PermissionsRepository } from '../rbac';
+import { IMAGE_TYPES, StorageService, type UploadedFileInput } from '../storage';
+import {
+  PARCEL_CLIENT_UNAVAILABLE, PARCEL_COD_MISMATCH, PARCEL_DRIVER_UNAVAILABLE, PARCEL_NOT_FOUND, PARCEL_NOT_YOUR_PARCEL,
+  PARCEL_PROOF_KIND, PARCEL_PROOF_MISSING, PARCEL_PROOF_TYPE,
+  PARCEL_WRONG_STATUS, PROOF_FILES, PROOF_KINDS, type ProofKind, TRACKING_NOT_FOUND, TRACKING_PATTERN,
+} from './constants';
+import type { AssignParcelDto, CreateParcelDto, DeliverParcelDto, ListParcelsQueryDto, StatusMoveDto } from './dto/parcel.dto';
+import { type AuditStep, type ParcelResult, ParcelsRepository, type ProofFileIds, type Refusal } from './parcels.repository';
+import type { ParcelDetails, ParcelProof, ParcelRecord, ParcelTracking, ProofFile } from './types/parcel';
 
 // Who is asking: the verified company and role, and the account, for the history and the audit row.
 export interface ParcelsActor {
   tenant: TenantContext;
   userId: string;
   meta: RequestMeta;
+  assignedOnly?: boolean;
 }
 
 const REFUSALS: Record<Refusal, () => Error> = {
@@ -22,6 +29,9 @@ const REFUSALS: Record<Refusal, () => Error> = {
   client_unavailable: () => new BadRequestException(PARCEL_CLIENT_UNAVAILABLE),
   driver_unavailable: () => new ConflictException(PARCEL_DRIVER_UNAVAILABLE),
   wrong_status: () => new ConflictException(PARCEL_WRONG_STATUS),
+  proof_missing: () => new ConflictException(PARCEL_PROOF_MISSING),
+  not_assigned_driver: () => new ForbiddenException(PARCEL_NOT_YOUR_PARCEL),
+  cod_mismatch: () => new ConflictException(PARCEL_COD_MISMATCH),
 };
 
 function savedParcel(result: ParcelResult): ParcelRecord {
@@ -32,6 +42,11 @@ function savedParcel(result: ParcelResult): ParcelRecord {
 // A malformed id names no parcel, like an unknown one.
 function requireId(id: string) {
   if (!ID_PATTERN.test(id)) throw new NotFoundException(PARCEL_NOT_FOUND);
+}
+
+function requireKind(kind: string): ProofKind {
+  if (!Object.hasOwn(PROOF_FILES, kind)) throw new NotFoundException(PARCEL_PROOF_KIND);
+  return kind as ProofKind;
 }
 
 // What the audit trail keeps of a parcel: the client, driver, vehicle and run by id. The allowlist in audit-resources
@@ -50,20 +65,34 @@ export class ParcelsService {
     private readonly parcels: ParcelsRepository,
     private readonly audit: AuditService,
     private readonly pendingCod: PendingCodService,
+    private readonly storage: StorageService,
+    private readonly permissions: PermissionsRepository,
   ) {}
 
-  async list(tenant: TenantContext, query: ListParcelsQueryDto) {
+  async list(tenant: TenantContext, query: ListParcelsQueryDto, assignedUserId?: string) {
     const [page, counts] = await Promise.all([
-      this.parcels.list(tenant.organizationId, query),
-      this.parcels.counts(tenant.organizationId),
+      this.parcels.list(tenant.organizationId, query, assignedUserId),
+      this.parcels.counts(tenant.organizationId, assignedUserId),
     ]);
     return { items: page.items, total: page.total, page: query.page, pageSize: query.pageSize, counts };
   }
 
-  async get(tenant: TenantContext, id: string) {
+  // With signed links to its proof files: whoever may read the parcel may open them.
+  async get(tenant: TenantContext, id: string, userId: string, assignedOnly = false): Promise<ParcelDetails> {
     requireId(id);
-    const parcel = await this.parcels.find(tenant.organizationId, id);
-    if (!parcel) throw new NotFoundException(PARCEL_NOT_FOUND);
+    const stored = await this.parcels.find(tenant.organizationId, id, assignedOnly ? userId : undefined);
+    if (!stored) throw new NotFoundException(PARCEL_NOT_FOUND);
+    const { proofFileIds, ...parcel } = stored;
+    const deliveryScope = await this.permissions.findScope(tenant.roleId, 'parcels.mark_delivered');
+    const canRecordDelivery = deliveryScope === 'all' || (deliveryScope === 'assigned_only' && await this.parcels.isAssignedTo(tenant.organizationId, id, userId));
+    return { ...parcel, canRecordDelivery, proof: await this.proofOf(tenant.organizationId, proofFileIds) };
+  }
+
+  // Open to anyone with the number. Waybill numbers are upper case; the page may send what was typed.
+  async track(trackingNumber: string): Promise<ParcelTracking> {
+    const number = trackingNumber.trim().toUpperCase();
+    const parcel = TRACKING_PATTERN.test(number) ? await this.parcels.track(number) : null;
+    if (!parcel) throw new NotFoundException(TRACKING_NOT_FOUND);
     return parcel;
   }
 
@@ -101,6 +130,21 @@ export class ParcelsService {
     const result = await this.parcels.move(
       actor.tenant.organizationId, id, actor.userId, body, this.withPendingCod(actor, this.auditStep(actor, 'status_change')),
     );
+    const parcel = savedParcel(result);
+    if (result.status === 'updated' && result.discardedFileIds) await this.removeFiles(actor.tenant.organizationId, result.discardedFileIds);
+    return parcel;
+  }
+
+  // The cash is compared as saved ("120.5" is 120.50), so how it was typed doesn't matter.
+  async deliver(actor: ParcelsActor, id: string, body: DeliverParcelDto) {
+    requireId(id);
+    const result = await this.parcels.deliver(
+      actor.tenant.organizationId, id, actor.userId,
+      {
+        collected: Number(body.collectedAmount).toFixed(2), latitude: body.latitude ?? null,
+        longitude: body.longitude ?? null, notes: body.notes ?? null,
+      }, this.auditStep(actor, 'status_change'), actor.assignedOnly,
+    );
     return savedParcel(result);
   }
 
@@ -111,6 +155,63 @@ export class ParcelsService {
       this.withPendingCod(actor, this.auditStep(actor, 'assign')),
     );
     return savedParcel(result);
+  }
+
+  // One file of the proof of a parcel out for delivery, replacing the one before. The file is written first, so it is
+  // removed again if the parcel refuses it (it moved on meanwhile); the replaced file goes once the parcel no longer
+  // points at it.
+  async uploadProof(actor: ParcelsActor, id: string, kind: string, file: UploadedFileInput | undefined): Promise<ProofFile> {
+    requireId(id);
+    const proofKind = requireKind(kind);
+    if (!file) throw new BadRequestException('Choose a file to upload.');
+    if (!PROOF_FILES[proofKind].pdf && !IMAGE_TYPES.includes(file.mimetype)) throw new BadRequestException(PARCEL_PROOF_TYPE);
+    const organizationId = actor.tenant.organizationId;
+    // Not worth writing the file for a parcel that can't take it. Checked again, with the parcel locked, below.
+    const status = await this.parcels.statusOf(organizationId, id, actor.assignedOnly ? actor.userId : undefined);
+    if (status === null) throw new NotFoundException(PARCEL_NOT_FOUND);
+    if (status !== 'out_for_delivery') throw new ConflictException(PARCEL_WRONG_STATUS);
+    const saved = await this.storage.save(organizationId, actor.userId, file);
+    let previousFileId: string | null;
+    try {
+      const result = await this.parcels.attachProof(organizationId, id, proofKind, saved.id, actor.userId, actor.assignedOnly);
+      if (result.status !== 'updated') throw REFUSALS[result.status]();
+      previousFileId = result.previousFileId;
+    } catch (error) {
+      await this.storage.deleteQuietly(organizationId, saved.id);
+      throw error;
+    }
+    const [attached] = await Promise.all([
+      this.proofFile(organizationId, saved.id),
+      previousFileId && this.storage.deleteQuietly(organizationId, previousFileId),
+    ]);
+    return attached;
+  }
+
+  // Takes one file off the proof of a parcel out for delivery and deletes it. Nothing there is fine.
+  async removeProof(actor: ParcelsActor, id: string, kind: string): Promise<void> {
+    requireId(id);
+    const organizationId = actor.tenant.organizationId;
+    const result = await this.parcels.attachProof(organizationId, id, requireKind(kind), null, actor.userId, actor.assignedOnly);
+    if (result.status !== 'updated') throw REFUSALS[result.status]();
+    if (result.previousFileId) await this.storage.deleteQuietly(organizationId, result.previousFileId);
+  }
+
+  private async proofOf(organizationId: string, ids: ProofFileIds): Promise<ParcelProof> {
+    const files = await Promise.all(PROOF_KINDS.map((kind) => {
+      const fileId = ids[kind];
+      // A file whose row is gone shows as missing rather than failing the whole parcel.
+      return fileId === null ? null : this.proofFile(organizationId, fileId).catch(() => null);
+    }));
+    return Object.fromEntries(PROOF_KINDS.map((kind, index) => [kind, files[index]])) as ParcelProof;
+  }
+
+  private async proofFile(organizationId: string, fileId: string): Promise<ProofFile> {
+    const { id, originalName, mimeType, sizeBytes, url } = await this.storage.linked(organizationId, fileId);
+    return { id, name: originalName, mimeType, sizeBytes, url };
+  }
+
+  private async removeFiles(organizationId: string, fileIds: string[]): Promise<void> {
+    await Promise.all(fileIds.map((fileId) => this.storage.deleteQuietly(organizationId, fileId)));
   }
 
   // Runs in the change's transaction before its audit row. A first dispatch puts the parcel's cash in transit; a return

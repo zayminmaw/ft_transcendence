@@ -23,6 +23,10 @@ export const FAILURE_REASONS: readonly FailureReason[] = [
 // Only sorted parcels and failed attempts can be (re)assigned.
 export const ASSIGNABLE_STATUSES: readonly ParcelStatus[] = ['in_hub_sorted', 'failed_attempt'];
 
+// "31.953949, 35.910635": a delivery location, to about 10 cm.
+export const coordinatesLabel = (latitude: number | string, longitude: number | string) =>
+	`${Number(latitude).toFixed(6)}, ${Number(longitude).toFixed(6)}`;
+
 // "Van V-012 · PL-1234", or the driver's own vehicle when they have none checked out.
 export const vehicleLabel = (t: TFunction<'parcels'>, vehicle: ParcelVehicle | null) =>
 	vehicle

@@ -3,15 +3,17 @@ import { tenantQueryKey } from '@utils/query-keys';
 import { apiRequest } from '@services/api-client';
 import {
 	parcelPath,
+	type DeliveryValues,
 	type NewParcelValues,
 	type Parcel,
 	type ParcelDetails,
 	type StatusMove,
 } from '../api';
 
-// Creating waybills, moving them through pickup, hub and failure, and sending them out with a driver. Each change
-// refreshes every parcel answer, also after a refusal: the parcel may have moved on in the meantime. Nobody waits for
-// that refresh (the page usually moves on), and it joins the one the change's live update may have started already.
+// Creating waybills, moving them through pickup, hub and failure, sending them out with a driver, and confirming
+// their delivery. Each change refreshes every parcel answer, also after a refusal: the parcel may have moved on in the
+// meantime. Nobody waits for that refresh (the page usually moves on), and it joins the one the change's live update
+// may have started already.
 export function useParcelMutations() {
 	const queryClient = useQueryClient();
 	const refreshParcels = () => {
@@ -62,6 +64,17 @@ export function useParcelMutations() {
 		onSettled: refreshParcels,
 	});
 
+	// POST /api/parcels/:id/delivery
+	const deliver = useMutation({
+		mutationFn: ({ parcelId, values }: { parcelId: string; values: DeliveryValues }) =>
+			apiRequest<Parcel>(parcelPath(parcelId, '/delivery'), {
+				method: 'POST',
+				body: JSON.stringify(values),
+			}),
+		onSuccess: showSaved,
+		onSettled: refreshParcels,
+	});
+
 	return {
 		createParcel: create.mutate,
 		isCreating: create.isPending,
@@ -70,5 +83,7 @@ export function useParcelMutations() {
 		moveError: move.error,
 		assignParcel: assign.mutate,
 		isAssigning: assign.isPending,
+		deliverParcel: deliver.mutate,
+		isDelivering: deliver.isPending,
 	};
 }

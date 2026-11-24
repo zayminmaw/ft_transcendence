@@ -8,6 +8,7 @@ import { useCompanyPath } from '@hooks/useCompanyPath';
 import { useCan } from '@modules/auth';
 import { formatDate } from '@utils/format';
 import type { ParcelEvent, ParcelStatus } from '../api';
+import { ProofPreview } from '../components/ProofPreview';
 import {
 	MarkInHubDialog,
 	MarkPickedUpDialog,
@@ -15,7 +16,7 @@ import {
 	ReturnToSenderDialog,
 } from '../components/ParcelDialogs';
 import type { ParcelDialogProps } from '../components/ParcelDialogs';
-import { ASSIGNABLE_STATUSES, vehicleLabel } from '../constants';
+import { ASSIGNABLE_STATUSES, coordinatesLabel, vehicleLabel } from '../constants';
 import { useParcelDetails } from '../hooks/useParcels';
 
 // Only this page needs the barcode libraries; imported directly, every page would download them, public ones included.
@@ -78,7 +79,7 @@ export function ParcelDetailsPage() {
 	const companyPath = useCompanyPath();
 	const can = useCan();
 	const [actionOpen, setActionOpen] = useState(false);
-	const { parcel, isParcelPending } = useParcelDetails(parcelId);
+	const { parcel, isParcelPending, refreshParcel } = useParcelDetails(parcelId);
 
 	if (isParcelPending)
 		return <span className="loading loading-spinner" aria-label={t('common.loading')} />;
@@ -94,8 +95,16 @@ export function ParcelDetailsPage() {
 	const returned = parcel.status === 'returned_to_sender';
 	const assignable = can('parcels.dispatch') && ASSIGNABLE_STATUSES.includes(parcel.status);
 	const action = can('parcels.update_status') ? dialogActions[parcel.status] : undefined;
-	const deliverable = can('parcels.mark_delivered') && parcel.status === 'out_for_delivery';
+	const deliverable = parcel.canRecordDelivery && parcel.status === 'out_for_delivery';
 	const reason = parcel.failedReasonCode && t(`failureReasons.${parcel.failedReasonCode}`);
+	const proofFiles = (
+		[
+			[t('deliver.signature'), parcel.proof.signature],
+			[t('deliver.photo'), parcel.proof.photo],
+			[t('deliver.note'), parcel.proof.note],
+		] as const
+	).flatMap(([label, file]) => (file ? [{ label, file }] : []));
+	const location = parcel.deliveryLocation;
 
 	const details = [
 		{ label: t('details.recipient'), value: parcel.recipientName },
@@ -211,6 +220,46 @@ export function ParcelDetailsPage() {
 							))}
 						</dl>
 					</section>
+
+					{parcel.status === 'delivered' && (
+						<section
+							aria-labelledby="parcel-proof-title"
+							className="rounded-box border border-base-300 p-4 md:p-8"
+						>
+							<h2 id="parcel-proof-title" className="text-lg font-semibold">
+								{t('proof.title')}
+							</h2>
+							<dl className="mt-6 grid grid-cols-1 gap-5 md:grid-cols-2">
+								<DetailItem label={t('proof.delivered')}>
+									{parcel.deliveredAt ? time(parcel.deliveredAt) : '—'}
+								</DetailItem>
+								<DetailItem label={t('deliver.cashCollected')} ltr>
+									{parcel.collectedAmount === null
+										? t('proof.notRecorded')
+										: t('common.money', { amount: parcel.collectedAmount })}
+								</DetailItem>
+								<DetailItem label={t('deliver.location')} ltr>
+									{location
+										? coordinatesLabel(location.latitude, location.longitude)
+										: t('proof.notShared')}
+								</DetailItem>
+							</dl>
+							<div className="mt-6 grid grid-cols-1 gap-5 md:grid-cols-2">
+								{proofFiles.map(({ label, file }) => (
+									<figure key={label} className="flex min-w-0 flex-col gap-2">
+										<figcaption className="text-sm font-medium">
+											{label}
+										</figcaption>
+										<ProofPreview
+											label={label}
+											saved={file}
+											onRefresh={refreshParcel}
+										/>
+									</figure>
+								))}
+							</div>
+						</section>
+					)}
 
 					<section
 						aria-labelledby="parcel-history-title"

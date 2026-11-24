@@ -108,11 +108,18 @@ export class AuthController {
       this.members.listActiveWorkspaces(userId),
       this.platformRoles.hasPlatformAccess(userId),
     ]);
-    const granted = await this.permissions.grantedCodes([...new Set(workspaces.map(({ role }) => role.code))]);
+    const roleCodes = [...new Set(workspaces.map(({ role }) => role.code))];
+    const [granted, assigned] = await Promise.all([
+      this.permissions.grantedCodes(roleCodes), this.permissions.grantedCodes(roleCodes, 'assigned_only'),
+    ]);
     return {
       user: await this.publicUser(user),
       // Each company with the person's role there and what that role allows, so the interface shows only that.
-      workspaces: workspaces.map((workspace) => ({ ...workspace, permissions: granted[workspace.role.code] ?? [] })),
+      workspaces: workspaces.map((workspace) => {
+        // These parcel routes enforce ownership; other modules still require full scope.
+        const assignedPermissions = (assigned[workspace.role.code] ?? []).filter((code) => ['parcels.view', 'parcels.mark_delivered'].includes(code));
+        return { ...workspace, permissions: granted[workspace.role.code] ?? [], ...(assignedPermissions.length ? { assignedPermissions } : {}) };
+      }),
       platformAccess,
       mustChangePassword: user.mustChangePassword === true,
     };

@@ -3,6 +3,7 @@
 	"pageTitle": "Activity",
 	"pageDescription": "How much your company has been using the system and what it changed. A member counts as active on a day when they had the company open. These are counts only, with no names.",
 	"loading": "Loading activity…",
+	"updating": "Loading the new period…",
 	"loadFailed": "Couldn't load the activity numbers",
 	"retry": "Try again",
 	"noAccess": "You don't have access to the activity page.",
@@ -30,7 +31,8 @@
 		"title": "Active members each day",
 		"summary": "Bars of active members for each day, busiest day {{max}}",
 		"day": "Day",
-		"members": "Active members"
+		"members": "Active members",
+		"showTable": "Show the numbers for each day"
 	},
 	"byRole": {
 		"title": "Active members by role",

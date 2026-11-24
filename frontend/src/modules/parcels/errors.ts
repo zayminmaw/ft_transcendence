@@ -7,6 +7,11 @@ const MESSAGES = {
 	PARCEL_CLIENT_UNAVAILABLE: 'errors.clientUnavailable',
 	PARCEL_DRIVER_UNAVAILABLE: 'errors.driverUnavailable',
 	PARCEL_WRONG_STATUS: 'errors.wrongStatus',
+	PARCEL_COD_MISMATCH: 'errors.codMismatch',
+	PARCEL_NOT_YOUR_PARCEL: 'errors.notYours',
+	PARCEL_PROOF_MISSING: 'errors.proofMissing',
+	PARCEL_PROOF_TYPE: 'errors.proofType',
+	PARCEL_PROOF_KIND: 'errors.proofKind',
 } as const satisfies Record<string, ParseKeys<'parcels'>>;
 
 export const parcelErrorKey = (error: unknown) => errorKey(MESSAGES, error);
