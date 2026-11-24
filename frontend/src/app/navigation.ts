@@ -4,7 +4,7 @@ import type { NavigationGroup } from '@global-components';
 // What each module's sidebar link and pages need in the open company (ERP outline section 5). Hiding a link is not
 // authorization: the API checks every request.
 export const MODULE_ACCESS = {
-	parcels: { permission: 'parcels.view', label: 'workspace.nav.parcels' },
+	parcels: { permission: 'parcels.view', label: 'workspace.nav.parcels', allowAssigned: true },
 	clients: { permission: 'clients.view', label: 'workspace.nav.clients' },
 	drivers: { permission: 'drivers.view', label: 'workspace.nav.drivers' },
 	assets: { permission: 'assets.view', label: 'workspace.nav.assets' },
@@ -20,13 +20,13 @@ type Module = keyof typeof MODULE_ACCESS;
 export function getTenantNavigation(
 	t: TFunction,
 	home: string,
-	can: (permission: string) => boolean,
+	can: (permission: string, allowAssigned?: boolean) => boolean,
 ): NavigationGroup[] {
 	const links = (modules: Module[]) =>
 		modules.map((module) => ({
 			to: `${home}/${module}`,
 			label: t(MODULE_ACCESS[module].label),
-			hidden: !can(MODULE_ACCESS[module].permission),
+			hidden: !can(MODULE_ACCESS[module].permission, module === 'parcels'),
 		}));
 	return [
 		{

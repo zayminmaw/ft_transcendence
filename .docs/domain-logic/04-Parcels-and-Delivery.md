@@ -62,7 +62,7 @@ stateDiagram-v2
 | `pickup_scheduled`| `picked_up` | `PATCH /api/parcels/:id/status` | Courier takes custody at merchant address. Inserts pickup event with actor ID. |
 | `picked_up` | `in_hub_sorted` | `PATCH /api/parcels/:id/status` | Package scanned at depot. Records `hub_location`. Package sorted for zone. |
 | `in_hub_sorted` | `out_for_delivery`| `POST /api/parcels/:id/dispatch` | Driver must be active, license valid, background passed, and duty status `available`. Vehicle must not be decommissioned. Increments merchant `pending_cod_balance`. |
-| `out_for_delivery`| `delivered` | `POST /api/parcels/:id/mark-delivered` | Signature and/or doorstep photo uploaded to `storage_files`. GPS ping captured. Records completion timestamp `delivered_at`. |
+| `out_for_delivery`| `delivered` | `POST /api/parcels/:id/delivery` | Signature and doorstep photo already uploaded (`POST /api/parcels/:id/proof/:kind`); optional delivery note. GPS ping captured when the device shares it. Records completion timestamp `delivered_at`. |
 | `out_for_delivery`| `failed_attempt` | `POST /api/parcels/:id/fail-attempt` | Valid `failed_reason_code` provided. Increments `delivery_attempt_count` by 1. |
 | `failed_attempt` | `out_for_delivery`| `POST /api/parcels/:id/dispatch` | Reattempt approved by dispatcher. `delivery_attempt_count` preserved. |
 | `failed_attempt` | `in_hub_sorted` | `PATCH /api/parcels/:id/status` | Driver returns un-delivered parcel to depot at end of shift. |
@@ -143,6 +143,12 @@ sequenceDiagram
 
 ### Flow C: Doorstep Delivery Execution & Proof of Delivery (POD)
 
+The delivery request requires `collectedAmount`, explicitly entered as the actual collection (including `0.00` for a zero-COD parcel). The transaction refuses any amount other than the full COD due. It saves `parcels.collected_amount` together with the delivery, event and audit row; this records collection without verifying the cashier handover. Existing deliveries without this record stay NULL.
+
+Assigned-only `parcels.view` and `parcels.mark_delivered` grants are checked against the company's driver employee linked to the signed-in user. Reads, list totals and status counts are scoped to that driver's parcels; proof upload, removal and delivery confirmation recheck ownership under the parcel lock. An unlinked or different driver cannot use the workflow. Details return `canRecordDelivery` for the UI action.
+
+For full-scope delivery grants, proof upload, replacement and deletion use the same linked-driver check as delivery confirmation: a linked driver may change only their own parcel's proof. Permitted non-driver staff may assist on any parcel in the company.
+
 ```mermaid
 sequenceDiagram
     autonumber
@@ -174,6 +180,8 @@ sequenceDiagram
     API->>DB: COMMIT TRANSACTION
     API-->>App: 200 OK (Delivery Confirmed)
 ```
+
+> **As built (`1793577600000-DeliveryProof`).** The diagram above is the original design. The implementation uploads each file to the parcel itself while it is out for delivery: `POST /api/parcels/:id/proof/:kind` (`kind` = `signature`, `photo` or `note`; one file per kind, a new one replaces and deletes the old; `DELETE` removes it). Signature and photo must be JPEG/PNG/WebP; the note may also be a PDF. `POST /api/parcels/:id/delivery` (`{ latitude?, longitude?, notes? }`) then needs the signature and photo, sets `delivered`, and records the event and audit row. All three routes need `parcels.mark_delivered`. The parcel keeps file ids (`signature_file_id`, `doorstep_photo_file_id`, `delivery_note_file_id`), never URLs. A failed attempt drops and deletes unconfirmed proof; once delivered, the proof can't change. `amount_collected` is not captured yet (DEC-11), and couriers can't use these routes until the `assigned_only` ownership rule exists.
 
 #### Proof of Delivery (POD) Evidence Rules:
 - **Storage Isolation:** POD images and signature files are saved via `StorageService` under tenant-partitioned disk folders (`<STORAGE_DIR>/<organization_id>/<uuid>`).

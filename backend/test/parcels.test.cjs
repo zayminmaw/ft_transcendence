@@ -1,8 +1,12 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
+const { mkdtemp, readdir, rm } = require('node:fs/promises');
+const { tmpdir } = require('node:os');
+const { join } = require('node:path');
 const request = require('supertest');
 const { ParcelsModule } = require('../dist/modules/parcels');
 const { ParcelsRepository } = require('../dist/modules/parcels/parcels.repository');
+const { CodRepository } = require('../dist/modules/billing/cod.repository');
 const { LedgerHistoryRepository } = require('../dist/modules/billing/ledger-history.repository');
 const { PayoutsRepository } = require('../dist/modules/billing/payouts.repository');
 const { InvoicesRepository } = require('../dist/modules/billing/invoices.repository');
@@ -10,6 +14,9 @@ const { hashPassword } = require('../dist/modules/users/password');
 const { PASSWORD, as, createAuthApp, createFakeStore, tokenFor } = require('./helpers/auth-app.cjs');
 
 process.env.NODE_ENV = 'test';
+// Only the first bytes of each type: StorageService checks that a file starts the way its type does.
+const PNG = Buffer.from('89504e470d0a1a0a0000000d49484452', 'hex');
+const PDF = Buffer.from('%PDF-1.7\n');
 
 // A DTO as the values it holds: its left-out fields are undefined keys.
 const sent = (dto) => Object.fromEntries(Object.entries(dto).filter(([, value]) => value !== undefined));
@@ -30,7 +37,7 @@ function fakeParcels() {
   const calls = [];
   const next = {};
   const answer = (name, fallback) => (...args) => {
-    calls.push([name, ...args.filter((arg) => typeof arg !== 'function')]);
+    calls.push([name, ...args.filter((arg) => typeof arg !== 'function' && arg !== undefined)]);
     return Promise.resolve(name in next ? next[name] : fallback);
   };
   return {
@@ -39,13 +46,16 @@ function fakeParcels() {
     repository: {
       list: answer('list', { items: [parcelRow('1')], total: 1 }),
       counts: answer('counts', { statuses: { pickup_scheduled: 1 }, driversOut: 0 }),
-      find: answer('find', { ...parcelRow('1'), events: [] }),
+      find: answer('find', { ...parcelRow('1'), events: [], proofFileIds: { signature: null, photo: null, note: null } }),
+      isAssignedTo: answer('isAssignedTo', true),
       formOptions: answer('formOptions', { clients: [], zones: [] }),
       dispatchDrivers: answer('dispatchDrivers', []),
       create: answer('create', { status: 'created', parcel: parcelRow('2') }),
       move: answer('move', { status: 'updated', parcel: parcelRow('1', { status: 'picked_up' }) }),
-      deliver: answer('deliver', { status: 'updated', parcel: parcelRow('1', { status: 'delivered' }) }),
       assign: answer('assign', { status: 'updated', parcel: parcelRow('1', { status: 'out_for_delivery' }) }),
+      statusOf: answer('statusOf', 'out_for_delivery'),
+      attachProof: answer('attachProof', { status: 'updated', previousFileId: null }),
+      deliver: answer('deliver', { status: 'updated', parcel: parcelRow('1', { status: 'delivered' }) }),
       track: answer('track', {
         trackingNumber: 'TRC-ABCDEFGH1', status: 'picked_up', company: 'Meridian',
         events: [{ status: 'pickup_scheduled', at: new Date('2026-11-01T08:00:00Z') }, { status: 'picked_up', at: new Date('2026-11-01T09:00:00Z') }],
@@ -60,8 +70,12 @@ const newParcel = (values = {}) => ({
 });
 
 // Meridian (company 1): dana is a dispatcher (every parcel permission), sami a hub sorter (view and status), farah in
-// finance (view only), omar has no parcel permission. Harbor (company 2): karim is a dispatcher there.
+// finance (view only), omar has no parcel permission. Harbor (company 2): karim is a dispatcher there. Each app keeps
+// its files in its own folder.
 async function parcelsApp(t) {
+  const storage = await mkdtemp(join(tmpdir(), 'transcend-parcels-'));
+  t.after(() => rm(storage, { recursive: true, force: true }));
+  process.env.STORAGE_DIR = storage;
   const passwordHash = await hashPassword(PASSWORD);
   const store = createFakeStore();
   const parcels = fakeParcels();
@@ -69,15 +83,20 @@ async function parcelsApp(t) {
   store.rolePermissions.set('2', new Set(['parcels.view', 'parcels.update_status']));
   store.rolePermissions.set('3', new Set(['parcels.view']));
   store.rolePermissions.set('4', new Set(['drivers.view']));
-  const people = [['10', 'dana', '1', '1'], ['11', 'sami', '1', '2'], ['12', 'farah', '1', '3'], ['13', 'omar', '1', '4'], ['14', 'karim', '2', '1']];
+  store.assignedRolePermissions.set('5', new Set(['parcels.view', 'parcels.mark_delivered', 'parcels.update_status', 'drivers.view_earnings']));
+  const people = [['10', 'dana', '1', '1'], ['11', 'sami', '1', '2'], ['12', 'farah', '1', '3'], ['13', 'omar', '1', '4'], ['14', 'karim', '2', '1'], ['15', 'leen', '1', '5']];
   for (const [id, username, organizationId, roleId] of people) {
     store.users.push({ id, username, email: `${username}@demo.example.test`, passwordHash, isActive: true, lastLoginAt: null });
     store.memberships.push({ organizationId, userId: id, roleId, isActive: true });
   }
-  const { server } = await createAuthApp(t, store, { imports: [ParcelsModule], overrides: [[ParcelsRepository, parcels.repository], [LedgerHistoryRepository, {}], [PayoutsRepository, {}], [InvoicesRepository, {}]] });
+  const { server } = await createAuthApp(t, store, {
+    imports: [ParcelsModule],
+    overrides: [[ParcelsRepository, parcels.repository], [CodRepository, {}], [LedgerHistoryRepository, {}], [PayoutsRepository, {}], [InvoicesRepository, {}]],
+  });
   const tokens = {};
   for (const [, username] of people) tokens[username] = await tokenFor(server, username);
-  return { server, parcels, tokens };
+  const companyFiles = () => readdir(join(storage, '1')).catch(() => []);
+  return { server, store, parcels, tokens, companyFiles };
 }
 
 test('the list: company scoped, with defaults, counts and validated filters', async (t) => {
@@ -177,6 +196,82 @@ test('an assignment names a driver; one off duty or elsewhere is a conflict', as
   assert.equal((await assign({ driverId: '3' }).expect(409)).body.code, 'PARCEL_DRIVER_UNAVAILABLE');
 });
 
+test('proof of delivery needs parcels.mark_delivered', async (t) => {
+  const { server, tokens } = await parcelsApp(t);
+  await as(request(server).post('/api/parcels/1/proof/photo').attach('file', PNG, { filename: 'door.png', contentType: 'image/png' }), tokens.sami).expect(403);
+  await as(request(server).delete('/api/parcels/1/proof/photo'), tokens.sami).expect(403);
+  await as(request(server).post('/api/parcels/1/delivery').send({}), tokens.sami).expect(403);
+});
+
+test('a proof file is saved in the company, attached to the parcel and answered with a signed link', async (t) => {
+  const { server, store, parcels, tokens, companyFiles } = await parcelsApp(t);
+  const upload = (kind, content = PNG, options = { filename: 'door.png', contentType: 'image/png' }) =>
+    as(request(server).post(`/api/parcels/1/proof/${kind}`).attach('file', content, options), tokens.dana);
+  const photo = (await upload('photo').expect(201)).body;
+  const [file] = store.storageFiles;
+  assert.deepEqual([file.organizationId, file.uploadedByUserId], ['1', '10']);
+  assert.deepEqual([photo.id, photo.name, photo.mimeType, photo.sizeBytes], [file.id, 'door.png', 'image/png', PNG.length]);
+  assert.match(photo.url, new RegExp(`^/api/storage/files/${file.id}\\?exp=\\d+&sig=`));
+  assert.deepEqual(parcels.calls.find(([call]) => call === 'attachProof').slice(1), ['1', '1', 'photo', file.id, '10', false]);
+
+  // A PDF only as the delivery note; other types never reach the parcel.
+  assert.equal((await upload('signature', PDF, { filename: 'sign.pdf', contentType: 'application/pdf' }).expect(400)).body.code, 'PARCEL_PROOF_TYPE');
+  await upload('note', PDF, { filename: 'note.pdf', contentType: 'application/pdf' }).expect(201);
+  await upload('note', Buffer.from('<html>'), { filename: 'note.html', contentType: 'text/html' }).expect(400);
+  await upload('note', Buffer.from('<html>'), { filename: 'note.pdf', contentType: 'application/pdf' }).expect(400);
+  await upload('receipt').expect(404);
+  await as(request(server).post('/api/parcels/1/proof/photo'), tokens.dana).expect(400);
+  assert.equal((await companyFiles()).length, 2);
+});
+
+test('a replaced, refused or removed proof file is deleted', async (t) => {
+  const { server, store, parcels, tokens, companyFiles } = await parcelsApp(t);
+  const upload = () => as(request(server).post('/api/parcels/1/proof/photo').attach('file', PNG, { filename: 'door.png', contentType: 'image/png' }), tokens.dana);
+  const first = (await upload().expect(201)).body;
+  parcels.next.attachProof = { status: 'updated', previousFileId: first.id };
+  const second = (await upload().expect(201)).body;
+  assert.deepEqual(store.storageFiles.map((file) => file.id), [second.id]);
+
+  // The parcel moved on between the check and the save: the new file goes again.
+  parcels.next.attachProof = { status: 'wrong_status' };
+  assert.equal((await upload().expect(409)).body.code, 'PARCEL_WRONG_STATUS');
+  assert.deepEqual(store.storageFiles.map((file) => file.id), [second.id]);
+  // Already delivered: nothing is written at all.
+  parcels.next.statusOf = 'delivered';
+  await upload().expect(409);
+  parcels.next.statusOf = null;
+  await upload().expect(404);
+  assert.equal((await companyFiles()).length, 1);
+
+  parcels.next.attachProof = { status: 'updated', previousFileId: second.id };
+  await as(request(server).delete('/api/parcels/1/proof/photo'), tokens.dana).expect(204);
+  assert.deepEqual(parcels.calls.filter(([call]) => call === 'attachProof').at(-1).slice(1), ['1', '1', 'photo', null, '10', false]);
+  assert.deepEqual([store.storageFiles.length, (await companyFiles()).length], [0, 0]);
+  await as(request(server).delete('/api/parcels/1/proof/stamp'), tokens.dana).expect(404);
+});
+
+test('the details link every proof file; a delivery takes the location as a pair and the notes', async (t) => {
+  const { server, parcels, tokens } = await parcelsApp(t);
+  const photo = (await as(request(server).post('/api/parcels/1/proof/photo').attach('file', PNG, { filename: 'door.png', contentType: 'image/png' }), tokens.dana).expect(201)).body;
+  parcels.next.find = { ...parcelRow('1'), events: [], proofFileIds: { signature: null, photo: photo.id, note: null } };
+  const details = (await as(request(server).get('/api/parcels/1'), tokens.farah).expect(200)).body;
+  assert.deepEqual([details.proof.signature, details.proof.note, details.proof.photo.id, details.proof.photo.url], [null, null, photo.id, photo.url]);
+  assert.equal('proofFileIds' in details, false);
+
+  const deliver = (body) => as(request(server).post('/api/parcels/1/delivery').send(body), tokens.dana);
+  for (const bad of [{ latitude: 31.95 }, { longitude: 35.9 }, { latitude: 91, longitude: 0 }, { latitude: 0, longitude: 181 }, { latitude: '31', longitude: '35' }]) {
+    await deliver({ collectedAmount: '120.00', ...bad }).expect(400);
+  }
+  assert.equal((await deliver({ collectedAmount: '120.00', latitude: 31.951, longitude: 35.923, notes: ' Left with the neighbour ' }).expect(200)).body.status, 'delivered');
+  await deliver({ collectedAmount: '120.00' }).expect(200);
+  assert.deepEqual(parcels.calls.filter(([call]) => call === 'deliver').map((call) => call.slice(1)), [
+    ['1', '1', '10', { collected: '120.00', latitude: 31.951, longitude: 35.923, notes: 'Left with the neighbour' }, false],
+    ['1', '1', '10', { collected: '120.00', latitude: null, longitude: null, notes: null }, false],
+  ]);
+  parcels.next.deliver = { status: 'proof_missing' };
+  assert.equal((await deliver({ collectedAmount: '120.00' }).expect(409)).body.code, 'PARCEL_PROOF_MISSING');
+});
+
 test('tracking is open to anyone with the number, answers only status and times, and is rate limited', async (t) => {
   const { server, parcels, tokens } = await parcelsApp(t);
   // No account, no company: the number alone. It is looked up as the waybill prints it.
@@ -213,7 +308,7 @@ test('a delivery names the cash collected; a mismatch, another driver\'s parcel 
   const done = (await deliver({ collectedAmount: ' 120.5 ', notes: ' Left with the guard ' }).expect(200)).body;
   assert.equal(done.status, 'delivered');
   // The cash goes down as saved, and the company and the actor come from the token, never from the body.
-  assert.deepEqual(parcels.calls.find(([call]) => call === 'deliver').slice(1), ['1', '1', '10', { collected: '120.50', notes: 'Left with the guard' }]);
+  assert.deepEqual(parcels.calls.find(([call]) => call === 'deliver').slice(1), ['1', '1', '10', { collected: '120.50', latitude: null, longitude: null, notes: 'Left with the guard' }, false]);
   await deliver({ collectedAmount: '120.00' }, 'abc').expect(404);
   parcels.next.deliver = { status: 'cod_mismatch' };
   assert.equal((await deliver({ collectedAmount: '100.00' }).expect(409)).body.code, 'PARCEL_COD_MISMATCH');
@@ -223,4 +318,68 @@ test('a delivery names the cash collected; a mismatch, another driver\'s parcel 
   assert.equal((await deliver({ collectedAmount: '120.00' }).expect(409)).body.code, 'PARCEL_WRONG_STATUS');
   parcels.next.deliver = { status: 'not_found' };
   assert.equal((await deliver({ collectedAmount: '120.00' }).expect(404)).body.code, 'PARCEL_NOT_FOUND');
+});
+
+test('assigned-only couriers can read, upload, remove and confirm their own parcel, with scoped list and counts', async (t) => {
+  const { server, parcels, tokens } = await parcelsApp(t);
+  const get = await as(request(server).get('/api/parcels/1'), tokens.leen).expect(200);
+  assert.equal(get.body.canRecordDelivery, true);
+  assert.deepEqual(parcels.calls.find(([name]) => name === 'find'), ['find', '1', '1', '15']);
+  await as(request(server).get('/api/parcels'), tokens.leen).expect(200);
+  assert.equal(parcels.calls.find(([name]) => name === 'list').at(-1), '15');
+  assert.deepEqual(parcels.calls.find(([name]) => name === 'counts'), ['counts', '1', '15']);
+  await as(request(server).post('/api/parcels/1/proof/photo'), tokens.leen).attach('file', PNG, { filename: 'door.png', contentType: 'image/png' }).expect(201);
+  assert.deepEqual(parcels.calls.find(([name]) => name === 'statusOf'), ['statusOf', '1', '1', '15']);
+  assert.deepEqual(parcels.calls.find(([name]) => name === 'attachProof').slice(-2), ['15', true]);
+  await as(request(server).delete('/api/parcels/1/proof/photo'), tokens.leen).expect(204);
+  await as(request(server).post('/api/parcels/1/delivery').send({ collectedAmount: '120.00' }), tokens.leen).expect(200);
+  assert.equal(parcels.calls.find(([name]) => name === 'deliver').at(-1), true);
+  // A partial grant never opens other tenant-wide routes.
+  await as(request(server).get('/api/parcels/dispatch-drivers'), tokens.leen).expect(403);
+  await as(request(server).get('/api/parcels/form-options'), tokens.leen).expect(403);
+  await as(request(server).post('/api/parcels/1/assignment').send({ driverId: '3' }), tokens.leen).expect(403);
+});
+
+test('other drivers, unlinked couriers and foreign parcels get no details or proof access', async (t) => {
+  const { server, parcels, tokens, companyFiles } = await parcelsApp(t);
+  parcels.next.isAssignedTo = false;
+  for (const id of ['1', '999999', 'abc']) {
+    await as(request(server).get(`/api/parcels/${id}`), tokens.leen).expect(404);
+    await as(request(server).post(`/api/parcels/${id}/proof/photo`), tokens.leen).attach('file', PNG, { filename: 'door.png', contentType: 'image/png' }).expect(404);
+    await as(request(server).delete(`/api/parcels/${id}/proof/photo`), tokens.leen).expect(404);
+    await as(request(server).post(`/api/parcels/${id}/delivery`).send({ collectedAmount: '120.00' }), tokens.leen).expect(404);
+  }
+  await as(request(server).get('/api/parcels/1'), tokens.leen, '2').expect(403);
+  assert.equal(parcels.calls.some(([name]) => ['find', 'statusOf', 'attachProof', 'deliver'].includes(name)), false);
+  assert.deepEqual(await companyFiles(), []);
+});
+
+test('reassignment during an upload refuses attachment and deletes the newly saved file', async (t) => {
+  const { server, store, parcels, tokens, companyFiles } = await parcelsApp(t);
+  parcels.next.attachProof = { status: 'not_found' };
+  await as(request(server).post('/api/parcels/1/proof/photo'), tokens.leen).attach('file', PNG, { filename: 'door.png', contentType: 'image/png' }).expect(404);
+  assert.deepEqual(await companyFiles(), []);
+  assert.equal(store.storageFiles.length, 0);
+});
+
+test('/me separates usable assigned parcel permissions from all-scope and unsupported partial grants', async (t) => {
+  const { server, store, tokens } = await parcelsApp(t);
+  store.roles.push({ id: '5', code: 'courier', name: 'Courier' });
+  store.workspaces.set('15', [{ id: '1', slug: 'meridian', name: 'Meridian', role: { code: 'courier', name: 'Courier' } }]);
+  const me = (await as(request(server).get('/api/auth/me'), tokens.leen).expect(200)).body;
+  assert.deepEqual(me.workspaces[0].permissions, []);
+  assert.deepEqual(me.workspaces[0].assignedPermissions, ['parcels.mark_delivered', 'parcels.view']);
+});
+
+test('a full-scope driver refusal preserves the original proof and removes a refused replacement upload', async (t) => {
+  const { server, store, parcels, tokens, companyFiles } = await parcelsApp(t);
+  const upload = () => as(request(server).post('/api/parcels/1/proof/photo'), tokens.dana).attach('file', PNG, { filename: 'door.png', contentType: 'image/png' });
+  const first = (await upload().expect(201)).body;
+  // The repository resolves this full-scope caller to another driver, exactly as the delivery step does.
+  parcels.next.attachProof = { status: 'not_assigned_driver' };
+  assert.equal((await upload().expect(403)).body.code, 'PARCEL_NOT_YOUR_PARCEL');
+  assert.equal((await as(request(server).delete('/api/parcels/1/proof/photo'), tokens.dana).expect(403)).body.code, 'PARCEL_NOT_YOUR_PARCEL');
+  assert.deepEqual(store.storageFiles.map((file) => file.id), [first.id]);
+  assert.equal((await companyFiles()).length, 1);
+  assert.deepEqual(parcels.calls.filter(([name]) => name === 'attachProof').map((call) => call.slice(-2)), [['10', false], ['10', false], ['10', false]]);
 });

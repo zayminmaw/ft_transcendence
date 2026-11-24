@@ -105,6 +105,7 @@ export const AUDIT_RESOURCES: Record<string, AuditResource> = {
 			isFragile: 'plain',
 			deliveryFee: 'plain',
 			codAmount: 'plain',
+			collectedAmount: 'plain',
 			driverId: 'plain',
 			vehicleId: 'plain',
 			runId: 'plain',
@@ -198,6 +199,12 @@ export const AUDIT_RESOURCES: Record<string, AuditResource> = {
 	audit_log: { category: 'access', fields: {} },
 	// Someone opened the activity insights page, or was refused. Only counts are shown there, so no fields are stored.
 	activity_insight: { category: 'access', fields: {} },
+	// A driver's cash handover, checked by a cashier. The amounts are the company's own money figures.
+	settlement: {
+		category: 'data',
+		fields: { totalCodExpected: 'plain', totalCashDropped: 'plain', discrepancyAmount: 'plain', settlementStatus: 'plain' },
+		viewPermission: 'billing.view',
+	},
 };
 
 // The Drivers API's field groups (personal, payroll, compliance, earnings) by the names the snapshot uses, so the audit

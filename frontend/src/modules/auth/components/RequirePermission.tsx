@@ -11,10 +11,12 @@ import { useCan, useCurrentWorkspace } from '../hooks';
 // `label` is the page's name as the sidebar shows it, e.g. 'workspace.nav.parcels'.
 export function RequirePermission({
 	permission,
+	allowAssigned = false,
 	label,
 	children,
 }: {
 	permission: string;
+	allowAssigned?: boolean;
 	label: ParseKeys<'common'>;
 	children: ReactNode;
 }) {
@@ -22,7 +24,7 @@ export function RequirePermission({
 	const can = useCan();
 	const companyPath = useCompanyPath();
 	const company = useCurrentWorkspace()?.name ?? '';
-	if (can(permission)) return children;
+	if (can(permission, allowAssigned)) return children;
 	return (
 		<ModulePage
 			title={t('workspace.noAccess.title')}

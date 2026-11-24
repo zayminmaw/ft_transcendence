@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, Logger, type OnModuleInit, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable, type OnModuleInit, UnauthorizedException } from '@nestjs/common';
 import { randomBytes } from 'node:crypto';
 import { StorageService, type UploadedFileInput } from '../storage';
 import { hashPassword, PASSWORD_RULE_MESSAGE, passwordProblems, type User, UsersRepository, verifyPassword } from '../users';
@@ -13,7 +13,6 @@ const SESSION_EXPIRED = { message: 'Your session has ended. Log in again.', code
 @Injectable()
 export class AuthService implements OnModuleInit {
   private dummyHash = '';
-  private readonly logger = new Logger(AuthService.name);
 
   constructor(
     private readonly users: UsersRepository,
@@ -119,9 +118,7 @@ export class AuthService implements OnModuleInit {
   }
 
   // The picture is already decided, so a file left on disk must not turn the answer into an error.
-  private async removeFile(id: string): Promise<void> {
-    await this.storage.deleteAccountFile(id).catch((error: unknown) => {
-      this.logger.warn(`Could not delete account file ${id}: ${error instanceof Error ? error.message : 'unknown error'}`);
-    });
+  private removeFile(id: string): Promise<void> {
+    return this.storage.deleteQuietly(null, id);
   }
 }
