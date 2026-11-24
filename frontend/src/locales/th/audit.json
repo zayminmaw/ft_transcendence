@@ -93,6 +93,7 @@
 		"asset": "ทรัพย์สิน"
 	},
 	"fields": {
+		"collectedAmount": "ยอดเงินที่เก็บได้",
 		"status": "สถานะ",
 		"isActive": "ใช้งานอยู่",
 		"role": "บทบาท",

@@ -98,6 +98,7 @@
 		"asset": "الأصل"
 	},
 	"fields": {
+		"collectedAmount": "المبلغ المحصّل",
 		"status": "الحالة",
 		"isActive": "نشط",
 		"role": "الدور",

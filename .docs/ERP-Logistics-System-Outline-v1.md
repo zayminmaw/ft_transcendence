@@ -105,6 +105,7 @@ To properly handle different operational responsibilities, personnel records sha
   * Assigned Driver, Assigned Vehicle, and Dispatch Run ID
   * Parcel Status: `Pickup Scheduled` → `Picked Up` → `In Hub / Sorted` → `Out for Delivery` → `Delivered` → `Failed Attempt` → `Returned to Sender (RTS)`
   * Proof of Delivery (POD): Signature capture, Doorstep Photo, Delivery Geolocation ping, and Failure Reason Codes
+  * Delivery cash policy: enter the actual COD collected, including explicit zero for a zero-COD parcel. Delivery requires the exact full COD due; shortfalls and overpayments cannot complete delivery. The confirmed collection is stored with the delivery and audit trail for reconciliation; earlier deliveries without a collection record remain unknown.
 
 ### E. Invoices & Client Balances Page
 
