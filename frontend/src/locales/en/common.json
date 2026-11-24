@@ -51,10 +51,7 @@
 			"drivers": "Drivers",
 			"assets": "Fleet & assets",
 			"administration": "Administration",
-			"billing": "Billing & COD",
-			"staff": "Staff",
 			"rbac": "People & access",
-			"organizations": "Organization settings",
 			"contacts": "Contacts"
 		},
 		"overview": {
