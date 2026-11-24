@@ -36,6 +36,7 @@ async function auditApp(t) {
 		row('4', { userId: '12', actorName: 'dana', module: 'parcels', resourceType: 'parcel', recordId: '5' }),
 		row('5', { module: 'platform', resourceType: 'tenant', category: 'platform', userId: '14', oldValues: { name: 'Old' }, newValues: { name: 'New' } }),
 		row('6', { module: 'audit', action: 'read', resourceType: 'audit_log', recordId: null, resourceLabel: null, category: 'access', oldValues: null, newValues: null }),
+		row('20', { module: 'insights', action: 'read', resourceType: 'activity_insight', recordId: null, resourceLabel: null, category: 'access', oldValues: null, newValues: null }),
 	);
 	return { store, ...(await createAuthApp(t, store)) };
 }
@@ -101,6 +102,26 @@ test('reads of the trail are kept out of the log unless asked for', async (t) =>
 	assert.equal(all.items.some((item) => item.id === '6'), false);
 	const reads = (await as(request(server).get('/api/audit-logs?module=audit'), lina).expect(200)).body;
 	assert.deepEqual(reads.items.map((item) => item.id), ['6']);
+});
+
+test('reads of the activity page are kept out of the log unless asked for, by module or by resource', async (t) => {
+	const { server } = await auditApp(t);
+	const lina = await tokenFor(server, 'lina');
+	const all = (await as(request(server).get('/api/audit-logs'), lina).expect(200)).body;
+	assert.equal(all.items.some((item) => item.id === '20'), false);
+	for (const filter of ['module=insights', 'resourceType=activity_insight']) {
+		const page = (await as(request(server).get(`/api/audit-logs?${filter}`), lina).expect(200)).body;
+		assert.deepEqual(page.items.map((item) => item.id), ['20']);
+	}
+});
+
+test('a refused read of the platform trail names no company, even with a company header the caller belongs to', async (t) => {
+	const { server, store } = await auditApp(t);
+	const dana = await tokenFor(server, 'dana');
+	await as(request(server).get('/api/platform/audit-logs'), dana).expect(403);
+	assert.deepEqual(reads(store).at(-1), {
+		module: 'audit', action: 'read', resourceType: 'audit_log', outcome: 'denied', organizationId: null,
+	});
 });
 
 test('a company sees what platform staff changed, not where they connected from', async (t) => {

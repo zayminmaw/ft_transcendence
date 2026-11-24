@@ -28,6 +28,8 @@ export interface ParcelRecord {
   codAmount: string;
   deliveryAttemptCount: number;
   failedReasonCode: string | null;
+  // When the delivery was recorded; null until then.
+  deliveredAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }

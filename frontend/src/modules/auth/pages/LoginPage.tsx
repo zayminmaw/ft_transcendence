@@ -132,6 +132,7 @@ export function LoginPage() {
 							autoComplete="username"
 							autoCapitalize="none"
 							spellCheck={false}
+							dir="ltr"
 							error={fieldError(errors.login?.message)}
 							{...register('login')}
 						/>

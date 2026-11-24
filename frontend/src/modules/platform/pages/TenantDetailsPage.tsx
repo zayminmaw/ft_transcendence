@@ -89,18 +89,20 @@ function TenantDetailsView({ tenant }: { tenant: TenantDetails }) {
 							</div>
 							<div className="min-w-0">
 								<dt className="text-sm text-[var(--color-slate)]">Slug</dt>
-								<dd className="mt-1 font-medium break-words">{tenant.slug}</dd>
+								<dd className="mt-1 font-medium break-words">
+									<span dir="ltr">{tenant.slug}</span>
+								</dd>
 							</div>
 							<div className="min-w-0">
 								<dt className="text-sm text-[var(--color-slate)]">Contact email</dt>
 								<dd className="mt-1 font-medium break-words">
-									{tenant.contactEmail}
+									<span dir="ltr">{tenant.contactEmail}</span>
 								</dd>
 							</div>
 							<div className="min-w-0">
 								<dt className="text-sm text-[var(--color-slate)]">Phone</dt>
 								<dd className="mt-1 font-medium break-words">
-									{tenant.contactPhone ?? '—'}
+									<span dir="ltr">{tenant.contactPhone ?? '—'}</span>
 								</dd>
 							</div>
 							<div className="min-w-0">

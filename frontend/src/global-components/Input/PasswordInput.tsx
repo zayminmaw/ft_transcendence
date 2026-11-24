@@ -19,6 +19,8 @@ export function PasswordInput({
 
 	return (
 		<Input
+			// A password reads left to right, also on an Arabic page.
+			dir="ltr"
 			{...props}
 			type={visible ? 'text' : 'password'}
 			suffix={
