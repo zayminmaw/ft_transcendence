@@ -18,3 +18,19 @@ export function payoutErrorKey(error: unknown): ParseKeys<'billing'> {
 		? PAYOUT_ERRORS[code as keyof typeof PAYOUT_ERRORS]
 		: 'payout.errors.unknown';
 }
+
+export const INVOICE_NOTES_MAX = 1000;
+
+const INVOICE_ERRORS = {
+	INVOICE_MERCHANT_NOT_FOUND: 'invoices.errors.notFound',
+	INVOICE_BAD_PERIOD: 'invoices.errors.badPeriod',
+	INVOICE_NOTHING_TO_BILL: 'invoices.errors.nothingToBill',
+} as const satisfies Record<string, ParseKeys<'billing'>>;
+
+// A refusal as a translation key: its own message when the code is known, the general one otherwise.
+export function invoiceErrorKey(error: unknown): ParseKeys<'billing'> {
+	const code = error instanceof ApiError ? error.code : undefined;
+	return code && code in INVOICE_ERRORS
+		? INVOICE_ERRORS[code as keyof typeof INVOICE_ERRORS]
+		: 'invoices.errors.unknown';
+}
