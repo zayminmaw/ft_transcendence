@@ -208,3 +208,56 @@ test('invoice list filters exact periods, pages newest first and stays within th
     assert.equal((await refused(service.detail(actor(harbor).tenant, invoiceId))).code, 'INVOICE_NOT_FOUND');
   }
 });
+
+test('issuing a draft makes it issued, restarts its dates from today, audits it, and leaves the balance alone', async () => {
+  const id = await merchant(meridian);
+  await database.query("UPDATE clients SET current_balance = '55.00' WHERE id = ?", [id]);
+  await parcel(meridian, id);
+  const made = await service.create(actor(meridian), body(id));
+  await database.query("UPDATE invoices SET issue_date = '2026-01-01', due_date = '2026-01-15' WHERE id = ?", [made.id]);
+
+  const issued = await service.issue(actor(meridian), made.id);
+  assert.equal(issued.status, 'issued');
+  assert.equal(issued.issueDate, made.issueDate);
+  assert.equal(issued.dueDate, made.dueDate);
+  assert.deepEqual(issued.items, made.items);
+  const row = (await database.query('SELECT status, issue_date, due_date FROM invoices WHERE id = ?', [made.id]))[0];
+  assert.equal(row.status, 'issued');
+  assert.notEqual(String(row.issue_date).slice(0, 10), '2026-01-01');
+  assert.equal(await balanceOf(id), '55.00');
+  const audit = await database.getRepository(AuditLog).findOneByOrFail({ resourceType: 'invoice', action: 'status_change', recordId: made.id });
+  assert.equal(audit.userId, finance);
+});
+
+test('only a draft can be issued, so a second request and a paid invoice change nothing', async () => {
+  const id = await merchant(meridian);
+  await parcel(meridian, id);
+  const made = await service.create(actor(meridian), body(id));
+  await service.issue(actor(meridian), made.id);
+  const count = () => database.getRepository(AuditLog).count({ where: { resourceType: 'invoice', action: 'status_change' } });
+  const before = await count();
+  assert.equal((await refused(service.issue(actor(meridian), made.id))).code, 'INVOICE_NOT_DRAFT');
+  await database.query("UPDATE invoices SET status = 'paid_via_bank_transfer' WHERE id = ?", [made.id]);
+  assert.equal((await refused(service.issue(actor(meridian), made.id))).code, 'INVOICE_NOT_DRAFT');
+  assert.equal((await database.query('SELECT status FROM invoices WHERE id = ?', [made.id]))[0].status, 'paid_via_bank_transfer');
+  assert.equal(await count(), before);
+});
+
+test('two requests to issue at the same moment issue it once', async () => {
+  const id = await merchant(meridian);
+  await parcel(meridian, id);
+  const made = await service.create(actor(meridian), body(id));
+  const results = await Promise.allSettled([service.issue(actor(meridian), made.id), service.issue(actor(meridian), made.id)]);
+  assert.equal(results.filter((result) => result.status === 'fulfilled').length, 1);
+  assert.equal(results.find((result) => result.status === 'rejected').reason.getResponse().code, 'INVOICE_NOT_DRAFT');
+  assert.equal(await database.getRepository(AuditLog).count({ where: { resourceType: 'invoice', action: 'status_change', recordId: made.id } }), 1);
+});
+
+test('another company\'s invoice, or a bad id, cannot be issued, and the invoice stays a draft', async () => {
+  const id = await merchant(harbor);
+  await parcel(harbor, id);
+  const foreign = await service.create(actor(harbor), body(id));
+  assert.equal((await refused(service.issue(actor(meridian), foreign.id))).code, 'INVOICE_NOT_FOUND');
+  assert.equal((await refused(service.issue(actor(meridian), 'abc'))).code, 'INVOICE_NOT_FOUND');
+  assert.equal((await database.query('SELECT status FROM invoices WHERE id = ?', [foreign.id]))[0].status, 'draft');
+});

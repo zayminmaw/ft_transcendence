@@ -23,6 +23,7 @@ const problems = async (values) => (await validate(plainToInstance(CreateInvoice
 test('the invoice route needs the create invoice permission, and nothing weaker', () => {
   assert.equal(Reflect.getMetadata(REQUIRED_PERMISSION, InvoicesController), 'billing.create_invoice');
   assert.equal(Reflect.getMetadata(REQUIRED_PERMISSION, InvoicesController.prototype.create), undefined);
+  assert.equal(Reflect.getMetadata(REQUIRED_PERMISSION, InvoicesController.prototype.issue), undefined);
 });
 
 test('a well-formed request passes, with or without notes, and notes are trimmed', async () => {

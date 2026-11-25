@@ -6,7 +6,7 @@ import { AuditService } from '../audit';
 import type { CreateInvoiceDto } from './dto/create-invoice.dto';
 import type { InvoiceQueryDto } from './dto/invoice-query.dto';
 import type { Invoice } from './entities/invoice.entity';
-import { INVOICE_BAD_PERIOD, INVOICE_DUE_DAYS, INVOICE_MERCHANT_NOT_FOUND, INVOICE_NOT_FOUND, INVOICE_NOTHING_TO_BILL } from './invoice.constants';
+import { INVOICE_BAD_PERIOD, INVOICE_DUE_DAYS, INVOICE_MERCHANT_NOT_FOUND, INVOICE_NOT_DRAFT, INVOICE_NOT_FOUND, INVOICE_NOTHING_TO_BILL } from './invoice.constants';
 import { InvoicesRepository } from './invoices.repository';
 import { fromCents, toCents } from './money';
 import type { BillableParcel, InvoiceView } from './types/invoice';
@@ -20,6 +20,7 @@ export interface InvoiceActor {
 
 const day = (date: Date): string => date.toISOString().slice(0, 10);
 const daysAfter = (date: Date, days: number): Date => new Date(date.getTime() + days * 86_400_000);
+const dueFrom = (issued: Date): string => day(daysAfter(issued, INVOICE_DUE_DAYS));
 
 const view = (invoice: Invoice, parcels: BillableParcel[]): InvoiceView => ({
   id: invoice.id, invoiceNumber: invoice.invoiceNumber, clientId: invoice.clientId,
@@ -74,7 +75,7 @@ export class InvoicesService {
       const invoice = await this.invoices.insert(manager, {
         organizationId, clientId: body.clientId, billingPeriodStart: body.periodStart, billingPeriodEnd: body.periodEnd,
         totalDeliveries: parcels.length, totalDeliveryFees: total, totalCodCollected: '0.00', netAmountDue: total,
-        status: 'draft', issueDate: day(today), dueDate: day(daysAfter(today, INVOICE_DUE_DAYS)),
+        status: 'draft', issueDate: day(today), dueDate: dueFrom(today),
         createdByUserId: actor.userId, notes: body.notes ?? null,
       });
       await this.invoices.insertItems(manager, parcels.map((parcel) => ({
@@ -87,6 +88,29 @@ export class InvoicesService {
         meta: actor.meta,
       });
       return view(invoice, parcels);
+    });
+  }
+
+  // A draft becomes issued, and the issue date and due date count from today, since a draft can wait for days. Only a
+  // draft can be issued, so a second request, or one for an invoice already paid, is refused and changes nothing.
+  // Issuing never changes the merchant's balance: the fees were taken at the COD handover (DEC-12).
+  async issue(actor: InvoiceActor, invoiceId: string): Promise<InvoiceView> {
+    const organizationId = actor.tenant.organizationId;
+    if (!ID_PATTERN.test(invoiceId)) throw new NotFoundException(INVOICE_NOT_FOUND);
+    const today = new Date();
+    return this.invoices.inTransaction(async (manager) => {
+      const invoice = await this.invoices.lock(manager, organizationId, invoiceId);
+      if (!invoice) throw new NotFoundException(INVOICE_NOT_FOUND);
+      if (invoice.status !== 'draft') throw new ConflictException(INVOICE_NOT_DRAFT);
+
+      const before = { status: invoice.status, issueDate: invoice.issueDate, dueDate: invoice.dueDate };
+      const after = { status: 'issued' as const, issueDate: day(today), dueDate: dueFrom(today) };
+      await this.invoices.markIssued(manager, invoiceId, after.issueDate, after.dueDate);
+      await this.audit.record(manager, {
+        module: 'billing', action: 'status_change', resourceType: 'invoice', recordId: invoiceId, resourceLabel: invoice.invoiceNumber,
+        organizationId, actorId: actor.userId, before, after, meta: actor.meta,
+      });
+      return view({ ...invoice, ...after }, await this.invoices.items(organizationId, invoiceId));
     });
   }
 }

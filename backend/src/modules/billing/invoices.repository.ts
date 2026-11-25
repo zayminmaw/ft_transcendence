@@ -85,4 +85,16 @@ export class InvoicesRepository {
     const repository = manager.getRepository(InvoiceItem);
     await repository.save(rows.map((row) => repository.create(row)));
   }
+
+  // The invoice, locked until the transaction ends, so two requests to issue it run one after the other.
+  lock(manager: EntityManager, organizationId: string, id: string): Promise<Invoice | null> {
+    return manager.getRepository(Invoice).createQueryBuilder('invoice')
+      .setLock('pessimistic_write')
+      .where('invoice.id = :id AND invoice.organizationId = :organizationId', { id, organizationId })
+      .getOne();
+  }
+
+  async markIssued(manager: EntityManager, id: string, issueDate: string, dueDate: string): Promise<void> {
+    await manager.getRepository(Invoice).update({ id }, { status: 'issued', issueDate, dueDate });
+  }
 }
