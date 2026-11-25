@@ -24,7 +24,8 @@ export function ModulePage({
 					id="workspace-page-title"
 					className="workspace-title text-[2rem] md:text-[2.5rem]"
 				>
-					{title}
+					{/* Often a record's name: <bdi> keeps "Acme Co." from reading ".Acme Co" in Arabic. */}
+					<bdi>{title}</bdi>
 				</h1>
 				<p className="mt-2 max-w-prose text-sm leading-relaxed text-[var(--color-slate)]">
 					{description}

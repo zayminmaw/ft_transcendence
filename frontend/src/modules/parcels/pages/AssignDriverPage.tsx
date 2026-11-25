@@ -146,6 +146,7 @@ export function AssignDriverPage() {
 						id="merchant"
 						label={t('common.merchant')}
 						value={parcel.client.name}
+						dir="auto"
 						readOnly
 						className="border-0 bg-base-200"
 					/>
