@@ -277,10 +277,12 @@ export class ParcelsRepository {
         ORDER BY employee.last_name, employee.first_name, employee.id`,
       [VEHICLE_CATEGORIES, organizationId, ON_DUTY_STATUSES],
     );
+    const expected = await this.expectedCod(organizationId, rows.map((row) => String(row.driverId)));
     return rows.map((row) => {
       const run = runOf(row);
       return {
         ...driverOf(row)!,
+        expectedCod: expected.get(String(row.driverId)) ?? '0.00',
         zone: text(row.zone),
         category: String(row.category),
         dispatchStatus: String(row.dispatchStatus),
@@ -288,6 +290,20 @@ export class ParcelsRepository {
         run: run && { ...run, parcelsOut: Number(row.parcelsOut) },
       };
     });
+  }
+
+  // The COD of the parcels each of these drivers carries now: the ones out for delivery, assigned to them, in this
+  // company. A driver with none is missing from the answer.
+  private async expectedCod(organizationId: string, driverIds: string[]): Promise<Map<string, string>> {
+    if (driverIds.length === 0) return new Map();
+    const rows: { driverId: string; expected: string }[] = await this.database.getRepository(Parcel).createQueryBuilder('parcel')
+      .select('parcel.assignedDriverId', 'driverId')
+      .addSelect('CAST(SUM(parcel.codAmount) AS DECIMAL(12,2))', 'expected')
+      .where('parcel.organizationId = :organizationId AND parcel.lifecycleStatus = :status', { organizationId, status: 'out_for_delivery' })
+      .andWhere('parcel.assignedDriverId IN (:...driverIds)', { driverIds })
+      .groupBy('parcel.assignedDriverId')
+      .getRawMany();
+    return new Map(rows.map((row) => [String(row.driverId), String(row.expected)]));
   }
 
   // A new waybill for an active merchant of the company, with its pickup scheduled. A waybill number already taken

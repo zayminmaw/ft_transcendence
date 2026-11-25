@@ -92,7 +92,10 @@ export interface ParcelCounts {
 }
 
 // A driver a parcel can go to now, with the vehicle they have checked out and today's run if it is open.
+// `expectedCod` is the cash the driver is expected to bring back for the parcels they carry now (all out for delivery,
+// '0.00' when none): an operational total only, nothing is posted to a merchant until the cash is handed over.
 export interface DispatchDriver extends ParcelDriver {
+  expectedCod: string;
   zone: string | null;
   category: string;
   dispatchStatus: string;

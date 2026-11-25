@@ -122,6 +122,9 @@ export type ParcelList = {
 
 // A driver on duty, with the vehicle they have checked out and today's run if it is open.
 export type DispatchDriver = ParcelDriver & {
+	// The cash this driver is expected to bring back for the parcels out with them now ('0.00' when none). A total for
+	// dispatch only: nothing is posted to a merchant until the cash is handed over.
+	expectedCod: string;
 	zone: string | null;
 	dispatchStatus: 'available' | 'on_pickup' | 'out_for_delivery';
 	vehicle: ParcelVehicle | null;
