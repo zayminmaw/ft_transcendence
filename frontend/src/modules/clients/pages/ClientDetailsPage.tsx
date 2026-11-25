@@ -184,7 +184,9 @@ export function ClientDetailsPage() {
 									{client.pendingCodBalance ?? none}
 								</DetailItem>
 								<DetailItem label={t('details.unbilled')} valueClassName="text-sm">
-									{t('details.unbilledLater')}
+									{can('billing.create_invoice')
+										? t('details.unbilledInvoices')
+										: none}
 								</DetailItem>
 								<DetailItem
 									label={t('fields.rateProfileTier')}
