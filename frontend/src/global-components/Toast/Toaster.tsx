@@ -1,5 +1,6 @@
 import { useAtomValue } from 'jotai';
 import { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { ToastItem, ToastVariant } from './types';
 import { toastsAtom, useToast } from './useToast';
 
@@ -11,6 +12,7 @@ const markerClass: Record<ToastVariant, string> = {
 };
 
 function Toast({ toast, onDismiss }: { toast: ToastItem; onDismiss: (id: string) => void }) {
+	const { t } = useTranslation();
 	useEffect(() => {
 		if (toast.duration <= 0) return;
 		const timer = window.setTimeout(() => onDismiss(toast.id), toast.duration);
@@ -36,7 +38,7 @@ function Toast({ toast, onDismiss }: { toast: ToastItem; onDismiss: (id: string)
 			</div>
 			<button
 				type="button"
-				aria-label="Dismiss notification"
+				aria-label={t('toast.dismiss')}
 				className="btn btn-ghost btn-xs -me-1 size-6 min-h-0 rounded-sm p-0 text-neutral-content/60 hover:bg-white/10 hover:text-neutral-content"
 				onClick={() => onDismiss(toast.id)}
 			>

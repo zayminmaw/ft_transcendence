@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef } from 'react';
 import type { FormEvent, ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 
 export function Dialog({
 	open,
@@ -25,6 +26,7 @@ export function Dialog({
 	dismissible?: boolean;
 	className?: string;
 }) {
+	const { t } = useTranslation();
 	const dialog = useRef<HTMLDialogElement>(null);
 	const titleId = useId();
 	const descriptionId = useId();
@@ -77,7 +79,7 @@ export function Dialog({
 			)}
 			{dismissible && (
 				<form method="dialog" className="modal-backdrop">
-					<button aria-label="Close dialog">Close</button>
+					<button aria-label={t('dialog.close')}>{t('dialog.close')}</button>
 				</form>
 			)}
 		</dialog>

@@ -79,6 +79,7 @@
 	"details": {
 		"since": "عميل منذ {{date}}",
 		"edit": "تعديل",
+		"payOut": "صرف المستحقات",
 		"contact": "جهة الاتصال",
 		"addresses": "العناوين",
 		"financials": "الرصيد",

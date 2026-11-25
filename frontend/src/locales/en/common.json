@@ -8,6 +8,12 @@
 	"password": {
 		"show": "Show password"
 	},
+	"dialog": {
+		"close": "Close dialog"
+	},
+	"toast": {
+		"dismiss": "Dismiss notification"
+	},
 	"imageViewer": {
 		"close": "Close",
 		"failed": "This picture can't be shown right now. Reload the page and try again."
