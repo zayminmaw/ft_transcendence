@@ -16,6 +16,22 @@ export const AUDIT_ACTIONS = [
 ] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 
+export const AUDIT_MODULES = [
+	'auth',
+	'members',
+	'platform',
+	'parcels',
+	'clients',
+	'contacts',
+	'billing',
+	'staff',
+	'drivers',
+	'assets',
+	'audit',
+	'insights',
+] as const;
+export type AuditModule = (typeof AUDIT_MODULES)[number];
+
 export type AuditChange = { before: unknown; after: unknown };
 
 // One audit entry as every audit endpoint returns it. Values were masked when the entry was written.

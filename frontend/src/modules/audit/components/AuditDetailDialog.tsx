@@ -21,15 +21,19 @@ import { ChangeChip } from './ChangeChip';
 // request adds the user agent.
 export function AuditDetailDialog({
 	entry,
+	detail,
 	onClose,
 }: {
 	entry: AuditEntry | null;
+	// When the caller loads the full entry itself (e.g. from /platform/audit-logs/:id), pass it here so the dialog
+	// does not request the tenant endpoint. Undefined keeps the default tenant lookup.
+	detail?: AuditEntry | null;
 	onClose: () => void;
 }) {
 	const { t, i18n } = useTranslation('audit');
 	const language = i18n.resolvedLanguage ?? 'en';
-	const { data } = useAuditEntry(entry?.id ?? null);
-	const shown = data ?? entry;
+	const { data } = useAuditEntry(detail === undefined ? (entry?.id ?? null) : null);
+	const shown = (detail !== undefined ? detail : data) ?? entry;
 	const rows = shown ? changeRows(shown) : [];
 
 	return (
@@ -55,8 +59,14 @@ export function AuditDetailDialog({
 							<ActionBadge entry={shown} />
 						</Fact>
 						<Fact label={t('columns.resource')}>
-							{resourceName(t, shown.resource.type)}{' '}
-							<bdi className="font-mono">{resourceText(shown)}</bdi>
+							{shown.resource.type || resourceText(shown) ? (
+								<>
+									{resourceName(t, shown.resource.type)}{' '}
+									<bdi className="font-mono">{resourceText(shown)}</bdi>
+								</>
+							) : (
+								'—'
+							)}
 						</Fact>
 						<Fact label={t('columns.time')}>
 							<span className="font-mono">

@@ -14,18 +14,20 @@ import {
 import { ActionBadge } from './ActionBadge';
 import { ChangeChip } from './ChangeChip';
 
-// The audit table shared by the company log and one record's history.
+// The audit table shared by the company log, the platform log, and one record's history.
 export function AuditLogTable({
 	entries,
 	onSelect,
 	pagination,
 	showResource = true,
+	caption,
 }: {
 	entries: AuditEntry[];
 	onSelect: (entry: AuditEntry) => void;
 	pagination?: TablePaginationProps;
 	// One record's history already says which record it is.
 	showResource?: boolean;
+	caption?: string;
 }) {
 	const { t, i18n } = useTranslation('audit');
 	const language = i18n.resolvedLanguage ?? 'en';
@@ -109,7 +111,7 @@ export function AuditLogTable({
 
 	return (
 		<Table
-			caption={t('caption')}
+			caption={caption ?? t('caption')}
 			columns={columns}
 			rows={entries}
 			getRowKey={(entry) => entry.id}
