@@ -2,6 +2,7 @@ export { authRoutes } from './routes';
 export { shownName, useCan, useCurrentWorkspace, useLogout, useMe, useRoleName } from './hooks';
 export type { Me, Workspace } from './api';
 export { AccountFooter } from './components/AccountFooter';
+export { AccountLayout } from './components/AccountLayout';
 export { CenteredPage } from './components/CenteredPage';
 export { LoadingScreen } from './components/LoadingScreen';
 export { RequirePermission } from './components/RequirePermission';

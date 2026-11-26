@@ -1,5 +1,6 @@
 import { Navigate } from 'react-router-dom';
 import type { RouteObject } from 'react-router-dom';
+import { ProfilePage } from '@modules/auth';
 import { PlatformLayout } from './components/PlatformLayout';
 import { TenantsPage } from './pages/TenantsPage';
 import { TenantActivityPage } from './pages/TenantActivityPage';
@@ -17,6 +18,7 @@ export const platformRoutes: RouteObject[] = [
 			{ index: true, element: <Navigate to="/platform/tenants" replace /> },
 			{ path: 'tenants', element: <TenantsPage /> },
 			{ path: 'activity', element: <TenantActivityPage /> },
+			{ path: 'profile', element: <ProfilePage /> },
 			{ path: 'tenants/new', element: <CreateTenantPage /> },
 			{ path: 'tenants/:tenantId', element: <TenantDetailsPage /> },
 			{ path: 'tenants/:tenantId/administrators', element: <TenantAdministratorsPage /> },
