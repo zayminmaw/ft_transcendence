@@ -131,16 +131,18 @@ export class InvitesRepository {
     email: string | null;
     tokenHash: string;
     expiresAt: Date;
-  }): Promise<InviteRecord> {
-    const saved = await this.database.getRepository(MemberInvite).save(
-      this.database.getRepository(MemberInvite).create(input),
-    );
-    const record = await this.find(input.organizationId, String(saved.id));
-    if (!record) throw new Error('The new invite could not be read back.');
-    return record;
+  }, auditStep: (manager: EntityManager, record: InviteRecord) => Promise<void>): Promise<InviteRecord> {
+    return this.database.transaction(async (manager) => {
+      const repository = manager.getRepository(MemberInvite);
+      const saved = await repository.save(repository.create(input));
+      const record = (await this.query(input.organizationId, String(saved.id), manager))[0];
+      if (!record) throw new Error('The new invite could not be read back.');
+      await auditStep(manager, record);
+      return record;
+    });
   }
 
-  async revoke(organizationId: string, id: string, at: Date): Promise<RevokeInviteResult> {
+  async revoke(organizationId: string, id: string, at: Date, auditStep: (manager: EntityManager) => Promise<void>): Promise<RevokeInviteResult> {
     return this.database.transaction('READ COMMITTED', async (manager) => {
       const invite = await manager
         .createQueryBuilder(MemberInvite, 'i')
@@ -151,6 +153,7 @@ export class InvitesRepository {
       if (invite.usedAt) return 'already_used';
       if (invite.revokedAt) return 'already_revoked';
       await manager.update(MemberInvite, { id: invite.id, organizationId }, { revokedAt: at });
+      await auditStep(manager);
       return 'revoked';
     });
   }
@@ -267,8 +270,8 @@ export class InvitesRepository {
     });
   }
 
-  private async query(organizationId: string, id?: string): Promise<InviteRecord[]> {
-    const query = this.database
+  private async query(organizationId: string, id?: string, manager = this.database.manager): Promise<InviteRecord[]> {
+    const query = manager
       .createQueryBuilder(MemberInvite, 'i')
       .innerJoin(Role, 'r', 'r.id = i.roleId')
       .innerJoin(User, 'inviter', 'inviter.id = i.invitedByUserId')

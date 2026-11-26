@@ -3,6 +3,7 @@ import { BadRequestException, ConflictException, ForbiddenException, Injectable,
 import type { TenantContext } from '../../common/types/authenticated-request';
 import { AuditService } from '../audit';
 import { type RequestMeta, SessionsService } from '../auth';
+import type { IssuedSession } from '../auth/sessions.service';
 import { AccountError, type User } from '../users';
 import type { CreateInviteDto } from './dto/create-invite.dto';
 import type { SignupDto } from './dto/signup.dto';
@@ -98,9 +99,7 @@ export class InvitesService {
       email,
       tokenHash: hashInviteToken(token),
       expiresAt,
-    });
-
-    await this.audit.recordStandalone({
+    }, async (manager, record) => this.audit.record(manager, {
       module: 'members',
       action: 'create',
       resourceType: 'member_invite',
@@ -110,7 +109,7 @@ export class InvitesService {
       actorId,
       after: { email, role: role.code, expiresAt: expiresAt.toISOString() },
       meta,
-    });
+    }));
 
     return { invite: publicInvite(record, now), token };
   }
@@ -120,12 +119,7 @@ export class InvitesService {
     const existing = await this.invites.find(tenant.organizationId, inviteId);
     if (!existing) throw new NotFoundException(INVITE_NOT_FOUND);
 
-    const outcome = await this.invites.revoke(tenant.organizationId, inviteId, new Date());
-    if (outcome === 'not_found') throw new NotFoundException(INVITE_NOT_FOUND);
-    if (outcome === 'already_used') throw new ConflictException(INVITE_ALREADY_USED);
-    if (outcome === 'already_revoked') return;
-
-    await this.audit.recordStandalone({
+    const outcome = await this.invites.revoke(tenant.organizationId, inviteId, new Date(), async (manager) => this.audit.record(manager, {
       module: 'members',
       action: 'revoke',
       resourceType: 'member_invite',
@@ -135,7 +129,9 @@ export class InvitesService {
       actorId,
       before: { email: existing.email, role: existing.role.code },
       meta,
-    });
+    }));
+    if (outcome === 'not_found') throw new NotFoundException(INVITE_NOT_FOUND);
+    if (outcome === 'already_used') throw new ConflictException(INVITE_ALREADY_USED);
   }
 
   async inspect(token: string) {
@@ -153,6 +149,7 @@ export class InvitesService {
   async signup(input: SignupDto, meta: RequestMeta) {
     if (!TOKEN_PATTERN.test(input.token)) throw new NotFoundException(INVITE_INVALID);
     let outcome;
+    let session: IssuedSession | undefined;
     try {
       outcome = await this.invites.acceptInvite(
         {
@@ -175,6 +172,9 @@ export class InvitesService {
             after: { role: created.roleCode, isActive: true },
             meta,
           });
+          // The account, membership, consumed invite and session commit together. The user lookup and session
+          // insert must use this manager, including when every pool connection is already in a signup transaction.
+          session = await this.sessions.start(created.userId, meta, new Date(), manager);
         },
       );
     } catch (error) {
@@ -188,7 +188,7 @@ export class InvitesService {
     if (outcome.status === 'email_mismatch') throw new BadRequestException(INVITE_EMAIL_MISMATCH);
     if (outcome.status !== 'created') throw new NotFoundException(INVITE_INVALID);
 
-    const session = await this.sessions.start(String(outcome.user.id), meta);
+    if (!session) throw new Error('The signup transaction did not create its session.');
     return {
       session,
       user: publicSignedUpUser(outcome.user),

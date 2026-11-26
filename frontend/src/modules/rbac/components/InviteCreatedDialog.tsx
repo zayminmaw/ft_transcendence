@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createInviteUrl } from '@modules/auth/invite-link';
 import { useTranslation } from 'react-i18next';
 import { Button, Dialog } from '@global-components';
 import { useRoleName } from '@modules/auth';
@@ -18,7 +19,7 @@ export function InviteCreatedDialog({
 	const { t, i18n } = useTranslation('rbac');
 	const roleName = useRoleName();
 	const [copied, setCopied] = useState(false);
-	const inviteUrl = `${window.location.origin}/signup?token=${encodeURIComponent(created.token)}`;
+	const inviteUrl = createInviteUrl(window.location.origin, created.token);
 
 	const copyLink = async () => {
 		try {

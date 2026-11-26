@@ -68,7 +68,7 @@ test('company admin creates, lists, and revokes invite links; non-admins and cro
   await as(request(server).delete(`/api/members/invites/${created.body.invite.id}`), lina).expect(204);
   const afterRevoke = (await as(request(server).get('/api/members/invites'), lina).expect(200)).body;
   assert.equal(afterRevoke[0].status, 'revoked');
-  await request(server).get(`/api/auth/invites/${created.body.token}`).expect(404);
+  await request(server).post('/api/auth/invites/preview').send({ token: created.body.token }).expect(404);
 });
 
 test('invited user inspects invite, signs up with own password, receives session without mustChangePassword, and token cannot be reused', async (t) => {
@@ -80,7 +80,7 @@ test('invited user inspects invite, signs up with own password, receives session
     .expect(201);
   const { token, invite } = created.body;
 
-  const preview = (await request(server).get(`/api/auth/invites/${token}`).expect(200)).body;
+  const preview = (await request(server).post('/api/auth/invites/preview').send({ token: token }).expect(200)).body;
   assert.deepEqual(preview.organization, { name: 'Meridian Courier', slug: 'meridian-courier' });
   assert.deepEqual(preview.role, { code: 'driver', name: 'Driver' });
   assert.equal(preview.email, 'tariq@meridian.example.test');
@@ -127,7 +127,7 @@ test('invited user inspects invite, signs up with own password, receives session
   assert.ok(loggedIn);
 
   // Invite cannot be inspected, reused, or revoked after use.
-  await request(server).get(`/api/auth/invites/${token}`).expect(404);
+  await request(server).post('/api/auth/invites/preview').send({ token: token }).expect(404);
   const replay = await request(server)
     .post('/api/auth/signup')
     .set('Origin', ORIGIN)
@@ -158,7 +158,7 @@ test('open invite (no pre-bound email) requires user email and rejects expired o
 
   // Suspended organization invalidates invite inspection and signup.
   store.organizations[0].isActive = false;
-  await request(server).get(`/api/auth/invites/${open.body.token}`).expect(404);
+  await request(server).post('/api/auth/invites/preview').send({ token: open.body.token }).expect(404);
   store.organizations[0].isActive = true;
 
   // Providing a valid email completes signup.
@@ -174,7 +174,7 @@ test('open invite (no pre-bound email) requires user email and rejects expired o
     .send({ roleCode: 'dispatcher' })
     .expect(201);
   store.invites.find((row) => row.id === expiring.body.invite.id).expiresAt = new Date(Date.now() - 1000);
-  await request(server).get(`/api/auth/invites/${expiring.body.token}`).expect(404);
+  await request(server).post('/api/auth/invites/preview').send({ token: expiring.body.token }).expect(404);
   await request(server)
     .post('/api/auth/signup')
     .set('Origin', ORIGIN)

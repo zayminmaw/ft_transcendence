@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import type { ParseKeys } from 'i18next';
 import { useTranslation } from 'react-i18next';
-import { Link, Navigate, useSearchParams } from 'react-router-dom';
+import { Link, Navigate, useLocation } from 'react-router-dom';
 import { z } from 'zod';
 import { Button, Input, LanguageSwitcher, PasswordInput } from '@global-components';
 import { useAuth } from '@hooks/useAuth';
@@ -16,6 +16,7 @@ import type { InvitePreview } from '../api';
 import { LegalLinks } from '../components/LegalLinks';
 import { LoadingScreen } from '../components/LoadingScreen';
 import { useInvitePreview, useLogout, useRoleName, useSignup } from '../hooks';
+import { inviteTokenFromHash } from '../invite-link';
 
 const USERNAME_PATTERN = /^[A-Za-z0-9._-]{3,64}$/;
 const DISPLAY_NAME_PATTERN = /^[^\p{Cc}\u2028\u2029]{0,64}$/u;
@@ -216,8 +217,7 @@ export function SignupPage() {
 	const { accessToken } = useAuth();
 	const { checking } = useSessionCheck();
 	const logout = useLogout();
-	const [searchParams] = useSearchParams();
-	const token = searchParams.get('token')?.trim() ?? '';
+	const token = inviteTokenFromHash(useLocation().hash);
 	const invite = useInvitePreview(accessToken ? '' : token);
 
 	useEffect(() => {

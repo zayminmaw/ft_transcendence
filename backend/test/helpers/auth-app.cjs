@@ -269,7 +269,7 @@ function createFakeStore() {
         }),
       find: async (organizationId, id) => (await store.repositories.invites.list(organizationId)).find((row) => row.id === id),
       emailTaken: async (email) => store.users.some((user) => sameText(user.email, email.trim())),
-      create: async (input) => {
+      create: async (input, auditStep) => {
         const row = {
           id: String(nextInviteId++),
           ...input,
@@ -279,14 +279,17 @@ function createFakeStore() {
           createdAt: new Date(),
         };
         store.invites.push(row);
-        return store.repositories.invites.find(input.organizationId, row.id);
+        const record = await store.repositories.invites.find(input.organizationId, row.id);
+        await auditStep({}, record);
+        return record;
       },
-      revoke: async (organizationId, id, at) => {
+      revoke: async (organizationId, id, at, auditStep) => {
         const row = store.invites.find((invite) => invite.organizationId === organizationId && invite.id === id);
         if (!row) return 'not_found';
         if (row.usedAt) return 'already_used';
         if (row.revokedAt) return 'already_revoked';
         row.revokedAt = at;
+        await auditStep({});
         return 'revoked';
       },
       findActiveByTokenHash: async (tokenHash, now) => {

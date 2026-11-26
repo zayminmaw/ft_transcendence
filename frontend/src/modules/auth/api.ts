@@ -56,7 +56,10 @@ export function logIn(values: LoginValues) {
 }
 
 export function inspectInvite(token: string) {
-	return apiRequest<InvitePreview>(`auth/invites/${encodeURIComponent(token)}`);
+	return apiRequest<InvitePreview>('auth/invites/preview', {
+		method: 'POST',
+		body: JSON.stringify({ token }),
+	});
 }
 
 export function signUp(values: SignupValues) {

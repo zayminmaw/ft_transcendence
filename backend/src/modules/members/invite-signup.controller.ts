@@ -1,9 +1,10 @@
-import { Body, Controller, Get, Param, Post, Req, Res, UseGuards } from '@nestjs/common';
+import { Body, Controller, HttpCode, Post, Req, Res, UseGuards } from '@nestjs/common';
 import { SkipThrottle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { Public } from '../../common/decorators/public.decorator';
 import { AuthThrottlerGuard, requestMeta, SameOriginGuard, setRefreshCookie } from '../auth';
 import { SignupDto } from './dto/signup.dto';
+import { InvitePreviewDto } from './dto/invite-preview.dto';
 import { InvitesService } from './invites.service';
 
 // Public self-service registration endpoints backed by single-use admin invite links.
@@ -13,10 +14,12 @@ import { InvitesService } from './invites.service';
 export class InviteSignupController {
   constructor(private readonly invites: InvitesService) {}
 
-  @Get('invites/:token')
+  // Bearer tokens belong in the body, never request URLs that proxies and browsers retain in logs.
+  @Post('invites/preview')
+  @HttpCode(200)
   @SkipThrottle({ login: true, refresh: true, password: true })
-  inspect(@Param('token') token: string) {
-    return this.invites.inspect(token);
+  inspect(@Body() body: InvitePreviewDto) {
+    return this.invites.inspect(body.token);
   }
 
   @Post('signup')
