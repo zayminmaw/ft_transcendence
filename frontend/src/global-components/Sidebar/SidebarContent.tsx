@@ -14,9 +14,11 @@ export type SidebarContentProps = {
 	homeTo: string;
 	groups: NavigationGroup[];
 	onNavigate?: () => void;
-	// Replaces the scope card at the top, e.g. with the workspace switcher.
+	// Replaces the scope card at the top, e.g. with the active workspace and account card.
 	header?: ReactNode;
-	// Shown under "Back to website", e.g. Log out.
+	// Compact workspace selector placed at the bottom of the sidebar above footer actions.
+	workspaceSelector?: ReactNode;
+	// Shown under the workspace selector, e.g. profile and log out.
 	footer?: ReactNode;
 };
 
@@ -26,6 +28,7 @@ export function SidebarContent({
 	groups,
 	onNavigate,
 	header,
+	workspaceSelector,
 	footer,
 }: SidebarContentProps) {
 	const { t } = useTranslation();
@@ -79,12 +82,12 @@ export function SidebarContent({
 					);
 				})}
 			</nav>
-			<div className="mt-auto flex flex-col gap-4">
-				<Link to="/" onClick={onNavigate} className="btn btn-ghost bg-base-200">
-					{t('sidebar.backToWebsite')}
-				</Link>
-				{footer}
-			</div>
+			{(workspaceSelector || footer) && (
+				<div className="mt-auto flex flex-col gap-3 border-t border-base-300 pt-4">
+					{workspaceSelector}
+					{footer}
+				</div>
+			)}
 		</div>
 	);
 }
