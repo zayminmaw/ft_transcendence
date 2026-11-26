@@ -84,10 +84,38 @@
 		"retrying": "Retrying…",
 		"empty": "No invoices yet. Generate one to bill a period.",
 		"number": "Invoice",
+		"merchant": "Merchant",
 		"period": "Period",
 		"statusColumn": "Status",
 		"deliveries": "Deliveries",
 		"amount": "Amount",
+		"page": {
+			"title": "Invoices",
+			"description": "Every merchant billing statement across {{company}}.",
+			"tableTitle": "Invoice register",
+			"tableDescription": "Select an invoice number to inspect its parcel lines or issue a draft.",
+			"searchPlaceholder": "Search invoice or merchant",
+			"allStatuses": "All statuses",
+			"empty": "No invoices yet. Generate one to bill a merchant for a period.",
+			"noMatch": "No invoices match these filters.",
+			"tipTitle": "Statements, not balance movements.",
+			"tipDescription": "Delivery fees are already deducted during COD handovers. Generating or issuing an invoice never alters a merchant's balance, and CSV exports follow your active search and status filter."
+		},
+		"stats": {
+			"total": "Total invoices",
+			"totalNote": "All billing statements",
+			"drafts": "Drafts",
+			"draftsNote": "Waiting to be issued",
+			"issued": "Issued",
+			"issuedNote": "Sent to merchants",
+			"totalFees": "Total billed fees",
+			"totalFeesNote": "Sum of delivery fees"
+		},
+		"export": {
+			"action": "Export CSV",
+			"exporting": "Exporting…",
+			"failed": "Could not export invoices"
+		},
 		"status": {
 			"draft": "Draft",
 			"issued": "Issued",
@@ -98,6 +126,10 @@
 		"generate": {
 			"open": "Generate invoice",
 			"title": "Invoice {{name}}",
+			"companyTitle": "Generate invoice",
+			"merchant": "Merchant",
+			"merchantPlaceholder": "Choose a merchant",
+			"merchantsLoadFailed": "The merchant list could not be loaded.",
 			"description": "Bills the delivery fee of every parcel delivered in the period that is not on an invoice yet. The last day is included.",
 			"periodStart": "First day",
 			"periodEnd": "Last day",
@@ -123,6 +155,7 @@
 			"issueNote": "Issuing sets the due date 14 days from today. It never changes the merchant's balance."
 		},
 		"errors": {
+			"merchant": "Choose a merchant.",
 			"periodStart": "Choose the first day.",
 			"periodEnd": "Choose the last day.",
 			"badPeriod": "The last day must be on or after the first day.",

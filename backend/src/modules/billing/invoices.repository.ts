@@ -1,14 +1,52 @@
 import { Injectable } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
-import { DataSource, type EntityManager } from 'typeorm';
-import type { Client } from '../clients/entities/client.entity';
-import type { InvoiceQueryDto } from './dto/invoice-query.dto';
+import { Brackets, DataSource, type EntityManager, type SelectQueryBuilder } from 'typeorm';
+import { containsPattern } from '../../common/like-pattern';
+import { Client } from '../clients/entities/client.entity';
+import type { InvoiceExportQueryDto, InvoiceQueryDto } from './dto/invoice-query.dto';
 import { InvoiceItem } from './entities/invoice-item.entity';
-import { Invoice } from './entities/invoice.entity';
+import { Invoice, type InvoiceStatus } from './entities/invoice.entity';
+import { INVOICE_EXPORT_LIMIT } from './invoice.constants';
 import { LedgerRepository } from './ledger.repository';
-import type { BillableParcel } from './types/invoice';
+import type { BillableParcel, InvoiceListRecord, InvoiceSummaryStats } from './types/invoice';
 
 type ParcelRow = { id: string; trackingNumber: string; deliveryFee: string };
+
+type RawInvoiceRow = {
+  id: string;
+  invoiceNumber: string;
+  clientId: string;
+  clientName: string;
+  clientCode: string;
+  billingPeriodStart: string;
+  billingPeriodEnd: string;
+  status: InvoiceStatus;
+  issueDate: string;
+  dueDate: string;
+  totalDeliveries: string | number;
+  totalDeliveryFees: string;
+  totalCodCollected: string;
+  netAmountDue: string;
+  createdAt: Date | string;
+};
+
+const toListRecord = (row: RawInvoiceRow): InvoiceListRecord => ({
+  id: String(row.id),
+  invoiceNumber: row.invoiceNumber,
+  clientId: String(row.clientId),
+  clientName: row.clientName,
+  clientCode: row.clientCode,
+  billingPeriodStart: String(row.billingPeriodStart).slice(0, 10),
+  billingPeriodEnd: String(row.billingPeriodEnd).slice(0, 10),
+  status: row.status,
+  issueDate: String(row.issueDate).slice(0, 10),
+  dueDate: String(row.dueDate).slice(0, 10),
+  totalDeliveries: Number(row.totalDeliveries),
+  totalDeliveryFees: String(row.totalDeliveryFees),
+  totalCodCollected: String(row.totalCodCollected),
+  netAmountDue: String(row.netAmountDue),
+  createdAt: row.createdAt instanceof Date ? row.createdAt : new Date(row.createdAt),
+});
 
 // The invoices of one company. The parcels table belongs to the parcels module, so it is only read here, by plain
 // queries, never changed. Every query is scoped to the company.
@@ -26,14 +64,85 @@ export class InvoicesRepository {
     return this.ledger.lockClient(manager, organizationId, clientId);
   }
 
-  async list(organizationId: string, query: InvoiceQueryDto): Promise<{ items: Invoice[]; total: number }> {
+  private filtered(organizationId: string, query: InvoiceExportQueryDto): SelectQueryBuilder<Invoice> {
     const builder = this.database.getRepository(Invoice).createQueryBuilder('invoice')
-      .where('invoice.organizationId = :organizationId AND invoice.clientId = :clientId', { organizationId, clientId: query.clientId });
+      .innerJoin(Client, 'client', 'client.id = invoice.clientId AND client.organizationId = invoice.organizationId')
+      .where('invoice.organizationId = :organizationId', { organizationId });
+    if (query.clientId !== undefined) builder.andWhere('invoice.clientId = :clientId', { clientId: query.clientId });
     if (query.periodStart !== undefined) builder.andWhere('invoice.billingPeriodStart = :periodStart', { periodStart: query.periodStart });
     if (query.periodEnd !== undefined) builder.andWhere('invoice.billingPeriodEnd = :periodEnd', { periodEnd: query.periodEnd });
-    const [items, total] = await builder.orderBy('invoice.createdAt', 'DESC').addOrderBy('invoice.id', 'DESC')
-      .skip((query.page - 1) * query.pageSize).take(query.pageSize).getManyAndCount();
-    return { items, total };
+    if (query.status !== undefined) builder.andWhere('invoice.status = :status', { status: query.status });
+    if (query.search) {
+      const pattern = containsPattern(query.search);
+      builder.andWhere(new Brackets((where) => {
+        where.where('invoice.invoiceNumber LIKE :pattern', { pattern })
+          .orWhere('client.businessName LIKE :pattern', { pattern })
+          .orWhere('client.clientCode LIKE :pattern', { pattern });
+      }));
+    }
+    return builder;
+  }
+
+  private selectColumns(builder: SelectQueryBuilder<Invoice>): SelectQueryBuilder<Invoice> {
+    return builder
+      .select('invoice.id', 'id')
+      .addSelect('invoice.invoiceNumber', 'invoiceNumber')
+      .addSelect('invoice.clientId', 'clientId')
+      .addSelect('client.businessName', 'clientName')
+      .addSelect('client.clientCode', 'clientCode')
+      .addSelect("DATE_FORMAT(invoice.billingPeriodStart, '%Y-%m-%d')", 'billingPeriodStart')
+      .addSelect("DATE_FORMAT(invoice.billingPeriodEnd, '%Y-%m-%d')", 'billingPeriodEnd')
+      .addSelect('invoice.status', 'status')
+      .addSelect("DATE_FORMAT(invoice.issueDate, '%Y-%m-%d')", 'issueDate')
+      .addSelect("DATE_FORMAT(invoice.dueDate, '%Y-%m-%d')", 'dueDate')
+      .addSelect('invoice.totalDeliveries', 'totalDeliveries')
+      .addSelect('invoice.totalDeliveryFees', 'totalDeliveryFees')
+      .addSelect('invoice.totalCodCollected', 'totalCodCollected')
+      .addSelect('invoice.netAmountDue', 'netAmountDue')
+      .addSelect('invoice.createdAt', 'createdAt')
+      .orderBy('invoice.createdAt', 'DESC')
+      .addOrderBy('invoice.id', 'DESC');
+  }
+
+  async list(organizationId: string, query: InvoiceQueryDto): Promise<{ items: InvoiceListRecord[]; total: number }> {
+    const base = this.filtered(organizationId, query);
+    const total = await base.clone().getCount();
+    const rows = await this.selectColumns(base)
+      .offset((query.page - 1) * query.pageSize)
+      .limit(query.pageSize)
+      .getRawMany<RawInvoiceRow>();
+    return { items: rows.map(toListRecord), total };
+  }
+
+  async listForExport(organizationId: string, query: InvoiceExportQueryDto): Promise<InvoiceListRecord[]> {
+    const rows = await this.selectColumns(this.filtered(organizationId, query))
+      .limit(INVOICE_EXPORT_LIMIT)
+      .getRawMany<RawInvoiceRow>();
+    return rows.map(toListRecord);
+  }
+
+  // Exact SQL decimal/count aggregates for the company (or one merchant when clientId is passed).
+  async summary(organizationId: string, clientId?: string): Promise<InvoiceSummaryStats> {
+    const builder = this.database.getRepository(Invoice).createQueryBuilder('invoice')
+      .select('COUNT(*)', 'total')
+      .addSelect("COALESCE(SUM(invoice.status = 'draft'), 0)", 'draft')
+      .addSelect("COALESCE(SUM(invoice.status = 'issued'), 0)", 'issued')
+      .addSelect("COALESCE(SUM(invoice.status IN ('paid_via_balance_offset', 'paid_via_bank_transfer')), 0)", 'paid')
+      .addSelect("COALESCE(SUM(invoice.status = 'overdue'), 0)", 'overdue')
+      .addSelect('COALESCE(SUM(invoice.totalDeliveryFees), 0.00)', 'totalDeliveryFees')
+      .where('invoice.organizationId = :organizationId', { organizationId });
+    if (clientId !== undefined) builder.andWhere('invoice.clientId = :clientId', { clientId });
+    const row = await builder.getRawOne<{
+      total: string; draft: string; issued: string; paid: string; overdue: string; totalDeliveryFees: string;
+    }>();
+    return {
+      total: Number(row?.total ?? 0),
+      draft: Number(row?.draft ?? 0),
+      issued: Number(row?.issued ?? 0),
+      paid: Number(row?.paid ?? 0),
+      overdue: Number(row?.overdue ?? 0),
+      totalDeliveryFees: row?.totalDeliveryFees != null ? String(row.totalDeliveryFees) : '0.00',
+    };
   }
 
   find(organizationId: string, id: string): Promise<Invoice | null> {

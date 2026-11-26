@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { Dialog, Table, type TableColumn } from '@global-components';
+import { useCan } from '@modules/auth';
 import { formatDate } from '@utils/format';
 import type { InvoiceLine } from '../api';
 import { useInvoice } from '../hooks/useInvoice';
@@ -18,9 +19,11 @@ export function InvoiceDialog({
 	onClose: () => void;
 }) {
 	const { t, i18n } = useTranslation('billing');
+	const can = useCan();
 	const { invoice, isPending, invoiceError, isFetching, retryInvoice } = useInvoice(invoiceId);
 
 	const { issueInvoice, isIssuing, issueError } = useIssueInvoice(invoiceId);
+	const canIssue = invoice?.status === 'draft' && can('billing.create_invoice');
 
 	const columns: TableColumn<InvoiceLine>[] = [
 		{
@@ -52,7 +55,7 @@ export function InvoiceDialog({
 					<button type="button" className="btn border-0 bg-base-200" onClick={onClose}>
 						{t('invoices.detail.close')}
 					</button>
-					{invoice?.status === 'draft' && (
+					{canIssue && (
 						<button
 							type="button"
 							className="btn btn-neutral"

@@ -1,6 +1,12 @@
 // Who may generate an invoice: the permission the seeds already define for "generate itemized billing statements".
 export const INVOICE_PERMISSION = 'billing.create_invoice';
 
+// Who may export invoices as CSV: "Export financial ledgers and settlement reports".
+export const INVOICE_EXPORT_PERMISSION = 'billing.export';
+
+// Upper bound on rows returned in a single CSV export to avoid unbounded memory use.
+export const INVOICE_EXPORT_LIMIT = 10_000;
+
 // Days between the issue date and the due date of a new invoice.
 export const INVOICE_DUE_DAYS = 14;
 
