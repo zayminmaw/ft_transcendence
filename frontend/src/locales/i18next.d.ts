@@ -7,6 +7,7 @@ import type billing from './en/billing.json';
 import type clients from './en/clients.json';
 import type common from './en/common.json';
 import type contacts from './en/contacts.json';
+import type dashboard from './en/dashboard.json';
 import type drivers from './en/drivers.json';
 import type insights from './en/insights.json';
 import type platform from './en/platform.json';
@@ -25,6 +26,7 @@ declare module 'i18next' {
 			clients: typeof clients;
 			common: typeof common;
 			contacts: typeof contacts;
+			dashboard: typeof dashboard;
 			drivers: typeof drivers;
 			insights: typeof insights;
 			platform: typeof platform;

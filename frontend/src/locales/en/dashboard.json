@@ -1,0 +1,185 @@
+{
+	"header": {
+		"title": "{{company}}",
+		"fallbackTitle": "Operations overview",
+		"subtitle": "Signed in as {{name}} · {{role}}. Widgets reflect your workspace permissions.",
+		"fallbackSubtitle": "Delivery, cash reconciliation, and team responsibilities."
+	},
+	"quickActions": {
+		"newParcel": "New parcel",
+		"assignDriver": "Assign driver",
+		"cashHandover": "Cash handover",
+		"newMember": "Add member",
+		"inviteLink": "Invite links",
+		"newDriver": "Onboard driver",
+		"newAsset": "Add asset",
+		"newClient": "New merchant",
+		"openMyRun": "Open my run sheet"
+	},
+	"actions": {
+		"viewAll": "View all",
+		"manage": "Manage",
+		"open": "Open"
+	},
+	"states": {
+		"loadFailed": "This section could not be loaded.",
+		"retry": "Try again"
+	},
+	"emptyWorkspace": {
+		"title": "No workspace modules assigned",
+		"description": "Your current role has no operational widgets enabled. Contact your company administrator if you need additional access."
+	},
+	"kpi": {
+		"readyToDispatch": "Ready to dispatch",
+		"readyToDispatchHint": "Sorted at hub awaiting driver",
+		"outForDelivery": "Out for delivery",
+		"driversOutHint": "{{formatted}} driver(s) currently on route",
+		"exceptions": "Delivery exceptions",
+		"exceptionsHint": "Failed attempts & returns",
+		"myOutForDelivery": "My active drops",
+		"myOutForDeliveryHint": "Assigned out for delivery",
+		"myDelivered": "Delivered",
+		"myDeliveredHint": "Completed on your run sheet",
+		"myExceptions": "Exceptions",
+		"codHandoverDrivers": "COD handover queue",
+		"codHandoverHint": "Drivers available for settlement",
+		"activeMembers": "Active members",
+		"ratio": "{{active}} / {{total}}",
+		"activeMembersHint": "Enabled accounts in company",
+		"pendingInvites": "Pending invites",
+		"pendingInvitesHint": "Unused self-signup links",
+		"workspaceVisits": "Workspace visits",
+		"last30Days": "Last 30 days",
+		"assetsInService": "Assets in service",
+		"assetsCheckedOutHint": "{{formatted}} currently checked out",
+		"needsMaintenance": "Needs maintenance",
+		"roadTaxDueHint": "{{formatted}} road tax renewals due",
+		"totalDrivers": "Working drivers",
+		"totalDriversHint": "Active courier roster",
+		"driversAvailable": "Drivers available",
+		"driversOnRunHint": "{{formatted}} currently on a run",
+		"licensesExpiring": "Licenses expiring",
+		"licensesExpiringHint": "Expired or due within 30 days",
+		"activeMerchants": "Active merchants",
+		"activeMerchantsHint": "Enabled client accounts",
+		"onlineContacts": "Contacts online",
+		"savedContactsHint": "Of {{formatted}} saved colleagues"
+	},
+	"parcels": {
+		"title": "Parcel pipeline & queue",
+		"subtitle": "Live shipment breakdown and latest waybills across the company.",
+		"myRunTitle": "My delivery run",
+		"myRunSubtitle": "Parcels currently assigned to your courier account.",
+		"pipelineSummary": "Shipment status distribution across {{total}} parcels",
+		"recentCaption": "Recent parcels",
+		"empty": "No parcels recorded yet",
+		"emptyHint": "Waybills created for this company will appear here.",
+		"myRunEmpty": "No parcels assigned to you",
+		"myRunEmptyHint": "Assigned deliveries will show up here as soon as dispatch sends out your run.",
+		"columns": {
+			"waybill": "Waybill",
+			"merchant": "Merchant",
+			"cod": "COD due",
+			"zone": "Zone",
+			"status": "Status",
+			"action": "Action"
+		},
+		"assign": "Assign",
+		"recordDelivery": "Record delivery"
+	},
+	"finance": {
+		"title": "Cash handover & merchant balances",
+		"subtitle": "Driver COD settlement queue and live merchant ledger positions.",
+		"openHandover": "Cash handover",
+		"codHandoverLabel": "Driver COD reconciliation",
+		"codDriversCount": "{{count}} driver(s) in settlement directory",
+		"codHint": "Verify cash envelopes before crediting merchant ledgers.",
+		"reconcileAction": "Reconcile COD",
+		"merchantBalances": "Merchant balances",
+		"activeMerchants": "{{formatted}} active",
+		"noMerchants": "No active merchants yet.",
+		"columns": {
+			"merchant": "Merchant",
+			"balance": "Balance",
+			"pendingCod": "Pending COD"
+		}
+	},
+	"drivers": {
+		"title": "Drivers & duty status",
+		"subtitle": "Courier availability, active runs, and license readiness.",
+		"expiringBadge": "{{formatted}} license alerts",
+		"stats": {
+			"available": "Available",
+			"onRun": "On run",
+			"offDuty": "Off duty",
+			"suspended": "Suspended",
+			"expiring": "Expiring"
+		},
+		"noVehicle": "No vehicle assigned",
+		"todayParcels": "{{formatted}} today",
+		"unlinkedAccount": "No login linked",
+		"empty": "No drivers onboarded yet."
+	},
+	"fleet": {
+		"title": "Fleet & equipment",
+		"subtitle": "Vehicle custody, workshop flags, and road tax renewals.",
+		"roadTaxBadge": "{{formatted}} road tax due",
+		"stats": {
+			"inService": "In service",
+			"checkedOut": "Checked out",
+			"maintenance": "Maintenance",
+			"roadTaxDue": "Tax due"
+		},
+		"heldBy": "With {{name}}",
+		"inDepot": "In depot",
+		"empty": "No fleet assets registered yet."
+	},
+	"merchants": {
+		"title": "Merchants",
+		"subtitle": "Active client directory and pickup readiness.",
+		"stats": {
+			"active": "Active",
+			"pinned": "GPS pinned",
+			"archived": "Archived"
+		},
+		"empty": "No active merchants yet."
+	},
+	"team": {
+		"title": "Team & access",
+		"subtitle": "Company memberships, pending invitations, and password status.",
+		"pendingInvitesBadge": "{{formatted}} pending invites",
+		"stats": {
+			"active": "Active",
+			"inactive": "Inactive",
+			"pendingInvites": "Invites",
+			"passwordPending": "Password due"
+		},
+		"inactiveLabel": "Inactive",
+		"empty": "No team members found.",
+		"invitesLink": "Manage invites",
+		"rolesLink": "Role matrix"
+	},
+	"activity": {
+		"title": "Workspace activity & security",
+		"subtitle": "Active team members and administrative signals over the last 30 days.",
+		"fullInsights": "Full insights",
+		"chartCaption": "Daily active members (last 14 days)",
+		"activeMembersSummary": "{{active}} / {{total}} active",
+		"security": {
+			"changes": "Total changes",
+			"roleChanges": "Role changes",
+			"passwordResets": "Password resets",
+			"denied": "Denied attempts"
+		},
+		"visitsSummary": "{{formatted}} workspace visits recorded",
+		"openAudit": "Open audit trail"
+	},
+	"contacts": {
+		"title": "Contacts & live status",
+		"subtitle": "Real-time availability for your saved colleagues.",
+		"onlineBadge": "{{online}} / {{total}} online",
+		"empty": "No saved contacts yet",
+		"emptyHint": "Add colleagues your role works with to track live availability.",
+		"addAction": "Add contacts"
+	}
+}
