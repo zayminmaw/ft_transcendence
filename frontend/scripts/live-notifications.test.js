@@ -27,6 +27,7 @@ function createPayload(overrides = {}) {
 		action: 'CREATE',
 		module: 'parcels',
 		resourceId: '42',
+		resourceType: 'parcel',
 		organizationId: '1',
 		timestamp: '2026-11-26T12:00:00.000Z',
 		...overrides,
@@ -207,4 +208,22 @@ test('useLiveUpdates invalidates tenant queries and shows deduplicated info toas
 		},
 	);
 	live.cleanup();
+});
+
+test('billing records from different tables never suppress one another', () => {
+	const live = setupLiveUpdates();
+	const invoice = createPayload({ module: 'billing', resourceId: '1', resourceType: 'invoice' });
+	live.emit('notification', invoice);
+	live.emit('notification', createPayload({ module: 'billing', resourceId: '1', resourceType: 'payout' }));
+	live.emit('notification', invoice);
+	assert.equal(live.toasts.length, 2);
+	assert.equal(live.invalidations.length, 3);
+	live.cleanup();
+});
+
+test('legacy events without a resource type remain visible rather than conflating records', () => {
+	const deduplicator = liveNotifications.createNotificationDeduplicator();
+	const legacy = createPayload({ module: 'billing', resourceType: undefined });
+	assert.equal(deduplicator.shouldNotify(legacy, 1000), true);
+	assert.equal(deduplicator.shouldNotify(legacy, 1001), true);
 });

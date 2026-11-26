@@ -24,7 +24,7 @@ export function notificationFor(event: AuditEvent): [NotificationTarget, Notific
 	if (!action || !permission || event.outcome !== 'success' || !organizationId || !recordId || !positiveId.test(recordId)) {
 		return null;
 	}
-	return [{ organizationId, permission }, { action, module: event.module, resourceId: recordId }];
+	return [{ organizationId, permission }, { action, module: event.module, resourceId: recordId, resourceType: event.resourceType }];
 }
 
 // Every audited company change refreshes the open screens of the people allowed to see it.

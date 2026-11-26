@@ -38,7 +38,7 @@ const ACTION_KEYS: Record<NotificationPayload['action'], LiveNotificationActionK
 };
 
 export function notificationDedupeKey(payload: NotificationPayload): string {
-	return `${payload.organizationId}:${payload.module}:${payload.action}:${payload.resourceId}`;
+	return `${payload.organizationId}:${payload.module}:${payload.resourceType ?? ''}:${payload.action}:${payload.resourceId}`;
 }
 
 export function notificationModuleKey(module: string): LiveNotificationModuleKey {
@@ -76,6 +76,8 @@ export function createNotificationDeduplicator(windowMs = LIVE_NOTIFICATION_DEDU
 
 	return {
 		shouldNotify(payload: NotificationPayload, now = Date.now()): boolean {
+			// Older servers do not identify the resource table. Equal IDs may then refer to different records.
+			if (!payload.resourceType) return true;
 			for (const [key, seenAt] of seen) {
 				if (now - seenAt >= windowMs || now < seenAt) seen.delete(key);
 			}
