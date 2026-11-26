@@ -40,8 +40,8 @@ export class InvoicesRepository {
     return this.database.getRepository(Invoice).findOneBy({ organizationId, id });
   }
 
-  async items(organizationId: string, invoiceId: string): Promise<BillableParcel[]> {
-    const rows: ParcelRow[] = await this.database.manager.createQueryBuilder()
+  async items(organizationId: string, invoiceId: string, manager: EntityManager = this.database.manager): Promise<BillableParcel[]> {
+    const rows: ParcelRow[] = await manager.createQueryBuilder()
       .select('ii.parcel_id', 'id').addSelect('p.tracking_number', 'trackingNumber')
       .addSelect('ii.delivery_fee', 'deliveryFee').from('invoice_items', 'ii')
       .innerJoin('invoices', 'invoice', 'invoice.id = ii.invoice_id AND invoice.organization_id = :organizationId', { organizationId })
@@ -84,5 +84,17 @@ export class InvoicesRepository {
   async insertItems(manager: EntityManager, rows: Omit<InvoiceItem, 'id'>[]): Promise<void> {
     const repository = manager.getRepository(InvoiceItem);
     await repository.save(rows.map((row) => repository.create(row)));
+  }
+
+  // The invoice, locked until the transaction ends, so two requests to issue it run one after the other.
+  lock(manager: EntityManager, organizationId: string, id: string): Promise<Invoice | null> {
+    return manager.getRepository(Invoice).createQueryBuilder('invoice')
+      .setLock('pessimistic_write')
+      .where('invoice.id = :id AND invoice.organizationId = :organizationId', { id, organizationId })
+      .getOne();
+  }
+
+  async markIssued(manager: EntityManager, id: string, issueDate: string, dueDate: string): Promise<void> {
+    await manager.getRepository(Invoice).update({ id }, { status: 'issued', issueDate, dueDate });
   }
 }
