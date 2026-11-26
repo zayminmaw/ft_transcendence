@@ -295,7 +295,7 @@
 	},
 	"signins": {
 		"title": "Sign-ins",
-		"description": "How many people signed in across all companies and how many attempts failed. Counts only, never names or companies.",
+		"description": "Successful and failed sign-in attempts across the platform. Counts only, never names or companies.",
 		"loading": "Loading the sign-in numbers…",
 		"updating": "Loading the new period…",
 		"loadFailed": "The sign-in numbers could not be loaded",
