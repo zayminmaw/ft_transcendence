@@ -102,7 +102,7 @@ export function DispatchPage() {
 			key: 'merchant',
 			header: t('dispatch.columns.merchant'),
 			sortable: true,
-			cell: (parcel) => parcel.client.name,
+			cell: (parcel) => <bdi>{parcel.client.name}</bdi>,
 		},
 		{
 			key: 'zone',

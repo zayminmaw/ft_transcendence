@@ -88,7 +88,7 @@
 		"merchantOwes": "Net negative: the merchant owes this amount",
 		"pendingCod": "Pending COD",
 		"unbilled": "Unbilled fees",
-		"unbilledLater": "Shown once billing is available",
+		"unbilledInvoices": "Bill them from the Invoices section below",
 		"none": "—",
 		"noPin": "No coordinates yet",
 		"noNotes": "No notes yet.",

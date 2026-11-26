@@ -91,6 +91,8 @@
 		"stage": "Parcel stage",
 		"previousOwner": "Previous owner",
 		"newOwner": "New owner",
+		"cashNow": "Cash expected from them now",
+		"cashAfter": "With this parcel",
 		"newRun": "Opens a new run for today",
 		"title": "Assign a delivery driver",
 		"description": "Review parcel ownership and vehicle pairing before dispatch.",

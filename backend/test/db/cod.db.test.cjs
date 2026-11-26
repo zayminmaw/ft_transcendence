@@ -92,6 +92,28 @@ const counts = async () => [
   await database.getRepository(MerchantLedgerEntry).count(), await database.getRepository(AuditLog).count({ where: { resourceType: 'settlement' } }),
 ];
 
+test('cashier choices include a former driver until their final cash is settled and exclude other companies', async () => {
+  const clientId = await merchant(meridian, '20.00');
+  const former = await driver(meridian);
+  const noCash = await driver(meridian);
+  const active = await driver(meridian);
+  const foreign = await driver(harbor);
+  const undelivered = await driver(meridian);
+  for (const id of [former, noCash, foreign, undelivered]) {
+    await database.query("UPDATE employees SET employment_status = 'terminated' WHERE id = ?", [id]);
+  }
+  const parcelId = await parcel(meridian, clientId, former, '20.00', '0.00');
+  await parcel(meridian, clientId, undelivered, '5.00', '0.00', 'out_for_delivery');
+  let choices = await service.drivers(actor(meridian).tenant);
+  assert.ok(choices.some((row) => row.id === active));
+  assert.ok(choices.some((row) => row.id === former && row.name && row.employeeCode));
+  assert.ok(!choices.some((row) => [noCash, foreign, undelivered].includes(row.id)));
+  assert.equal((await service.waiting(actor(meridian).tenant, former)).expectedTotal, '20.00');
+  await service.reconcile(actor(meridian), body(former, [parcelId], '20.00'));
+  choices = await service.drivers(actor(meridian).tenant);
+  assert.ok(!choices.some((row) => row.id === former));
+});
+
 test('a driver owes only delivered parcels of their own company that no settlement has taken', async () => {
   const one = await merchant(meridian, '60.00');
   const mine = await driver(meridian);

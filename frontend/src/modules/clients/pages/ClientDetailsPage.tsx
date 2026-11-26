@@ -4,7 +4,7 @@ import { Link, useParams } from 'react-router-dom';
 import { DetailItem, ModulePage, TipCard } from '@global-components';
 import { useCompanyPath } from '@hooks/useCompanyPath';
 import { useCan } from '@modules/auth';
-import { MerchantLedger, PayoutDialog } from '@modules/billing';
+import { MerchantInvoices, MerchantLedger, PayoutDialog } from '@modules/billing';
 import { formatDate } from '@utils/format';
 import { ArchiveClientDialog } from '../components/ArchiveClientDialog';
 import { ClientNotFound } from '../components/ClientNotFound';
@@ -155,6 +155,14 @@ export function ClientDetailsPage() {
 					{can('clients.view_financials') && (
 						<MerchantLedger key={client.id} clientId={client.id} />
 					)}
+
+					{can('billing.create_invoice') && (
+						<MerchantInvoices
+							key={client.id}
+							clientId={client.id}
+							businessName={client.businessName}
+						/>
+					)}
 				</div>
 
 				<aside className="flex flex-col gap-6">
@@ -184,7 +192,9 @@ export function ClientDetailsPage() {
 									{client.pendingCodBalance ?? none}
 								</DetailItem>
 								<DetailItem label={t('details.unbilled')} valueClassName="text-sm">
-									{t('details.unbilledLater')}
+									{can('billing.create_invoice')
+										? t('details.unbilledInvoices')
+										: none}
 								</DetailItem>
 								<DetailItem
 									label={t('fields.rateProfileTier')}

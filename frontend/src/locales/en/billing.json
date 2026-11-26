@@ -37,5 +37,96 @@
 			"referenceReused": "This reference was already used for a different amount.",
 			"unknown": "The payout could not be recorded. Try again."
 		}
+	},
+	"cashHandover": {
+		"title": "Cash handover",
+		"description": "Count the cash a driver hands in and record it against their delivered parcels.",
+		"driver": "Driver",
+		"driverPlaceholder": "Choose a driver",
+		"loading": "Loading the driver's parcels",
+		"loadFailed": "Couldn't load the driver's parcels",
+		"waiting": "Delivered parcels waiting for their cash",
+		"parcel": "Parcel",
+		"deliveredAt": "Delivered",
+		"cod": "Cash to collect",
+		"empty": "This driver has no delivered parcels waiting for a handover.",
+		"expected": "The driver should hand in",
+		"cash": "Cash counted",
+		"reference": "Handover reference",
+		"submit": "Record handover",
+		"recorded": "Recorded {{amount}} from {{name}}",
+		"repeated": "Reference {{reference}} was already recorded. Nothing new was recorded.",
+		"tipTitle": "Count first, then record.",
+		"tipDescription": "The cash must match the parcels exactly. Recording it credits each merchant and clears their pending COD. Using the same reference again never records twice.",
+		"errors": {
+			"cash": "Enter the amount counted with two decimals, e.g. 120.00.",
+			"reference": "Use 4–40 letters, digits, dots, dashes or underscores.",
+			"pendingTooLow": "A merchant's pending COD is lower than these parcels' cash, so nothing was recorded. Record their delivery first.",
+			"driverNotFound": "This driver isn't in this company.",
+			"parcelsNotEligible": "Some of these parcels were already settled or changed. Reload the page and count again.",
+			"referenceReused": "This reference was used for a different handover. Enter a new reference.",
+			"unknown": "The handover could not be recorded. Try again."
+		},
+		"include": "Include",
+		"selectParcel": "Include parcel {{tracking}}",
+		"selection": "Selected parcels: {{selected}} (maximum {{maximum}}). Record any remaining parcels in a separate handover.",
+		"driversLoadFailed": "The driver list could not be loaded.",
+		"retry": "Try again",
+		"retryHandover": "Retry this handover",
+		"retryExact": "The result is unknown. Retry the same reference, cash amount and parcels to confirm whether it was recorded."
+	},
+	"invoices": {
+		"title": "Invoices",
+		"description": "Statements of the delivery fees on a merchant's delivered parcels. The fees are already taken from the balance at the COD handover, so an invoice never moves money.",
+		"loading": "Loading the invoices",
+		"loadFailed": "The invoices could not be loaded",
+		"retry": "Try again",
+		"retrying": "Retrying…",
+		"empty": "No invoices yet. Generate one to bill a period.",
+		"number": "Invoice",
+		"period": "Period",
+		"statusColumn": "Status",
+		"deliveries": "Deliveries",
+		"amount": "Amount",
+		"status": {
+			"draft": "Draft",
+			"issued": "Issued",
+			"paid_via_balance_offset": "Paid from balance",
+			"paid_via_bank_transfer": "Paid by transfer",
+			"overdue": "Overdue"
+		},
+		"generate": {
+			"open": "Generate invoice",
+			"title": "Invoice {{name}}",
+			"description": "Bills the delivery fee of every parcel delivered in the period that is not on an invoice yet. The last day is included.",
+			"periodStart": "First day",
+			"periodEnd": "Last day",
+			"notes": "Notes (optional)",
+			"note": "The invoice is saved as a draft. Generating it never changes the merchant's balance.",
+			"cancel": "Cancel",
+			"submit": "Generate invoice",
+			"created": "Invoice {{number}} created for {{amount}}"
+		},
+		"detail": {
+			"title": "Invoice",
+			"loading": "Loading the invoice",
+			"loadFailed": "The invoice could not be loaded",
+			"issued": "Issue date",
+			"due": "Due date",
+			"deliveries": "Deliveries",
+			"total": "Total",
+			"lines": "Parcels on this invoice",
+			"parcel": "Parcel",
+			"fee": "Delivery fee",
+			"close": "Close"
+		},
+		"errors": {
+			"periodStart": "Choose the first day.",
+			"periodEnd": "Choose the last day.",
+			"badPeriod": "The last day must be on or after the first day.",
+			"notFound": "This merchant isn't in this company.",
+			"nothingToBill": "Nothing to bill in that period. Every delivered parcel with a fee is already on an invoice, or there are none. If you just generated one, it is in the list.",
+			"unknown": "The invoice could not be created. Try again."
+		}
 	}
 }
