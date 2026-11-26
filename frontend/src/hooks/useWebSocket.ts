@@ -9,6 +9,7 @@ export type NotificationPayload = {
 	action: 'CREATE' | 'UPDATE' | 'DELETE';
 	module: string;
 	resourceId: string;
+	resourceType?: string;
 	organizationId: string;
 	timestamp: string;
 };
@@ -28,11 +29,7 @@ export type WebSocketHandlers = {
 	onReconnect?: () => void;
 };
 
-export function useWebSocket({
-	onNotification = (payload) => console.info('[notification]', payload),
-	onPresence,
-	onReconnect,
-}: WebSocketHandlers = {}) {
+export function useWebSocket({ onNotification, onPresence, onReconnect }: WebSocketHandlers = {}) {
 	const { accessToken, activeOrganizationId } = useAuth();
 	const handlers = useRef({ onNotification, onPresence, onReconnect });
 	const catchUpOnConnect = useRef(false);

@@ -118,7 +118,9 @@
 			"lines": "Parcels on this invoice",
 			"parcel": "Parcel",
 			"fee": "Delivery fee",
-			"close": "Close"
+			"close": "Close",
+			"issue": "Issue invoice",
+			"issueNote": "Issuing sets the due date 14 days from today. It never changes the merchant's balance."
 		},
 		"errors": {
 			"periodStart": "Choose the first day.",
@@ -126,7 +128,10 @@
 			"badPeriod": "The last day must be on or after the first day.",
 			"notFound": "This merchant isn't in this company.",
 			"nothingToBill": "Nothing to bill in that period. Every delivered parcel with a fee is already on an invoice, or there are none. If you just generated one, it is in the list.",
-			"unknown": "The invoice could not be created. Try again."
+			"unknown": "The invoice could not be created. Try again.",
+			"notDraft": "This invoice was already issued, or it is not a draft any more.",
+			"invoiceNotFound": "This invoice isn't in this company.",
+			"issueUnknown": "The invoice could not be issued. Try again."
 		}
 	}
 }

@@ -75,7 +75,10 @@ export function ProofField({
 						aria-label={t('proof.uploadingLabel', { label })}
 					/>
 					<p role="status" className="text-sm text-[var(--color-slate)]">
-						Uploading {proof.sending.name} · {proof.progress}%
+						{t('proof.uploading', {
+							name: proof.sending.name,
+							progress: proof.progress,
+						})}
 					</p>
 				</div>
 			) : saved ? (
@@ -93,7 +96,7 @@ export function ProofField({
 								disabled={busy}
 								onClick={proof.remove}
 							>
-								{proof.isRemoving ? 'Removing…' : 'Remove'}
+								{proof.isRemoving ? t('proof.removing') : t('proof.remove')}
 							</button>
 						</div>
 					</div>
