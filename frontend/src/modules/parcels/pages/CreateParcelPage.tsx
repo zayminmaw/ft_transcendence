@@ -70,7 +70,8 @@ export function CreateParcelPage() {
 							disabled={isOptionsPending}
 							options={clients.map((client) => ({
 								value: client.id,
-								label: `${client.name} · ${client.code}`,
+								// An option can't hold <bdi>; the isolate marks do the same in plain text.
+								label: `⁨${client.name}⁩ · ${client.code}`,
 							}))}
 						/>
 						{!isOptionsPending && clients.length === 0 && (
