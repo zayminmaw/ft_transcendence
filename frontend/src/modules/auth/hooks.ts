@@ -1,14 +1,16 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ParseKeys } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import { sessionStore } from '@app/store/session';
 import { useAuth } from '@hooks/useAuth';
+import type { AuditFilters } from '@modules/audit';
 import { logOut } from '@services/session-refresh';
 import {
 	type AccountUser,
 	changePassword,
 	fetchMe,
+	fetchMyActivity,
 	inspectInvite,
 	logIn,
 	type Me,
@@ -27,6 +29,19 @@ export function useMe(options: { refetchOnMount?: 'always' } = {}) {
 		queryFn: fetchMe,
 		enabled: userId !== null,
 		...options,
+	});
+}
+
+// The signed-in person's own audit trail across workspaces. Keyed by userId so it clears on logout/account switch.
+export function useMyActivity(filters: AuditFilters) {
+	const { userId } = useAuth();
+	return useQuery({
+		queryKey: ['auth', 'activity', userId, filters],
+		queryFn: () => fetchMyActivity(filters),
+		enabled: userId !== null,
+		placeholderData: keepPreviousData,
+		// Every load is audited as a read, so don't reload just because the window got focus back.
+		refetchOnWindowFocus: false,
 	});
 }
 
@@ -115,6 +130,7 @@ export function useChangePassword() {
 				['auth', 'me', userId],
 				(me) => me && { ...me, mustChangePassword: false },
 			);
+			void queryClient.invalidateQueries({ queryKey: ['auth', 'activity', userId] });
 		},
 	});
 }
@@ -149,8 +165,10 @@ export function useRemoveAvatar() {
 // came, its /me is gone and nothing changes, even when someone else has logged in since.
 function useSetMeUser() {
 	const queryClient = useQueryClient();
-	return (user: AccountUser) =>
+	return (user: AccountUser) => {
 		queryClient.setQueryData<Me>(['auth', 'me', user.id], (me) => me && { ...me, user });
+		void queryClient.invalidateQueries({ queryKey: ['auth', 'activity', user.id] });
+	};
 }
 
 // Ending the session sends the guards back to /login.
