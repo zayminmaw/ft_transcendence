@@ -300,6 +300,7 @@
 		"updating": "Loading the new period…",
 		"loadFailed": "The sign-in numbers could not be loaded",
 		"retry": "Try again",
+		"reuseWarning": "An old session token was used again in this period. That can mean a session was stolen.",
 		"countsOnly": "Counts only. A failed attempt can be against an account that does not exist, so no names, addresses or companies are shown. Days are UTC.",
 		"range": {
 			"label": "Period",
