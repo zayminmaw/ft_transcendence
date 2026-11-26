@@ -46,6 +46,8 @@ const INVOICE_ERRORS = {
 	INVOICE_MERCHANT_NOT_FOUND: 'invoices.errors.notFound',
 	INVOICE_BAD_PERIOD: 'invoices.errors.badPeriod',
 	INVOICE_NOTHING_TO_BILL: 'invoices.errors.nothingToBill',
+	INVOICE_NOT_DRAFT: 'invoices.errors.notDraft',
+	INVOICE_NOT_FOUND: 'invoices.errors.invoiceNotFound',
 } as const satisfies Record<string, ParseKeys<'billing'>>;
 
 // A refusal as a translation key: its own message when the code is known, the general one otherwise.
@@ -54,4 +56,10 @@ export function invoiceErrorKey(error: unknown): ParseKeys<'billing'> {
 	return code && code in INVOICE_ERRORS
 		? INVOICE_ERRORS[code as keyof typeof INVOICE_ERRORS]
 		: 'invoices.errors.unknown';
+}
+
+// The same for issuing, whose general message names the other action.
+export function issueErrorKey(error: unknown): ParseKeys<'billing'> {
+	const key = invoiceErrorKey(error);
+	return key === 'invoices.errors.unknown' ? 'invoices.errors.issueUnknown' : key;
 }
