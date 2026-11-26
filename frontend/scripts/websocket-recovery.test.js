@@ -40,9 +40,17 @@ function liveUpdates() {
 			clearTimeout: (id) => timers.delete(id),
 		},
 	);
+	const liveNotifications = loadTypeScript(
+		new URL('../src/hooks/live-notifications.ts', import.meta.url),
+		{},
+	);
 	const { useLiveUpdates } = loadTypeScript(
 		new URL('../src/hooks/useLiveUpdates.ts', import.meta.url),
 		{
+			react: { useRef: (current) => ({ current }) },
+			'react-i18next': { useTranslation: () => ({ t: (key) => key }) },
+			'@global-components': { useToast: () => ({ toast() {} }) },
+			'./live-notifications': liveNotifications,
 			'./useWebSocket': { useWebSocket },
 			'@app/store/query-client': {
 				queryClient: {

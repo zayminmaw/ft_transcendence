@@ -11,7 +11,7 @@ const event = (overrides = {}) => ({
 test('a committed company change reaches the people who may view that resource', () => {
 	assert.deepEqual(notificationFor(event()), [
 		{ organizationId: '1', permission: 'admin.manage_users' },
-		{ action: 'UPDATE', module: 'members', resourceId: '12' },
+		{ action: 'UPDATE', module: 'members', resourceId: '12', resourceType: 'member' },
 	]);
 	assert.equal(notificationFor(event({ action: 'create' }))[1].action, 'CREATE');
 	assert.equal(notificationFor(event({ action: 'delete' }))[1].action, 'DELETE');
@@ -19,7 +19,7 @@ test('a committed company change reaches the people who may view that resource',
 	// An archived merchant refreshes everyone viewing clients.
 	assert.deepEqual(notificationFor(event({ module: 'clients', action: 'status_change', resourceType: 'client', recordId: '7' })), [
 		{ organizationId: '1', permission: 'clients.view' },
-		{ action: 'UPDATE', module: 'clients', resourceId: '7' },
+		{ action: 'UPDATE', module: 'clients', resourceId: '7', resourceType: 'client' },
 	]);
 });
 

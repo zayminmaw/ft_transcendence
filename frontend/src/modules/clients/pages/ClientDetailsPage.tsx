@@ -153,12 +153,12 @@ export function ClientDetailsPage() {
 					</section>
 
 					{can('clients.view_financials') && (
-						<MerchantLedger key={client.id} clientId={client.id} />
+						<MerchantLedger key={`ledger-${client.id}`} clientId={client.id} />
 					)}
 
 					{can('billing.create_invoice') && (
 						<MerchantInvoices
-							key={client.id}
+							key={`invoices-${client.id}`}
 							clientId={client.id}
 							businessName={client.businessName}
 						/>
