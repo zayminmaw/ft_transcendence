@@ -34,22 +34,29 @@ export function SidebarContent({
 	const { t } = useTranslation();
 
 	return (
-		<div className="flex min-h-full flex-col gap-6">
+		<div className="flex min-h-0 flex-1 flex-col gap-5">
 			<Link
 				to={homeTo}
 				onClick={onNavigate}
-				className="workspace-title w-fit text-[2rem]"
+				className="workspace-title w-fit shrink-0 text-[2rem]"
 				aria-label={t('sidebar.home', { scope })}
 			>
 				transcend
 			</Link>
-			{header ?? (
-				<div className="rounded-xl bg-base-200 p-3">
-					<p className="text-sm font-medium">{scope}</p>
-					<p className="mt-1 text-xs text-[var(--color-slate)]">{t('layout.preview')}</p>
-				</div>
-			)}
-			<nav aria-label={t('layout.navigation', { scope })} className="flex flex-col gap-6">
+			<div className="shrink-0">
+				{header ?? (
+					<div className="rounded-xl bg-base-200 p-3">
+						<p className="text-sm font-medium">{scope}</p>
+						<p className="mt-1 text-xs text-[var(--color-slate)]">
+							{t('layout.preview')}
+						</p>
+					</div>
+				)}
+			</div>
+			<nav
+				aria-label={t('layout.navigation', { scope })}
+				className="-mx-2 flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto overscroll-contain px-2"
+			>
 				{groups.map(({ label, items }, index) => {
 					const shown = items.filter((item) => !item.hidden);
 					if (shown.length === 0) return null;
@@ -57,7 +64,7 @@ export function SidebarContent({
 						<div key={label ?? index} role="group" aria-label={label}>
 							{label && (
 								<p
-									className={`mb-3 text-xs text-[var(--color-slate)] ${index > 0 ? 'border-t border-base-300 pt-6' : ''}`}
+									className={`mb-2.5 text-xs text-[var(--color-slate)] ${index > 0 ? 'border-t border-base-300 pt-5' : ''}`}
 								>
 									{label}
 								</p>
@@ -70,7 +77,7 @@ export function SidebarContent({
 											end={end}
 											onClick={onNavigate}
 											className={({ isActive }) =>
-												`min-h-11 rounded-xl px-3 py-3 text-sm font-medium ${isActive ? 'bg-base-200 text-base-content' : 'text-[var(--color-slate)] hover:bg-base-200 hover:text-base-content'}`
+												`min-h-10 rounded-xl px-3 py-2 text-sm font-medium ${isActive ? 'bg-base-200 text-base-content' : 'text-[var(--color-slate)] hover:bg-base-200 hover:text-base-content'}`
 											}
 										>
 											{label}
@@ -83,7 +90,7 @@ export function SidebarContent({
 				})}
 			</nav>
 			{(workspaceSelector || footer) && (
-				<div className="mt-auto flex flex-col gap-3 border-t border-base-300 pt-4">
+				<div className="flex shrink-0 flex-col gap-3 border-t border-base-300 pt-4">
 					{workspaceSelector}
 					{footer}
 				</div>
