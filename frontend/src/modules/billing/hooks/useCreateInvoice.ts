@@ -9,12 +9,15 @@ export function useCreateInvoice() {
 	const queryClient = useQueryClient();
 	// POST /api/billing/invoices
 	const create = useMutation({
+		// A company switch while POST is in flight must not redirect its cache refresh.
+		onMutate: () => ({ clientsKey: tenantQueryKey('clients') }),
 		mutationFn: (values: InvoiceValues) =>
 			apiRequest<Invoice>('billing/invoices', {
 				method: 'POST',
 				body: JSON.stringify(values),
 			}),
-		onSettled: () => queryClient.invalidateQueries({ queryKey: tenantQueryKey('clients') }),
+		onSettled: (_data, _error, _values, context) =>
+			context && queryClient.invalidateQueries({ queryKey: context.clientsKey }),
 	});
 
 	return {
