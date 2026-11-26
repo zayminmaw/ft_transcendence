@@ -1,4 +1,4 @@
-import { type ChangeEvent, useRef, useState } from 'react';
+import { type ChangeEvent, useId, useState } from 'react';
 import type { ParseKeys } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { ApiError } from '@services/api-client';
@@ -11,12 +11,14 @@ const MAX_BYTES = 2 * 1024 * 1024;
 type Message = ParseKeys<'auth'>;
 
 // Change or remove your picture on the profile page. A chosen file is uploaded at once; the answer goes into the
-// cached /me, so the header and the card show it straight away.
+// cached /me, so the sidebar card and profile header show it straight away.
 export function AvatarForm({ hasPicture }: { hasPicture: boolean }) {
 	const { t } = useTranslation('auth');
+	const inputId = useId();
+	const hintId = `${inputId}-hint`;
+	const errorId = `${inputId}-error`;
 	const upload = useUploadAvatar();
 	const remove = useRemoveAvatar();
-	const input = useRef<HTMLInputElement>(null);
 	const [error, setError] = useState<Message | null>(null);
 	const [done, setDone] = useState<Message | null>(null);
 	const busy = upload.isPending || remove.isPending;
@@ -53,16 +55,26 @@ export function AvatarForm({ hasPicture }: { hasPicture: boolean }) {
 	};
 
 	return (
-		<div className="flex flex-col gap-2">
+		<div className="flex flex-col gap-2" aria-busy={busy}>
 			<div className="flex flex-wrap items-center gap-2">
-				<button
-					type="button"
-					className="btn btn-sm bg-base-100"
-					disabled={busy}
-					onClick={() => input.current?.click()}
+				<label
+					htmlFor={inputId}
+					className={`btn btn-sm border-0 bg-base-200 focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-neutral ${busy ? 'btn-disabled' : ''}`}
 				>
+					{upload.isPending && (
+						<span className="loading loading-spinner loading-xs" aria-hidden="true" />
+					)}
 					{upload.isPending ? t('profile.pictureUploading') : t('profile.pictureChange')}
-				</button>
+					<input
+						id={inputId}
+						type="file"
+						accept={IMAGE_TYPES.join(',')}
+						disabled={busy}
+						aria-describedby={error ? errorId : hintId}
+						className="sr-only"
+						onChange={onChoose}
+					/>
+				</label>
 				{hasPicture && (
 					<button
 						type="button"
@@ -75,24 +87,17 @@ export function AvatarForm({ hasPicture }: { hasPicture: boolean }) {
 							: t('profile.pictureRemove')}
 					</button>
 				)}
-				<input
-					ref={input}
-					type="file"
-					accept={IMAGE_TYPES.join(',')}
-					className="hidden"
-					tabIndex={-1}
-					aria-hidden="true"
-					onChange={onChoose}
-				/>
 			</div>
 			{error ? (
-				<p role="alert" className="text-xs text-error">
+				<p id={errorId} role="alert" className="text-xs text-error">
 					{t(error)}
 				</p>
 			) : (
-				<p className="text-xs text-[var(--color-slate)]">{t('profile.pictureHint')}</p>
+				<p id={hintId} className="text-xs text-[var(--color-slate)]">
+					{t('profile.pictureHint')}
+				</p>
 			)}
-			<p role="status" className="text-xs text-success">
+			<p role="status" className="min-h-4 text-xs text-success">
 				{done ? t(done) : ''}
 			</p>
 		</div>

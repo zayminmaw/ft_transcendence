@@ -1,23 +1,29 @@
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 import { useLogout } from '../hooks';
 import { LegalLinks } from './LegalLinks';
 
 // The bottom of the sidebar: your profile, the way out and the legal pages. Who is logged in shows in the card at the top
 // (WorkspaceSwitcher).
-export function AccountFooter() {
+export function AccountFooter({ profileTo = '/profile' }: { profileTo?: string }) {
 	const { t } = useTranslation('auth');
 	const logout = useLogout();
 
 	return (
-		<div className="flex flex-col items-start gap-1">
-			<Link to="/profile" className="btn btn-ghost btn-sm">
+		<div className="flex flex-col items-stretch gap-1">
+			<NavLink
+				to={profileTo}
+				end
+				className={({ isActive }) =>
+					`btn btn-ghost btn-sm justify-start ${isActive ? 'bg-base-200 text-base-content' : ''}`
+				}
+			>
 				<UserIcon />
 				{t('account.profile')}
-			</Link>
+			</NavLink>
 			<button
 				type="button"
-				className="btn btn-ghost btn-sm"
+				className="btn btn-ghost btn-sm justify-start"
 				disabled={logout.isPending}
 				onClick={() => logout.mutate()}
 			>
@@ -25,7 +31,7 @@ export function AccountFooter() {
 				{t('account.logOut')}
 			</button>
 			{logout.isError && (
-				<p role="alert" className="mt-2 text-xs text-error">
+				<p role="alert" className="mt-2 px-3 text-xs text-error">
 					{t('account.logOutFailed')}
 				</p>
 			)}

@@ -54,7 +54,15 @@ function formErrorKey(error: unknown) {
 }
 
 // The first-login screen and the profile page. onChanged runs after a change that worked; the fields empty again.
-export function ChangePasswordForm({ mode, onChanged }: { mode: Mode; onChanged?: () => void }) {
+export function ChangePasswordForm({
+	mode,
+	onChanged,
+	labelledBy,
+}: {
+	mode: Mode;
+	onChanged?: () => void;
+	labelledBy?: string;
+}) {
 	const { t } = useTranslation('auth');
 	const change = useChangePassword();
 	const {
@@ -74,6 +82,7 @@ export function ChangePasswordForm({ mode, onChanged }: { mode: Mode; onChanged?
 	return (
 		<form
 			noValidate
+			aria-labelledby={labelledBy}
 			className="flex flex-col gap-5"
 			onSubmit={handleSubmit(({ currentPassword, newPassword }) =>
 				change.mutate(
@@ -124,7 +133,11 @@ export function ChangePasswordForm({ mode, onChanged }: { mode: Mode; onChanged?
 				error={fieldError(errors.confirmPassword?.message)}
 				{...register('confirmPassword')}
 			/>
-			<Button type="submit" className="w-full" disabled={change.isPending}>
+			<Button
+				type="submit"
+				className={mode === 'profile' ? 'w-fit' : 'w-full'}
+				disabled={change.isPending}
+			>
 				{change.isPending && (
 					<span className="loading loading-spinner loading-sm" aria-hidden="true" />
 				)}

@@ -55,6 +55,12 @@ export function getTenantNavigation(
 					label: t('nav', { ns: 'insights' }),
 					hidden: !can('admin.audit_logs'),
 				},
+				// Reached from AccountFooter; hidden from main sidebar groups while naming the breadcrumb.
+				{
+					to: `${home}/profile`,
+					label: t('account.profile', { ns: 'auth' }),
+					hidden: true,
+				},
 			],
 		},
 	];

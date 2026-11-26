@@ -26,7 +26,7 @@ export function App() {
 			header={
 				<WorkspaceSwitcher current={name} role={workspace && roleName(workspace.role)} />
 			}
-			footer={<AccountFooter />}
+			footer={<AccountFooter profileTo={companyPath('profile')} />}
 		/>
 	);
 }
