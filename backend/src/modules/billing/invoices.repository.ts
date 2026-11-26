@@ -40,8 +40,8 @@ export class InvoicesRepository {
     return this.database.getRepository(Invoice).findOneBy({ organizationId, id });
   }
 
-  async items(organizationId: string, invoiceId: string): Promise<BillableParcel[]> {
-    const rows: ParcelRow[] = await this.database.manager.createQueryBuilder()
+  async items(organizationId: string, invoiceId: string, manager: EntityManager = this.database.manager): Promise<BillableParcel[]> {
+    const rows: ParcelRow[] = await manager.createQueryBuilder()
       .select('ii.parcel_id', 'id').addSelect('p.tracking_number', 'trackingNumber')
       .addSelect('ii.delivery_fee', 'deliveryFee').from('invoice_items', 'ii')
       .innerJoin('invoices', 'invoice', 'invoice.id = ii.invoice_id AND invoice.organization_id = :organizationId', { organizationId })

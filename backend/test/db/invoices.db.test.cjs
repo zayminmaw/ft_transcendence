@@ -253,6 +253,58 @@ test('two requests to issue at the same moment issue it once', async () => {
   assert.equal(await database.getRepository(AuditLog).count({ where: { resourceType: 'invoice', action: 'status_change', recordId: made.id } }), 1);
 });
 
+test('issuing distinct drafts concurrently completes when every pool connection holds a transaction', async () => {
+  const id = await merchant(meridian);
+  const drafts = [];
+  const poolSize = database.options.extra.connectionLimit;
+  for (let i = 0; i < poolSize; i++) {
+    await parcel(meridian, id);
+    drafts.push(await service.create(actor(meridian), body(id)));
+  }
+  const repository = service.invoices;
+  const lock = repository.lock.bind(repository);
+  const runners = [];
+  let release;
+  const allLocked = new Promise((resolve) => { release = resolve; });
+  repository.lock = async (manager, ...args) => {
+    const invoice = await lock(manager, ...args);
+    runners.push(manager.queryRunner);
+    if (runners.length === poolSize) release();
+    await allLocked;
+    return invoice;
+  };
+  let timer;
+  try {
+    const actions = Promise.allSettled(drafts.map((draft) => service.issue(actor(meridian), draft.id)));
+    const result = await Promise.race([
+      actions,
+      new Promise((resolve) => { timer = setTimeout(() => resolve(null), 5000); }),
+    ]);
+    if (result === null) {
+      // Let a regressed implementation unwind before the test closes the disposable pool.
+      for (const runner of runners) {
+        if (runner.isTransactionActive && !runner.isReleased) {
+          await runner.rollbackTransaction();
+          await runner.release();
+          break;
+        }
+      }
+      await actions;
+      assert.fail('Issuing exhausted the pool while waiting for a second connection');
+    }
+    assert.equal(result.length, poolSize);
+    assert.ok(result.every((entry) => entry.status === 'fulfilled'));
+    assert.deepEqual(result.map((entry) => entry.value.items), drafts.map((draft) => draft.items));
+    for (const draft of drafts) {
+      assert.equal((await service.detail(actor(meridian).tenant, draft.id)).status, 'issued');
+      assert.equal(await database.getRepository(AuditLog).count({ where: { resourceType: 'invoice', action: 'status_change', recordId: draft.id } }), 1);
+    }
+  } finally {
+    clearTimeout(timer);
+    repository.lock = lock;
+  }
+});
+
 test('another company\'s invoice, or a bad id, cannot be issued, and the invoice stays a draft', async () => {
   const id = await merchant(harbor);
   await parcel(harbor, id);

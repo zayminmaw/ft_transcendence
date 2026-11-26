@@ -110,7 +110,7 @@ export class InvoicesService {
         module: 'billing', action: 'status_change', resourceType: 'invoice', recordId: invoiceId, resourceLabel: invoice.invoiceNumber,
         organizationId, actorId: actor.userId, before, after, meta: actor.meta,
       });
-      return view({ ...invoice, ...after }, await this.invoices.items(organizationId, invoiceId));
+      return view({ ...invoice, ...after }, await this.invoices.items(organizationId, invoiceId, manager));
     });
   }
 }
