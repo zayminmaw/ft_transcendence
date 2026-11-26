@@ -38,6 +38,6 @@ import { SessionsService } from './sessions.service';
   ],
   controllers: [AuthController],
   providers: [AuthService, SessionsService, SessionsRepository, AuthAuditRepository, AuthThrottlerGuard, SameOriginGuard],
-  exports: [JwtModule, SessionsService, AuthAuditRepository],
+  exports: [JwtModule, SessionsService, AuthAuditRepository, SameOriginGuard],
 })
 export class AuthModule {}

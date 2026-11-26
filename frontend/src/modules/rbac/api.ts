@@ -22,6 +22,21 @@ export type RoleOverview = {
 	members: number;
 	permissions: { code: string; scope: 'all' | 'assigned_only' }[];
 };
+export type InviteStatus = 'pending' | 'used' | 'expired' | 'revoked';
+export type MemberInvite = {
+	id: string;
+	email: string | null;
+	role: { code: string; name: string };
+	status: InviteStatus;
+	invitedBy: { userId: string; username: string; displayName: string | null };
+	usedBy: { userId: string; username: string; displayName: string | null } | null;
+	expiresAt: string;
+	usedAt: string | null;
+	revokedAt: string | null;
+	createdAt: string;
+};
+export type CreateInviteValues = { roleCode: string; email?: string | null };
+export type CreateInviteResponse = { invite: MemberInvite; token: string };
 
 export function listMembers() {
 	return apiRequest<Member[]>('members');
@@ -60,4 +75,21 @@ export function resetMemberPassword(userId: string) {
 		`members/${encodeURIComponent(userId)}/password-reset`,
 		{ method: 'POST' },
 	);
+}
+
+export function listInvites() {
+	return apiRequest<MemberInvite[]>('members/invites');
+}
+
+export function createInvite(values: CreateInviteValues) {
+	return apiRequest<CreateInviteResponse>('members/invites', {
+		method: 'POST',
+		body: JSON.stringify(values),
+	});
+}
+
+export function revokeInvite(inviteId: string) {
+	return apiRequest<void>(`members/invites/${encodeURIComponent(inviteId)}`, {
+		method: 'DELETE',
+	});
 }

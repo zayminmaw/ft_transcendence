@@ -29,9 +29,38 @@ export type Me = {
 };
 export type LoginValues = { login: string; password: string };
 export type PasswordChange = { currentPassword: string; newPassword: string };
+export type InvitePreview = {
+	organization: { name: string; slug: string };
+	role: { code: string; name: string };
+	email: string | null;
+	expiresAt: string;
+};
+export type SignupValues = {
+	token: string;
+	username: string;
+	email?: string;
+	displayName?: string | null;
+	password: string;
+};
+export type SignupResponse = {
+	accessToken: string;
+	user: AccountUser;
+	organizationSlug: string;
+};
 
 export function logIn(values: LoginValues) {
 	return apiRequest<{ accessToken: string; user: AccountUser }>('auth/login', {
+		method: 'POST',
+		body: JSON.stringify(values),
+	});
+}
+
+export function inspectInvite(token: string) {
+	return apiRequest<InvitePreview>(`auth/invites/${encodeURIComponent(token)}`);
+}
+
+export function signUp(values: SignupValues) {
+	return apiRequest<SignupResponse>('auth/signup', {
 		method: 'POST',
 		body: JSON.stringify(values),
 	});

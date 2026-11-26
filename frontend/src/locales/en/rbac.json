@@ -3,6 +3,7 @@
 		"title": "People & access",
 		"description": "Create company accounts and manage their access within {{company}}.",
 		"create": "Create user",
+		"invite": "Invite user",
 		"loading": "Loading people…",
 		"noAccess": "You don't have access to People & access. Ask your company administrator.",
 		"loadFailed": "The people list could not be loaded.",
@@ -35,7 +36,45 @@
 	"tabs": {
 		"label": "People & access views",
 		"members": "Members · {{n}}",
+		"invites": "Invites · {{n}}",
 		"roles": "Roles & permissions"
+	},
+	"invites": {
+		"title": "Invite links",
+		"description": "Single-use sign-up links for {{company}}. Invited users choose their own username and password.",
+		"loading": "Loading invites…",
+		"loadFailed": "Couldn't load invite links.",
+		"empty": "No invite links yet.",
+		"anyEmail": "Anyone with the link",
+		"columns": {
+			"recipient": "Email",
+			"expires": "Expires",
+			"usedBy": "Used by"
+		},
+		"status": {
+			"pending": "Pending",
+			"used": "Used",
+			"expired": "Expired",
+			"revoked": "Revoked"
+		},
+		"createTitle": "Create invite link",
+		"createDescription": "Generate a single-use sign-up link for {{company}}. Valid for 7 days.",
+		"emailLabel": "Restrict to email (optional)",
+		"emailPlaceholder": "name@company.com",
+		"emailHint": "Leave blank to let the person enter their own email during sign-up.",
+		"createSubmit": "Generate link",
+		"creating": "Generating…",
+		"createdTitle": "Invite link ready",
+		"createdDescription": "Share this link so the new {{role}} can sign up for {{company}}.",
+		"linkLabel": "One-time sign-up link",
+		"copyLink": "Copy link",
+		"lockedToEmail": "Locked to {{email}}.",
+		"oneTimeNote": "Shown once. Works for one sign-up and expires on {{date}}.",
+		"revoke": "Revoke",
+		"revoking": "Revoking…",
+		"revokeTitle": "Revoke invite link?",
+		"revokeConfirm": "This {{role}} invite link will stop working immediately.",
+		"revokedToast": "Invite link revoked."
 	},
 	"roles": {
 		"title": "Roles & permissions",
@@ -179,6 +218,9 @@
 		"notAllowed": "You can't do this for this person.",
 		"notFound": "That person isn't in this company any more.",
 		"self": "You can't do this to your own account.",
+		"inviteEmailTaken": "An account with that email already exists.",
+		"inviteNotFound": "That invite link could not be found.",
+		"inviteAlreadyUsed": "That invite link has already been used.",
 		"unknown": "Something went wrong. Try again."
 	}
 }

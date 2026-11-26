@@ -38,6 +38,12 @@ export const AUDIT_RESOURCES: Record<string, AuditResource> = {
 		fields: { role: 'plain', isActive: 'plain' },
 		viewPermission: 'admin.manage_users',
 	},
+	// One-time invitation link created or revoked by a company admin. Tokens are never audited.
+	member_invite: {
+		category: 'data',
+		fields: { email: 'maskEmail', role: 'plain', expiresAt: 'plain' },
+		viewPermission: 'admin.manage_users',
+	},
 	// One person saving another as a contact; no live notification.
 	contact: { category: 'data', fields: { contactUserId: 'plain' } },
 	tenant: {
