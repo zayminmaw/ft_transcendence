@@ -3,8 +3,11 @@ import { Dialog, Table, type TableColumn } from '@global-components';
 import { formatDate } from '@utils/format';
 import type { InvoiceLine } from '../api';
 import { useInvoice } from '../hooks/useInvoice';
+import { useIssueInvoice } from '../hooks/useIssueInvoice';
+import { issueErrorKey } from '../utils';
 
-// One invoice with the parcels it bills: the period, the dates, the total and a line per parcel. Read only.
+// One invoice with the parcels it bills: the period, the dates, the total and a line per parcel. A draft can be issued
+// from here (billing.create_invoice), which sets its due date and never moves money.
 export function InvoiceDialog({
 	invoiceId,
 	open,
@@ -16,6 +19,8 @@ export function InvoiceDialog({
 }) {
 	const { t, i18n } = useTranslation('billing');
 	const { invoice, isPending, invoiceError, isFetching, retryInvoice } = useInvoice(invoiceId);
+
+	const { issueInvoice, isIssuing, issueError } = useIssueInvoice(invoiceId);
 
 	const columns: TableColumn<InvoiceLine>[] = [
 		{
@@ -43,9 +48,21 @@ export function InvoiceDialog({
 					: undefined
 			}
 			actions={
-				<button type="button" className="btn border-0 bg-base-200" onClick={onClose}>
-					{t('invoices.detail.close')}
-				</button>
+				<>
+					<button type="button" className="btn border-0 bg-base-200" onClick={onClose}>
+						{t('invoices.detail.close')}
+					</button>
+					{invoice?.status === 'draft' && (
+						<button
+							type="button"
+							className="btn btn-neutral"
+							disabled={isIssuing}
+							onClick={() => issueInvoice()}
+						>
+							{t('invoices.detail.issue')}
+						</button>
+					)}
+				</>
 			}
 		>
 			{invoiceError ? (
@@ -95,6 +112,16 @@ export function InvoiceDialog({
 							</dd>
 						</div>
 					</dl>
+					{invoice.status === 'draft' && (
+						<p className="text-sm text-[var(--color-slate)]">
+							{t('invoices.detail.issueNote')}
+						</p>
+					)}
+					{issueError && (
+						<p role="alert" className="alert alert-error alert-soft text-sm">
+							{t(issueErrorKey(issueError))}
+						</p>
+					)}
 					{invoice.notes && (
 						<p className="whitespace-pre-line text-sm">{invoice.notes}</p>
 					)}
