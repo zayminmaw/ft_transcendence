@@ -37,6 +37,10 @@ export class CodService {
     private readonly audit: AuditService,
   ) {}
 
+  drivers(tenant: TenantContext) {
+    return this.cod.driverChoices(tenant.organizationId);
+  }
+
   // What the driver should hand over: delivered parcels with no settlement yet, and their total.
   async waiting(tenant: TenantContext, driverId: string): Promise<UnreconciledView> {
     if (!ID_PATTERN.test(driverId) || !(await this.cod.hasDriver(null, tenant.organizationId, driverId))) {

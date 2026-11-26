@@ -13,9 +13,19 @@ const { COD_PARCELS_NOT_ELIGIBLE } = require('../dist/modules/billing/constants'
 const good = { driverId: '15', settlementReference: 'DAY-2026-11-15', totalCashDropped: '150.00', parcelIds: ['1', '2'] };
 const problems = async (values) => (await validate(plainToInstance(ReconcileCodDto, values), { whitelist: true, forbidNonWhitelisted: true })).map((issue) => issue.property).sort();
 
-test('both routes need the COD approval permission, and nothing weaker', () => {
+test('driver choices and handover routes need the COD approval permission, and nothing weaker', () => {
   assert.equal(Reflect.getMetadata(REQUIRED_PERMISSION, CodController), 'billing.reconcile_cod');
-  for (const handler of ['waiting', 'reconcile']) assert.equal(Reflect.getMetadata(REQUIRED_PERMISSION, CodController.prototype[handler]), undefined);
+  for (const handler of ['drivers', 'waiting', 'reconcile']) assert.equal(Reflect.getMetadata(REQUIRED_PERMISSION, CodController.prototype[handler]), undefined);
+});
+
+test('cashier driver choices use the verified company', async () => {
+  const choices = [{ id: '15', name: 'Former Driver', employeeCode: 'DRV-15' }];
+  const service = new CodService({ driverChoices: async (organizationId) => {
+    assert.equal(organizationId, '1');
+    return choices;
+  } }, {}, {});
+  const controller = new CodController(service);
+  assert.equal(await controller.drivers({ tenant: { organizationId: '1' } }), choices);
 });
 
 test('a well-formed handover passes, and the reference is trimmed', async () => {

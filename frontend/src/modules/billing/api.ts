@@ -46,3 +46,43 @@ export type Payout = {
 	// True when this wire reference was sent before: nothing new was recorded.
 	repeated: boolean;
 };
+
+// /api/billing: what the cashier handover answers with. Money stays a string like the DECIMAL columns.
+
+// One delivered parcel whose cash has not been handed over yet.
+export type WaitingParcel = {
+	id: string;
+	trackingNumber: string;
+	clientId: string;
+	codAmount: string;
+	deliveredAt: string | null;
+};
+
+// GET /api/billing/reconcile-cod/driver/:driverId/unreconciled-parcels
+export type WaitingCash = {
+	driverId: string;
+	expectedTotal: string;
+	parcels: WaitingParcel[];
+};
+
+// GET /api/billing/reconcile-cod/drivers, including former drivers with unsettled parcels.
+export type CashDriver = { id: string; name: string; employeeCode: string };
+
+// POST /api/billing/reconcile-cod. The cash must equal the parcels' COD exactly.
+export type HandoverValues = {
+	driverId: string;
+	settlementReference: string;
+	totalCashDropped: string;
+	parcelIds: string[];
+};
+
+export type Handover = {
+	id: string;
+	reference: string;
+	driverId: string;
+	status: 'pending' | 'verified' | 'discrepancy_flagged';
+	totalCodExpected: string;
+	totalCashDropped: string;
+	// True when the same reference was sent before: nothing new was recorded.
+	repeated: boolean;
+};
