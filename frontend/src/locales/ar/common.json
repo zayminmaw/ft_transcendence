@@ -14,6 +14,29 @@
 	"toast": {
 		"dismiss": "إغلاق الإشعار"
 	},
+	"liveNotifications": {
+		"record": "السجل رقم {{id}}",
+		"actions": {
+			"create": "عنصر جديد في {{module}}",
+			"update": "تم تحديث {{module}}",
+			"delete": "تم حذف عنصر من {{module}}"
+		},
+		"modules": {
+			"auth": "تسجيل الدخول",
+			"members": "الأشخاص والصلاحيات",
+			"platform": "المنصة",
+			"parcels": "الطرود",
+			"clients": "العملاء",
+			"contacts": "جهات الاتصال",
+			"billing": "الفوترة",
+			"staff": "الموظفون",
+			"drivers": "السائقون",
+			"assets": "الأصول",
+			"audit": "سجل التدقيق",
+			"insights": "صفحة النشاط",
+			"unknown": "مساحة العمل"
+		}
+	},
 	"imageViewer": {
 		"close": "إغلاق",
 		"failed": "تعذّر عرض هذه الصورة الآن. أعد تحميل الصفحة وحاول مرة أخرى."
