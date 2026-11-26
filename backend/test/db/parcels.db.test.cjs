@@ -300,6 +300,38 @@ test('the form offers active merchants and known zones; dispatch offers on-duty 
   assert.deepEqual((await parcels.dispatchDrivers(harbor)).map((driver) => driver.name), ['Tariq Aziz']);
 });
 
+test('dispatch shows the COD each driver is expected to bring back, for the parcels out with them now', async () => {
+  const everyone = await parcels.dispatchDrivers(meridian);
+  const before = everyone.find((driver) => driver.id === drivers.leen);
+  const samirBefore = everyone.find((driver) => driver.id === drivers.samir).expectedCod;
+  const base = BigInt(before.expectedCod.replace('.', ''));
+  const one = await outParcel({ codAmount: '120.00' });
+  const two = await outParcel({ codAmount: '80.50' });
+  await sortedParcel({ codAmount: '999.00' });
+  const find = async (organizationId, id) => (await parcels.dispatchDrivers(organizationId)).find((driver) => driver.id === id);
+
+  const loaded = await find(meridian, drivers.leen);
+  assert.equal(BigInt(loaded.expectedCod.replace('.', '')), base + 20050n);
+  assert.match(loaded.expectedCod, /^\d+\.\d{2}$/);
+  // A parcel still in the hub is not carried, so it adds nothing.
+  assert.equal((await find(meridian, drivers.leen)).expectedCod, loaded.expectedCod);
+  // Another driver's total does not move.
+  assert.equal((await find(meridian, drivers.samir)).expectedCod, samirBefore);
+  // Once delivered or failed the parcel is no longer on the road, so it leaves the total.
+  await database.query("UPDATE parcels SET lifecycle_status = 'delivered' WHERE id = ?", [one.id]);
+  assert.equal(BigInt((await find(meridian, drivers.leen)).expectedCod.replace('.', '')), base + 8050n);
+  await database.query("UPDATE parcels SET lifecycle_status = 'failed_attempt' WHERE id = ?", [two.id]);
+  assert.equal((await find(meridian, drivers.leen)).expectedCod, before.expectedCod);
+});
+
+test('the expected COD never includes another company\'s parcels, even when they name the same driver', async () => {
+  const find = async () => (await parcels.dispatchDrivers(meridian)).find((driver) => driver.id === drivers.leen);
+  const before = (await find()).expectedCod;
+  const foreign = await newParcel({ clientId: clients.harbor, codAmount: '500.00' }, harbor);
+  await database.query("UPDATE parcels SET assigned_driver_id = ?, lifecycle_status = 'out_for_delivery' WHERE id = ?", [drivers.leen, foreign.id]);
+  assert.equal((await find()).expectedCod, before);
+});
+
 test('the audit row is written in the change and a failed audit undoes the change', async () => {
   const parcel = await sortedParcel();
   await parcels.assign(meridian, parcel.id, clerk, drivers.leen, null, async (manager, old, saved) => {
