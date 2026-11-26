@@ -28,11 +28,7 @@ export type WebSocketHandlers = {
 	onReconnect?: () => void;
 };
 
-export function useWebSocket({
-	onNotification = (payload) => console.info('[notification]', payload),
-	onPresence,
-	onReconnect,
-}: WebSocketHandlers = {}) {
+export function useWebSocket({ onNotification, onPresence, onReconnect }: WebSocketHandlers = {}) {
 	const { accessToken, activeOrganizationId } = useAuth();
 	const handlers = useRef({ onNotification, onPresence, onReconnect });
 	const catchUpOnConnect = useRef(false);
