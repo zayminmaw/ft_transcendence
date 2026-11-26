@@ -1,6 +1,5 @@
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Avatar } from '@global-components';
 import { useCompanyPath } from '@hooks/useCompanyPath';
 import { shownName, useRoleName } from '@modules/auth';
 import { formatDate, formatNumber } from '@utils/format';
@@ -106,19 +105,14 @@ export function TeamAccessWidget({
 								key={member.userId}
 								className="flex items-center justify-between gap-3 py-3"
 							>
-								<div className="flex min-w-0 items-center gap-3">
-									<Avatar name={name} seed={member.userId} />
-									<div className="min-w-0">
-										<p className="truncate text-sm font-medium text-base-content">
-											<bdi>{name}</bdi>
-										</p>
-										<p className="truncate text-xs text-[var(--color-slate)]">
-											<span dir="ltr">{member.username}</span>
-											{!member.isActive
-												? ` · ${t('team.inactiveLabel')}`
-												: ''}
-										</p>
-									</div>
+								<div className="min-w-0">
+									<p className="truncate text-sm font-medium text-base-content">
+										<bdi>{name}</bdi>
+									</p>
+									<p className="truncate text-xs text-[var(--color-slate)]">
+										<span dir="ltr">{member.username}</span>
+										{!member.isActive ? ` · ${t('team.inactiveLabel')}` : ''}
+									</p>
 								</div>
 								<span className="badge badge-ghost badge-sm shrink-0">
 									{roleName(member.role)}
@@ -342,16 +336,13 @@ export function ContactsWidget({
 								key={contact.userId}
 								className="flex items-center justify-between gap-3 py-3"
 							>
-								<div className="flex min-w-0 items-center gap-3">
-									<Avatar name={name} seed={contact.userId} />
-									<div className="min-w-0">
-										<p className="truncate text-sm font-medium text-base-content">
-											<bdi>{name}</bdi>
-										</p>
-										<p className="truncate text-xs text-[var(--color-slate)]">
-											{roleName(contact.role)}
-										</p>
-									</div>
+								<div className="min-w-0">
+									<p className="truncate text-sm font-medium text-base-content">
+										<bdi>{name}</bdi>
+									</p>
+									<p className="truncate text-xs text-[var(--color-slate)]">
+										{roleName(contact.role)}
+									</p>
 								</div>
 								<span
 									className={`badge badge-sm shrink-0 ${presenceBadgeClass(contact.status)}`}

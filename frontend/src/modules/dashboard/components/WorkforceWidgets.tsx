@@ -1,6 +1,5 @@
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Avatar } from '@global-components';
 import { useCompanyPath } from '@hooks/useCompanyPath';
 import { formatNumber } from '@utils/format';
 import type {
@@ -139,21 +138,18 @@ export function DriversWidget({
 							key={driver.id}
 							className="flex items-center justify-between gap-3 py-3"
 						>
-							<div className="flex min-w-0 items-center gap-3">
-								<Avatar name={driver.name} seed={driver.id} />
-								<div className="min-w-0">
-									<Link
-										to={companyPath(`drivers/${driver.id}`)}
-										className="link link-hover block truncate text-sm font-medium"
-									>
-										<bdi>{driver.name}</bdi>
-									</Link>
-									<p className="truncate text-xs text-[var(--color-slate)]">
-										{driver.vehicle
-											? `${driver.vehicle.tag}${driver.vehicle.licensePlate ? ` · ${driver.vehicle.licensePlate}` : ''}`
-											: t('drivers.noVehicle')}
-									</p>
-								</div>
+							<div className="min-w-0">
+								<Link
+									to={companyPath(`drivers/${driver.id}`)}
+									className="link link-hover block truncate text-sm font-medium"
+								>
+									<bdi>{driver.name}</bdi>
+								</Link>
+								<p className="truncate text-xs text-[var(--color-slate)]">
+									{driver.vehicle
+										? `${driver.vehicle.tag}${driver.vehicle.licensePlate ? ` · ${driver.vehicle.licensePlate}` : ''}`
+										: t('drivers.noVehicle')}
+								</p>
 							</div>
 							<div className="flex shrink-0 items-center gap-2">
 								<span className="text-xs tabular-nums text-[var(--color-slate)]">
@@ -184,23 +180,20 @@ export function DriversWidget({
 								key={driver.id}
 								className="flex items-center justify-between gap-3 py-3"
 							>
-								<div className="flex min-w-0 items-center gap-3">
-									<Avatar name={fullName} seed={driver.id} />
-									<div className="min-w-0">
-										<Link
-											to={companyPath(`drivers/${driver.id}`)}
-											className="link link-hover block truncate text-sm font-medium"
-										>
-											<bdi>{fullName}</bdi>
-										</Link>
-										<p className="truncate text-xs text-[var(--color-slate)]">
-											<span>{driver.employeeCode}</span>
-											{driver.assignedZone ? ` · ${driver.assignedZone}` : ''}
-											{canManageDrivers && !driver.account
-												? ` · ${t('drivers.unlinkedAccount')}`
-												: ''}
-										</p>
-									</div>
+								<div className="min-w-0">
+									<Link
+										to={companyPath(`drivers/${driver.id}`)}
+										className="link link-hover block truncate text-sm font-medium"
+									>
+										<bdi>{fullName}</bdi>
+									</Link>
+									<p className="truncate text-xs text-[var(--color-slate)]">
+										<span>{driver.employeeCode}</span>
+										{driver.assignedZone ? ` · ${driver.assignedZone}` : ''}
+										{canManageDrivers && !driver.account
+											? ` · ${t('drivers.unlinkedAccount')}`
+											: ''}
+									</p>
 								</div>
 								<span
 									className={`badge badge-sm shrink-0 whitespace-nowrap ${dutyBadgeClass(driver.dispatchStatus)}`}
