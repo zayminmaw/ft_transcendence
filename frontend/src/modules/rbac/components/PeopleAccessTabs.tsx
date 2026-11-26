@@ -6,7 +6,13 @@ import { formatNumber } from '@utils/format';
 
 // The Figma's tabs under the page header: Members · n, and Roles & permissions for those who may see the roles.
 // Each tab is its own address, so it can be linked.
-export function PeopleAccessTabs({ members }: { members: number }) {
+export function PeopleAccessTabs({
+	members,
+	pendingInvites,
+}: {
+	members: number;
+	pendingInvites: number;
+}) {
 	const { t, i18n } = useTranslation('rbac');
 	const companyPath = useCompanyPath();
 	const can = useCan();
@@ -16,6 +22,9 @@ export function PeopleAccessTabs({ members }: { members: number }) {
 		<nav aria-label={t('tabs.label')} className="flex flex-wrap gap-2">
 			<NavLink to={companyPath('rbac')} end className={tabClass}>
 				{t('tabs.members', { n: formatNumber(members, i18n.language) })}
+			</NavLink>
+			<NavLink to={companyPath('rbac/invites')} className={tabClass}>
+				{t('tabs.invites', { n: formatNumber(pendingInvites, i18n.language) })}
 			</NavLink>
 			{can('admin.manage_roles') && (
 				<NavLink to={companyPath('rbac/roles')} className={tabClass}>

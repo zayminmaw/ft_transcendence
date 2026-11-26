@@ -7,6 +7,7 @@ import { PeopleAccessPage } from './pages/PeopleAccessPage';
 export const rbacRoutes: RouteObject[] = [
 	{ path: 'rbac', element: <PeopleAccessPage /> },
 	{ path: 'rbac/new', element: <CreateUserPage /> },
+	{ path: 'rbac/invites', element: <PeopleAccessPage tab="invites" /> },
 	{
 		path: 'rbac/roles',
 		element: (

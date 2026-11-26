@@ -32,8 +32,9 @@ export interface SessionsTransaction {
 export class SessionsRepository {
   constructor(@InjectRepository(UserSession) private readonly sessions: Repository<UserSession>) {}
 
-  async insert(session: NewSession): Promise<void> {
-    await this.sessions.insert(session);
+  async insert(session: NewSession, manager?: EntityManager): Promise<void> {
+    if (manager) await manager.insert(UserSession, session);
+    else await this.sessions.insert(session);
   }
 
   async findActiveByFamilyId(familyId: string): Promise<UserSession | undefined> {

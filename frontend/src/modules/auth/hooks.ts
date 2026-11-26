@@ -9,9 +9,11 @@ import {
 	type AccountUser,
 	changePassword,
 	fetchMe,
+	inspectInvite,
 	logIn,
 	type Me,
 	removeAvatar,
+	signUp,
 	updateProfile,
 	uploadAvatar,
 } from './api';
@@ -69,6 +71,30 @@ export function useLogin() {
 			queryClient.removeQueries();
 			sessionStore.start(accessToken, user.id);
 			navigate('/app', { replace: true });
+		},
+	});
+}
+
+export function useInvitePreview(token: string) {
+	return useQuery({
+		queryKey: ['auth', 'invite', token],
+		queryFn: () => inspectInvite(token),
+		enabled: token.length > 0,
+		retry: false,
+	});
+}
+
+export function useSignup() {
+	const queryClient = useQueryClient();
+	const navigate = useNavigate();
+	return useMutation({
+		mutationFn: signUp,
+		// The variables carry the chosen password and invite token: don't keep them in cache.
+		gcTime: 0,
+		onSuccess: ({ accessToken, user, organizationSlug }) => {
+			queryClient.removeQueries();
+			sessionStore.start(accessToken, user.id);
+			navigate(`/app/${encodeURIComponent(organizationSlug)}`, { replace: true });
 		},
 	});
 }

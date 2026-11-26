@@ -8,4 +8,5 @@ export { JwtAuthGuard } from './jwt-auth.guard';
 export { setRefreshCookie } from './refresh-cookie';
 export { requestMeta } from './request-meta';
 export type { RequestMeta } from './request-meta';
+export { SameOriginGuard } from './same-origin.guard';
 export { SessionsService } from './sessions.service';

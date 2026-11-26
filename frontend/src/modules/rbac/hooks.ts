@@ -3,11 +3,14 @@ import { retryServerErrors } from '@services/api-client';
 import { tenantQueryKey } from '@utils/query-keys';
 import {
 	changeMemberRole,
+	createInvite,
 	createMember,
 	listAssignableRoles,
+	listInvites,
 	listMembers,
 	listRoleOverview,
 	resetMemberPassword,
+	revokeInvite,
 	setMemberActive,
 } from './api';
 
@@ -68,5 +71,33 @@ export function useResetMemberPassword() {
 		// The answer is the one-time password: the dialog shows it, the cache never keeps it.
 		gcTime: 0,
 		onSettled: reload,
+	});
+}
+
+export function useInvites() {
+	return useQuery({
+		queryKey: tenantQueryKey('members', 'invites'),
+		queryFn: listInvites,
+		retry: retryServerErrors,
+	});
+}
+
+export function useCreateInvite() {
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: createInvite,
+		// The answer includes the one-time invite token: don't retain it in query cache.
+		gcTime: 0,
+		onSuccess: () =>
+			queryClient.invalidateQueries({ queryKey: tenantQueryKey('members', 'invites') }),
+	});
+}
+
+export function useRevokeInvite() {
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: revokeInvite,
+		onSettled: () =>
+			queryClient.invalidateQueries({ queryKey: tenantQueryKey('members', 'invites') }),
 	});
 }

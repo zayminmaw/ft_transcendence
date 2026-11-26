@@ -11,6 +11,9 @@ const MESSAGES = {
 	MEMBER_NOT_ALLOWED: 'errors.notAllowed',
 	MEMBER_NOT_FOUND: 'errors.notFound',
 	MEMBER_SELF: 'errors.self',
+	INVITE_EMAIL_TAKEN: 'errors.inviteEmailTaken',
+	INVITE_NOT_FOUND: 'errors.inviteNotFound',
+	INVITE_ALREADY_USED: 'errors.inviteAlreadyUsed',
 } as const satisfies Record<string, ParseKeys<'rbac'>>;
 
 export const memberErrorKey = (error: unknown) => errorKey(MESSAGES, error);

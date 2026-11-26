@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import type { EntityManager } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
 import { createHash, randomBytes } from 'node:crypto';
 import { UsersRepository } from '../users';
@@ -69,12 +70,12 @@ export class SessionsService {
   }
 
   // A fresh access token after the password changed, without the flag.
-  async issueAccessToken(userId: string): Promise<string> {
-    const user = await this.users.findById(userId);
+  async issueAccessToken(userId: string, manager?: EntityManager): Promise<string> {
+    const user = await this.users.findById(userId, manager);
     return this.signAccessToken(userId, user?.mustChangePassword === true);
   }
 
-  async start(userId: string, meta: RequestMeta, now = new Date()): Promise<IssuedSession> {
+  async start(userId: string, meta: RequestMeta, now = new Date(), manager?: EntityManager): Promise<IssuedSession> {
     const familyId = randomPart(16);
     const secret = randomPart(32);
     const absoluteExpiresAt = new Date(now.getTime() + SESSION_ABSOLUTE_MS);
@@ -86,8 +87,8 @@ export class SessionsService {
       absoluteExpiresAt,
       userAgent: meta.userAgent,
       ipAddress: meta.ip,
-    });
-    return { userId, refreshToken: `${familyId}.${secret}`, absoluteExpiresAt, accessToken: await this.issueAccessToken(userId) };
+    }, manager);
+    return { userId, refreshToken: `${familyId}.${secret}`, absoluteExpiresAt, accessToken: await this.issueAccessToken(userId, manager) };
   }
 
   // Returns undefined when the token can't be used; the caller answers 401 and clears the cookie.
