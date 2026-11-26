@@ -66,6 +66,13 @@
 			"parcelsNotEligible": "Some of these parcels were already settled or changed. Reload the page and count again.",
 			"referenceReused": "This reference was used for a different handover. Enter a new reference.",
 			"unknown": "The handover could not be recorded. Try again."
-		}
+		},
+		"include": "Include",
+		"selectParcel": "Include parcel {{tracking}}",
+		"selection": "Selected parcels: {{selected}} (maximum {{maximum}}). Record any remaining parcels in a separate handover.",
+		"driversLoadFailed": "The driver list could not be loaded.",
+		"retry": "Try again",
+		"retryHandover": "Retry this handover",
+		"retryExact": "The result is unknown. Retry the same reference, cash amount and parcels to confirm whether it was recorded."
 	}
 }

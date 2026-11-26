@@ -4,7 +4,20 @@ import { useTranslation } from 'react-i18next';
 import { useToast } from '@global-components';
 import { tenantQueryKey } from '@utils/query-keys';
 import { apiRequest } from '@services/api-client';
-import type { Handover, HandoverValues, WaitingCash } from '../api';
+import type { CashDriver, Handover, HandoverValues, WaitingCash } from '../api';
+
+export function useCashDrivers() {
+	const query = useQuery({
+		queryKey: tenantQueryKey('billing', 'cash-drivers'),
+		queryFn: () => apiRequest<CashDriver[]>('billing/reconcile-cod/drivers'),
+	});
+	return {
+		driverChoices: query.data ?? [],
+		isChoicesPending: query.isPending,
+		choicesError: query.error,
+		retryChoices: query.refetch,
+	};
+}
 
 // What one driver still owes the cashier: their delivered parcels no handover has claimed.
 export function useWaitingCash(driverId: string) {
@@ -28,7 +41,12 @@ export function useWaitingCash(driverId: string) {
 				description: error.message,
 			});
 	}, [error, errorUpdatedAt, toast, t]);
-	return { waiting: query.data, isWaitingPending: query.isFetching && !query.data };
+	return {
+		waiting: query.data,
+		isWaitingPending: query.isFetching && !query.data,
+		waitingError: query.error,
+		retryWaiting: query.refetch,
+	};
 }
 
 // Recording the handover. Merchant balances and the waiting list changed, so both are refreshed, also after a
@@ -37,15 +55,20 @@ export function useCashHandover() {
 	const queryClient = useQueryClient();
 	// POST /api/billing/reconcile-cod
 	const handover = useMutation({
+		onMutate: () => ({
+			billingKey: tenantQueryKey('billing'),
+			clientsKey: tenantQueryKey('clients'),
+		}),
 		mutationFn: (values: HandoverValues) =>
 			apiRequest<Handover>('billing/reconcile-cod', {
 				method: 'POST',
 				body: JSON.stringify(values),
 			}),
-		onSettled: () =>
+		onSettled: (_data, _error, _values, context) =>
+			context &&
 			Promise.all([
-				queryClient.invalidateQueries({ queryKey: tenantQueryKey('billing') }),
-				queryClient.invalidateQueries({ queryKey: tenantQueryKey('clients') }),
+				queryClient.invalidateQueries({ queryKey: context.billingKey }),
+				queryClient.invalidateQueries({ queryKey: context.clientsKey }),
 			]),
 	});
 	return {

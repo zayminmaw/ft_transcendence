@@ -65,6 +65,9 @@ export type WaitingCash = {
 	parcels: WaitingParcel[];
 };
 
+// GET /api/billing/reconcile-cod/drivers, including former drivers with unsettled parcels.
+export type CashDriver = { id: string; name: string; employeeCode: string };
+
 // POST /api/billing/reconcile-cod. The cash must equal the parcels' COD exactly.
 export type HandoverValues = {
 	driverId: string;
