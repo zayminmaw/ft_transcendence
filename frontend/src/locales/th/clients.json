@@ -79,6 +79,7 @@
 	"details": {
 		"since": "เป็นลูกค้าตั้งแต่ {{date}}",
 		"edit": "แก้ไข",
+		"payOut": "จ่ายเงิน",
 		"contact": "ผู้ติดต่อ",
 		"addresses": "ที่อยู่",
 		"financials": "ยอดคงเหลือ",

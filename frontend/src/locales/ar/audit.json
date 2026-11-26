@@ -90,9 +90,11 @@
 		"tenant": "الشركة",
 		"tenant_administrator": "مسؤول الشركة",
 		"audit_log": "سجل التدقيق",
+		"activity_insight": "صفحة النشاط",
 		"parcel": "الطرد",
 		"client": "العميل",
 		"invoice": "الفاتورة",
+		"payout": "الدفعة للتاجر",
 		"driver": "السائق",
 		"employee": "الموظف",
 		"asset": "الأصل",
@@ -240,6 +242,7 @@
 		"staff": "الموظفون",
 		"drivers": "السائقون",
 		"assets": "الأصول",
-		"audit": "سجل التدقيق"
+		"audit": "سجل التدقيق",
+		"insights": "صفحة النشاط"
 	}
 }
