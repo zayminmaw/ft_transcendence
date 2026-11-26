@@ -193,7 +193,7 @@ export const AUDIT_RESOURCES: Record<string, AuditResource> = {
 	// A statement of a merchant's delivery fees. The totals are the company's own money figures.
 	invoice: {
 		category: 'data',
-		fields: { status: 'plain', totalDeliveries: 'plain', totalDeliveryFees: 'plain', netAmountDue: 'plain' },
+		fields: { status: 'plain', issueDate: 'plain', dueDate: 'plain', totalDeliveries: 'plain', totalDeliveryFees: 'plain', netAmountDue: 'plain' },
 		viewPermission: 'billing.view',
 	},
 	audit_log: { category: 'access', fields: {} },

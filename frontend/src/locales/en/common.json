@@ -51,6 +51,7 @@
 			"drivers": "Drivers",
 			"assets": "Fleet & assets",
 			"administration": "Administration",
+			"cashHandover": "Cash handover",
 			"rbac": "People & access",
 			"contacts": "Contacts"
 		},

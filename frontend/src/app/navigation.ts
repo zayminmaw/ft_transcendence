@@ -8,6 +8,10 @@ export const MODULE_ACCESS = {
 	clients: { permission: 'clients.view', label: 'workspace.nav.clients' },
 	drivers: { permission: 'drivers.view', label: 'workspace.nav.drivers' },
 	assets: { permission: 'assets.view', label: 'workspace.nav.assets' },
+	'cash-handover': {
+		permission: 'billing.reconcile_cod',
+		label: 'workspace.nav.cashHandover',
+	},
 	rbac: { permission: 'admin.manage_users', label: 'workspace.nav.rbac' },
 	// Every company role holds it: your own contacts, not other people's.
 	contacts: { permission: 'contacts.manage_own', label: 'workspace.nav.contacts' },
@@ -39,7 +43,7 @@ export function getTenantNavigation(
 		{
 			label: t('workspace.nav.administration'),
 			items: [
-				...links(['rbac']),
+				...links(['cash-handover', 'rbac']),
 				// Not in MODULE_ACCESS: its label lives in the audit namespace, and the page shows its own "no access".
 				{
 					to: `${home}/audit`,

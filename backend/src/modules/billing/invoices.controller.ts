@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Query, Req } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Param, Post, Query, Req } from '@nestjs/common';
 import { requestMeta } from '../../common/context/request-meta';
 import { RequirePermission } from '../../common/decorators/require-permission.decorator';
 import type { AuthenticatedRequest } from '../../common/types/authenticated-request';
@@ -27,5 +27,12 @@ export class InvoicesController {
   @Post()
   create(@Body() body: CreateInvoiceDto, @Req() request: AuthenticatedRequest) {
     return this.invoices.create({ tenant: request.tenant!, userId: request.user!.id, meta: requestMeta(request) }, body);
+  }
+
+  // 200 with the issued invoice. Anything but a draft gets 409.
+  @Post(':invoiceId/issue')
+  @HttpCode(200)
+  issue(@Param('invoiceId') invoiceId: string, @Req() request: AuthenticatedRequest) {
+    return this.invoices.issue({ tenant: request.tenant!, userId: request.user!.id, meta: requestMeta(request) }, invoiceId);
   }
 }
