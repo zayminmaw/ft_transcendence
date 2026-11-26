@@ -168,7 +168,7 @@ test('changing merchant keys cannot reuse the previous merchant rows', async (t)
 	assert.equal(ledger.hook('B').entries[0].id, 'B-line');
 });
 
-test('cached client detail route changes remount the ledger to reset pagination', () => {
+test('merchant sections have distinct stable keys that change when the client changes', () => {
 	let clientId = 'A';
 	const { ClientDetailsPage } = loadTypeScript(
 		new URL('../src/modules/clients/pages/ClientDetailsPage.tsx', import.meta.url),
@@ -181,9 +181,13 @@ test('cached client detail route changes remount the ledger to reset pagination'
 			'@global-components': { DetailItem: 'detail', ModulePage: 'module', TipCard: 'tip' },
 			'@hooks/useCompanyPath': { useCompanyPath: () => (path) => path },
 			'@modules/auth': {
-				useCan: () => (permission) => permission === 'clients.view_financials',
+				useCan: () => (permission) =>
+					['clients.view_financials', 'billing.create_invoice'].includes(permission),
 			},
-			'@modules/billing': { MerchantLedger: 'merchant-ledger' },
+			'@modules/billing': {
+				MerchantLedger: 'merchant-ledger',
+				MerchantInvoices: 'merchant-invoices',
+			},
 			'@utils/format': { formatDate: () => 'November 1' },
 			'../components/ArchiveClientDialog': { ArchiveClientDialog: 'archive' },
 			'../components/ClientNotFound': { ClientNotFound: 'not-found' },
@@ -198,8 +202,15 @@ test('cached client detail route changes remount the ledger to reset pagination'
 		},
 	);
 	const render = () =>
-		elements(ClientDetailsPage()).find((element) => element.type === 'merchant-ledger');
-	assert.equal(render().key, 'A');
+		elements(ClientDetailsPage())
+			.filter((element) => ['merchant-ledger', 'merchant-invoices'].includes(element.type))
+			.map((element) => element.key);
+	const first = render();
+	assert.equal(first.length, 2);
+	assert.equal(new Set(first).size, 2);
+	assert.deepEqual(render(), first);
 	clientId = 'B';
-	assert.equal(render().key, 'B');
+	const second = render();
+	assert.equal(new Set(second).size, 2);
+	for (let index = 0; index < first.length; index++) assert.notEqual(second[index], first[index]);
 });

@@ -11,6 +11,7 @@ import { insightsRoutes } from '@modules/insights';
 import { MarketingLayout, marketingRoutes } from '@modules/marketing';
 import { platformRoutes } from '@modules/platform';
 import {
+	AccountLayout,
 	authRoutes,
 	ChangePasswordPage,
 	ProfilePage,
@@ -57,8 +58,11 @@ export const router = createBrowserRouter([
 			{
 				element: <RequirePasswordChosen />,
 				children: [
-					// Your own account, outside any company: /app/<slug> addresses belong to companies.
-					{ path: 'profile', element: <ProfilePage /> },
+					// Direct /profile visits render inside the standard DashboardLayout via AccountLayout.
+					{
+						element: <AccountLayout />,
+						children: [{ path: 'profile', element: <ProfilePage /> }],
+					},
 					{
 						path: 'app',
 						children: [
@@ -71,6 +75,7 @@ export const router = createBrowserRouter([
 										element: <App />,
 										children: [
 											{ index: true, element: <OverviewPage /> },
+											{ path: 'profile', element: <ProfilePage /> },
 											...workspaceRoutes,
 											{ path: '*', element: <NotFoundPage /> },
 										],
