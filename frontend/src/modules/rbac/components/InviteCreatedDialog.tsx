@@ -1,8 +1,7 @@
 import { useState } from 'react';
-import { createInviteUrl } from '@modules/auth/invite-link';
 import { useTranslation } from 'react-i18next';
 import { Button, Dialog } from '@global-components';
-import { useRoleName } from '@modules/auth';
+import { createInviteUrl, useRoleName } from '@modules/auth';
 import { formatDate } from '@utils/format';
 import type { CreateInviteResponse } from '../api';
 

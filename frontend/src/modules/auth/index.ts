@@ -1,4 +1,5 @@
 export { authRoutes } from './routes';
+export { createInviteUrl } from './invite-link';
 export { shownName, useCan, useCurrentWorkspace, useLogout, useMe, useRoleName } from './hooks';
 export type { Me, Workspace } from './api';
 export { AccountFooter } from './components/AccountFooter';
