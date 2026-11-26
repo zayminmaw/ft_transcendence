@@ -21,6 +21,7 @@ export interface NotificationEvent {
 	action: NotificationAction;
 	module: string;
 	resourceId: string;
+	resourceType?: string;
 }
 
 export interface NotificationTarget {

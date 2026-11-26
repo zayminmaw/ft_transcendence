@@ -9,6 +9,7 @@ export type NotificationPayload = {
 	action: 'CREATE' | 'UPDATE' | 'DELETE';
 	module: string;
 	resourceId: string;
+	resourceType?: string;
 	organizationId: string;
 	timestamp: string;
 };
