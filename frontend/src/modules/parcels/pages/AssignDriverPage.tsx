@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Input, ModulePage, Textarea, TipCard, useToast } from '@global-components';
 import { useCompanyPath } from '@hooks/useCompanyPath';
+import { addAmounts } from '@utils/money';
 import { ASSIGNABLE_STATUSES, vehicleLabel } from '../constants';
 import { useParcelMutations } from '../hooks/useParcelMutations';
 import { useAssignableParcels, useDispatchDrivers, useParcelDetails } from '../hooks/useParcels';
@@ -83,6 +84,8 @@ export function AssignDriverPage() {
 		{ label: t('assign.stage'), value: t(`status.${parcel.status}`) },
 		...(parcel.driver ? [{ label: t('assign.previousOwner'), value: parcel.driver.name }] : []),
 		{ label: t('assign.newOwner'), value: driver.name },
+		{ label: t('assign.cashNow'), value: driver.expectedCod },
+		{ label: t('assign.cashAfter'), value: addAmounts(driver.expectedCod, parcel.codAmount) },
 		{ label: t('common.vehicle'), value: vehicleLabel(t, driver.vehicle) },
 		{ label: t('common.run'), value: driver.run?.code ?? t('assign.newRun') },
 	];
@@ -146,6 +149,7 @@ export function AssignDriverPage() {
 						id="merchant"
 						label={t('common.merchant')}
 						value={parcel.client.name}
+						dir="auto"
 						readOnly
 						className="border-0 bg-base-200"
 					/>

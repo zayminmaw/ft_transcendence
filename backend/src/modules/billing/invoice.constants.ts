@@ -11,3 +11,4 @@ export const INVOICE_NOTHING_TO_BILL = {
   message: 'This merchant has no delivered parcels with a delivery fee in that period that are not already on an invoice.',
   code: 'INVOICE_NOTHING_TO_BILL',
 };
+export const INVOICE_NOT_DRAFT = { message: 'Only a draft invoice can be issued.', code: 'INVOICE_NOT_DRAFT' };

@@ -17,6 +17,23 @@ const toParcel = (row: ParcelRow): DeliveredParcel => ({
 export class CodRepository {
   constructor(private readonly database: DataSource) {}
 
+  // Finance must also be able to settle a former employee's final cash. Keep this under billing's permission,
+  // without changing the employed-only choices used by dispatch and asset assignment.
+  async driverChoices(organizationId: string): Promise<{ id: string; name: string; employeeCode: string }[]> {
+    const rows: { id: string; name: string; employeeCode: string }[] = await this.database.manager.createQueryBuilder()
+      .select('e.id', 'id').addSelect("CONCAT(e.first_name, ' ', e.last_name)", 'name')
+      .addSelect('e.employee_code', 'employeeCode').from('employees', 'e')
+      .innerJoin('delivery_drivers', 'd', 'd.employee_id = e.id AND d.organization_id = :organizationId', { organizationId })
+      .where('e.organization_id = :organizationId', { organizationId })
+      .andWhere(`(e.employment_status <> 'terminated' OR EXISTS (
+        SELECT 1 FROM parcels p LEFT JOIN driver_cod_collections c ON c.parcel_id = p.id
+        WHERE p.organization_id = :organizationId AND p.assigned_driver_id = e.id
+          AND p.lifecycle_status = 'delivered' AND c.id IS NULL
+      ))`)
+      .orderBy('e.last_name').addOrderBy('e.first_name').addOrderBy('e.id').getRawMany();
+    return rows.map((row) => ({ ...row, id: String(row.id) }));
+  }
+
   inTransaction<T>(work: (manager: EntityManager) => Promise<T>): Promise<T> {
     // Parcel and merchant rows are explicitly locked. Avoid gap locks on as-yet absent collections, so competing
     // handovers can reach the unique-reference check and then compare the committed sheet after rollback.

@@ -12,12 +12,17 @@ const actor = (request: AuthenticatedRequest): CodActor => ({
   meta: requestMeta(request),
 });
 
-// The cashier's COD handover, in the company named by X-Organization-Id (checked by RolesGuard). Both routes need the
-// approval permission: looking at what a driver owes is part of approving it.
+// The cashier's COD handover, in the company named by X-Organization-Id (checked by RolesGuard). All routes need the
+// approval permission: choosing a driver and looking at what they owe are part of approving it.
 @Controller('billing/reconcile-cod')
 @RequirePermission(RECONCILE_PERMISSION)
 export class CodController {
   constructor(private readonly cod: CodService) {}
+
+  @Get('drivers')
+  drivers(@Req() request: AuthenticatedRequest) {
+    return this.cod.drivers(request.tenant!);
+  }
 
   @Get('driver/:driverId/unreconciled-parcels')
   waiting(@Param('driverId') driverId: string, @Req() request: AuthenticatedRequest) {

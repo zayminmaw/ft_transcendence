@@ -65,7 +65,7 @@ export function ClientsPage() {
 						to={companyPath(`clients/${client.id}`)}
 						className="link link-hover font-medium"
 					>
-						{client.businessName}
+						<bdi>{client.businessName}</bdi>
 					</Link>
 					<p className="text-xs text-[var(--color-slate)]">{client.clientCode}</p>
 				</div>
