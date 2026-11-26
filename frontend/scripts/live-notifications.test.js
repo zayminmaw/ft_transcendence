@@ -214,7 +214,10 @@ test('billing records from different tables never suppress one another', () => {
 	const live = setupLiveUpdates();
 	const invoice = createPayload({ module: 'billing', resourceId: '1', resourceType: 'invoice' });
 	live.emit('notification', invoice);
-	live.emit('notification', createPayload({ module: 'billing', resourceId: '1', resourceType: 'payout' }));
+	live.emit(
+		'notification',
+		createPayload({ module: 'billing', resourceId: '1', resourceType: 'payout' }),
+	);
 	live.emit('notification', invoice);
 	assert.equal(live.toasts.length, 2);
 	assert.equal(live.invalidations.length, 3);
