@@ -16,4 +16,12 @@ export const rbacRoutes: RouteObject[] = [
 			</RequirePermission>
 		),
 	},
+	{
+		path: 'rbac/export',
+		element: (
+			<RequirePermission permission="admin.manage_users" label="workspace.nav.rbac">
+				<PeopleAccessPage tab="export" />
+			</RequirePermission>
+		),
+	},
 ];

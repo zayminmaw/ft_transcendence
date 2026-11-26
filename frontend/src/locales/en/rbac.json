@@ -37,7 +37,34 @@
 		"label": "People & access views",
 		"members": "Members · {{n}}",
 		"invites": "Invites · {{n}}",
-		"roles": "Roles & permissions"
+		"roles": "Roles & permissions",
+		"export": "Data export"
+	},
+	"export": {
+		"title": "Company data export",
+		"description": "Download {{company}}'s operational records as JSON or spreadsheet CSV. Available to tenant administrators only.",
+		"noAccess": "Only tenant administrators can export company data.",
+		"jsonTitle": "Full company snapshot (JSON)",
+		"jsonDescription": "One structured JSON file containing company metadata and all operational tables below. Passwords and tokens are never included.",
+		"jsonAction": "Download JSON snapshot",
+		"csvTitle": "Spreadsheet export (CSV)",
+		"csvDescription": "Download a single dataset or every section as RFC-4180 CSV with formula-injection protection for Excel and Google Sheets.",
+		"sectionLabel": "Dataset",
+		"csvAction": "Download CSV",
+		"downloading": "Preparing export…",
+		"includedLabel": "Included in export",
+		"sections": {
+			"all": "All sections",
+			"organization": "Organization profile",
+			"members": "Members",
+			"clients": "Clients",
+			"drivers": "Drivers",
+			"assets": "Fleet assets",
+			"parcels": "Parcels",
+			"invoices": "Invoices"
+		},
+		"successToast": "Downloaded {{filename}}.",
+		"errorToast": "Couldn't export company data. Try again."
 	},
 	"invites": {
 		"title": "Invite links",

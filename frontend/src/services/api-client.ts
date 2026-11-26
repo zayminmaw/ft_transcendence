@@ -54,6 +54,47 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
 	return response.json() as Promise<T>;
 }
 
+// Authenticated file download (Bearer token + X-Organization-Id + one token refresh on 401), triggering a browser
+// download from a Blob without putting tokens in the URL.
+export async function apiDownload(
+	path: string,
+	fallbackFilename: string,
+): Promise<{ filename: string }> {
+	const { accessToken, activeOrganizationId } = sessionStore.getSnapshot();
+	let response = await send(path, { method: 'GET' }, accessToken, activeOrganizationId);
+	if (response.status === 401 && accessToken) {
+		const renewal = await renewAccessToken(accessToken);
+		if ('token' in renewal)
+			response = await send(path, { method: 'GET' }, renewal.token, activeOrganizationId);
+		else if (
+			renewal.failure === 'ended' &&
+			sessionStore.getSnapshot().accessToken === accessToken
+		)
+			endSession('expired');
+	}
+	if (!response.ok) throw await toApiError(response);
+	const filename = parseFilename(response.headers.get('content-disposition')) ?? fallbackFilename;
+	const blob = await response.blob();
+	const objectUrl = URL.createObjectURL(blob);
+	try {
+		const link = document.createElement('a');
+		link.href = objectUrl;
+		link.download = filename;
+		document.body.append(link);
+		link.click();
+		link.remove();
+	} finally {
+		window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+	}
+	return { filename };
+}
+
+function parseFilename(disposition: string | null): string | null {
+	if (!disposition) return null;
+	const match = /filename="?([^";\r\n]+)"?/i.exec(disposition);
+	return match?.[1]?.trim() || null;
+}
+
 type Renewal = { token: string } | { failure: 'ended' | 'unavailable' };
 
 // An expired access token gets one refresh. Requests that fail together share it, and a request that fails after

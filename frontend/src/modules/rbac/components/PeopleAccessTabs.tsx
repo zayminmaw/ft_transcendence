@@ -31,6 +31,11 @@ export function PeopleAccessTabs({
 					{t('tabs.roles')}
 				</NavLink>
 			)}
+			{can('admin.manage_users') && (
+				<NavLink to={companyPath('rbac/export')} className={tabClass}>
+					{t('tabs.export')}
+				</NavLink>
+			)}
 		</nav>
 	);
 }

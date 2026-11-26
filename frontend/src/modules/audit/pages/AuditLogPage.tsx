@@ -19,6 +19,7 @@ const MODULES = [
 	'assets',
 	'audit',
 	'insights',
+	'export',
 ];
 
 // A day picked in the date inputs is a day in the viewer's time zone: send its start or end as UTC.

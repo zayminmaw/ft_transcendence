@@ -12,8 +12,8 @@ export type AuditScope =
 
 // Reads of the trail and of the activity page are recorded too, but would bury the changes people come for: shown only
 // when asked for, by module or by resource.
-const ACCESS_MODULES = ['audit', 'insights'];
-const ACCESS_RESOURCES = ['audit_log', 'activity_insight'];
+const ACCESS_MODULES = ['audit', 'insights', 'export'];
+const ACCESS_RESOURCES = ['audit_log', 'activity_insight', 'company_export'];
 
 export interface AuditPage {
 	items: AuditLog[];
