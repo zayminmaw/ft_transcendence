@@ -604,8 +604,27 @@ test('proof upload, replacement and deletion restrict full-scope linked drivers 
   }
 });
 
+// Later features add migrations after the cutover. Exercise this named revision without reverting those features.
+async function undoPendingCodCutover() {
+  const migration = database.migrations.find((item) => item.constructor.name === 'PendingCodAtDelivery1793750400000');
+  assert.ok(migration);
+  const runner = database.createQueryRunner();
+  await runner.connect();
+  await runner.startTransaction();
+  try {
+    await migration.down(runner);
+    await runner.query('DELETE FROM migrations WHERE name = ?', [migration.constructor.name]);
+    await runner.commitTransaction();
+  } catch (error) {
+    await runner.rollbackTransaction();
+    throw error;
+  } finally {
+    await runner.release();
+  }
+}
+
 test('the pending COD cutover migrates old holds atomically and handles in-flight deliveries, returns and handovers', async () => {
-  await database.undoLastMigration({ transaction: 'each' });
+  await undoPendingCodCutover();
   const merchant = await insertClient(meridian, 'CUTOVER', 'Cutover merchant', true);
   const empty = await insertClient(meridian, 'CUTEMPTY', 'Old phantom balance', false);
   const foreign = await insertClient(harbor, 'CUTOTHER', 'Other company', true);
@@ -681,7 +700,7 @@ test('the pending COD cutover migrates old holds atomically and handles in-fligh
 });
 
 test('cutover refuses inconsistent imported cash and out-of-range totals without changing balances', async () => {
-  await database.undoLastMigration({ transaction: 'each' });
+  await undoPendingCodCutover();
   const bad = await insertClient(meridian, 'CUTBAD', 'Mismatched collection', true);
   const huge = await insertClient(meridian, 'CUTHUGE', 'Excessive total', true);
   const badParcel = await newParcel({ clientId: bad, codAmount: '100.00' });

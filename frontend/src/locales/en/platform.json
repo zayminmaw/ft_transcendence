@@ -292,5 +292,40 @@
 			"removed": "{{administrator}} removed from the company.",
 			"other": "Tenant changed."
 		}
+	},
+	"signins": {
+		"title": "Sign-ins",
+		"description": "Successful and failed sign-in attempts across the platform. Counts only, never names or companies.",
+		"loading": "Loading the sign-in numbers…",
+		"updating": "Loading the new period…",
+		"loadFailed": "The sign-in numbers could not be loaded",
+		"retry": "Try again",
+		"reuseWarning": "An old session token was used again in this period. That can mean a session was stolen.",
+		"countsOnly": "Counts only. A failed attempt can be against an account that does not exist, so no names, addresses or companies are shown. Days are UTC.",
+		"range": {
+			"label": "Period",
+			"last7": "Last 7 days",
+			"last30": "Last 30 days",
+			"last90": "Last 90 days"
+		},
+		"cards": {
+			"signIns": "Sign-ins",
+			"signInsHint": "Successful sign-ins",
+			"failed": "Failed sign-ins",
+			"failedHint": "Wrong password, unknown account or switched-off account",
+			"failureRate": "Failure rate",
+			"failureRateHint": "Failed attempts out of all attempts",
+			"sessionReuse": "Session reuse",
+			"sessionReuseHint": "An old session token was used again"
+		},
+		"byDay": {
+			"title": "Sign-ins each day",
+			"summary": "Bars for the failed sign-ins on each day, the most on one day is {{max}}",
+			"day": "Day",
+			"signIns": "Sign-ins",
+			"failed": "Failed",
+			"sessionReuse": "Session reuse",
+			"showTable": "Show the numbers for each day"
+		}
 	}
 }

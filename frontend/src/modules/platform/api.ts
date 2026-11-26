@@ -152,3 +152,26 @@ export type TenantActivity = {
 		administrators: number;
 	};
 };
+
+// GET /api/platform/signins: sign-in counts across the whole platform. Counts only, no names, IPs or companies.
+// Days are UTC dates written as YYYY-MM-DD, the first is the start of the range and the last is today.
+export const SIGNINS_RANGES = [7, 30, 90] as const;
+export type SigninsRange = (typeof SIGNINS_RANGES)[number];
+export const SIGNINS_DEFAULT_RANGE: SigninsRange = 30;
+
+export type SigninDay = {
+	day: string;
+	signIns: number;
+	failedSignIns: number;
+	sessionReuse: number;
+};
+
+export type PlatformSignins = {
+	range: SigninsRange;
+	from: string;
+	to: string;
+	// The failure rate is a percentage with one decimal, 0 when there were no attempts.
+	totals: { signIns: number; failedSignIns: number; failureRate: number; sessionReuse: number };
+	// One entry for every day of the range, zeros included.
+	days: SigninDay[];
+};

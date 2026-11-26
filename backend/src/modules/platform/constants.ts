@@ -1,4 +1,5 @@
 import { PLATFORM_ADMIN_ROLE } from "../rbac";
+import type { SigninsRange } from "./types/signins";
 import type { TenantListQuery } from "./types/tenant";
 
 export const TENANT_ADMIN_ROLE = "org_admin";
@@ -111,3 +112,7 @@ export const ACTIVITY_SORT_COLUMNS: Record<
 
 // The activity counts cover this many days.
 export const ACTIVITY_COUNT_DAYS = 7;
+
+// The Sign-ins page offers these ranges in days, counting today. Thirty matches the company activity dashboard.
+export const SIGNINS_RANGES: readonly SigninsRange[] = [7, 30, 90];
+export const SIGNINS_DEFAULT_RANGE: SigninsRange = 30;
