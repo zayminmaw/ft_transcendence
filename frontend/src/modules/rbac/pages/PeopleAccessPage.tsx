@@ -8,23 +8,29 @@ import { useCompanyPath } from '@hooks/useCompanyPath';
 import { shownName, useCurrentWorkspace, useRoleName } from '@modules/auth';
 import { ApiError } from '@services/api-client';
 import { formatDate, formatNumber } from '@utils/format';
-import type { Member } from '../api';
+import type { CreateInviteResponse, Member } from '../api';
+import { CreateInviteDialog } from '../components/CreateInviteDialog';
+import { InviteCreatedDialog } from '../components/InviteCreatedDialog';
+import { InvitesOverview } from '../components/InvitesOverview';
 import { ManageMemberDialog } from '../components/ManageMemberDialog';
 import { PeopleAccessTabs } from '../components/PeopleAccessTabs';
 import { RolesOverview } from '../components/RolesOverview';
-import { useMembers } from '../hooks';
+import { useInvites, useMembers } from '../hooks';
 
 // People & access: the company's members for anyone with admin.manage_users (the API refuses everyone else). The
-// "roles" tab (its own address, admin.manage_roles) shows what each role allows instead of the list.
-export function PeopleAccessPage({ tab = 'members' }: { tab?: 'members' | 'roles' }) {
+// "invites" tab manages single-use sign-up links; "roles" (admin.manage_roles) shows what each role allows.
+export function PeopleAccessPage({ tab = 'members' }: { tab?: 'members' | 'invites' | 'roles' }) {
 	const { t, i18n } = useTranslation('rbac');
 	const companyPath = useCompanyPath();
 	const company = useCurrentWorkspace()?.name ?? '';
 	const roleName = useRoleName();
 	const { userId } = useAuth();
 	const members = useMembers();
+	const invites = useInvites();
 	const [search, setSearch] = useState('');
 	const [managedId, setManagedId] = useState<string | null>(null);
+	const [inviteOpen, setInviteOpen] = useState(false);
+	const [createdInvite, setCreatedInvite] = useState<CreateInviteResponse | null>(null);
 
 	const header = (
 		<ModulePage
@@ -32,9 +38,18 @@ export function PeopleAccessPage({ tab = 'members' }: { tab?: 'members' | 'roles
 			description={t('page.description', { company })}
 			actions={
 				members.isSuccess && (
-					<Link to={companyPath('rbac/new')} className="btn btn-primary">
-						{t('page.create')}
-					</Link>
+					<div className="flex flex-wrap gap-2">
+						<button
+							type="button"
+							className="btn bg-base-200"
+							onClick={() => setInviteOpen(true)}
+						>
+							{t('page.invite')}
+						</button>
+						<Link to={companyPath('rbac/new')} className="btn btn-primary">
+							{t('page.create')}
+						</Link>
+					</div>
 				)
 			}
 		/>
@@ -163,17 +178,30 @@ export function PeopleAccessPage({ tab = 'members' }: { tab?: 'members' | 'roles
 			<section className="flex flex-col gap-4">
 				<div>
 					<h2 className="font-semibold">
-						{tab === 'roles' ? t('roles.title') : t('table.title')}
+						{tab === 'roles'
+							? t('roles.title')
+							: tab === 'invites'
+								? t('invites.title')
+								: t('table.title')}
 					</h2>
 					<p className="mt-1 text-xs text-[var(--color-slate)]">
 						{tab === 'roles'
 							? t('roles.description', { company })
-							: t('table.description')}
+							: tab === 'invites'
+								? t('invites.description', { company })
+								: t('table.description')}
 					</p>
 				</div>
-				<PeopleAccessTabs members={list.length} />
+				<PeopleAccessTabs
+					members={list.length}
+					pendingInvites={
+						invites.data?.filter((invite) => invite.status === 'pending').length ?? 0
+					}
+				/>
 				{tab === 'roles' ? (
 					<RolesOverview />
+				) : tab === 'invites' ? (
+					<InvitesOverview />
 				) : (
 					<Table
 						caption={t('table.title')}
@@ -196,6 +224,23 @@ export function PeopleAccessPage({ tab = 'members' }: { tab?: 'members' | 'roles
 					member={managed}
 					company={company}
 					onClose={() => setManagedId(null)}
+				/>
+			)}
+			{inviteOpen && (
+				<CreateInviteDialog
+					company={company}
+					onCreated={(result) => {
+						setInviteOpen(false);
+						setCreatedInvite(result);
+					}}
+					onClose={() => setInviteOpen(false)}
+				/>
+			)}
+			{createdInvite && (
+				<InviteCreatedDialog
+					created={createdInvite}
+					company={company}
+					onClose={() => setCreatedInvite(null)}
 				/>
 			)}
 		</div>

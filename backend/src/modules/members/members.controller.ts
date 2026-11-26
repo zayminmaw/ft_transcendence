@@ -1,9 +1,11 @@
-import { BadRequestException, Body, Controller, Get, HttpCode, Param, Patch, Post, Req } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Req } from '@nestjs/common';
 import { RequirePermission } from '../../common/decorators/require-permission.decorator';
 import type { AuthenticatedRequest } from '../../common/types/authenticated-request';
 import { requestMeta } from '../auth';
+import { CreateInviteDto } from './dto/create-invite.dto';
 import { CreateMemberDto } from './dto/create-member.dto';
 import { UpdateMemberDto } from './dto/update-member.dto';
+import { InvitesService } from './invites.service';
 import { MembersService } from './members.service';
 
 // Every route needs admin.manage_users in the company named by X-Organization-Id (checked by RolesGuard), except the
@@ -11,7 +13,10 @@ import { MembersService } from './members.service';
 @Controller('members')
 @RequirePermission('admin.manage_users')
 export class MembersController {
-  constructor(private readonly members: MembersService) {}
+  constructor(
+    private readonly members: MembersService,
+    private readonly invites: InvitesService,
+  ) {}
 
   @Get()
   list(@Req() request: AuthenticatedRequest) {
@@ -28,6 +33,22 @@ export class MembersController {
   @RequirePermission('admin.manage_roles')
   roles(@Req() request: AuthenticatedRequest) {
     return this.members.roleOverview(request.tenant!);
+  }
+
+  @Get('invites')
+  listInvites(@Req() request: AuthenticatedRequest) {
+    return this.invites.list(request.tenant!);
+  }
+
+  @Post('invites')
+  createInvite(@Body() body: CreateInviteDto, @Req() request: AuthenticatedRequest) {
+    return this.invites.create(request.tenant!, request.user!.id, body, requestMeta(request));
+  }
+
+  @Delete('invites/:inviteId')
+  @HttpCode(204)
+  revokeInvite(@Param('inviteId') inviteId: string, @Req() request: AuthenticatedRequest) {
+    return this.invites.revoke(request.tenant!, request.user!.id, inviteId, requestMeta(request));
   }
 
   @Post()

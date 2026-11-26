@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import type { ParseKeys } from 'i18next';
@@ -20,8 +20,15 @@ const schema = z.object({
 type Values = z.infer<typeof schema>;
 
 // Your display name on the profile page. Saving puts the new name in the cached /me, so the card follows at once.
-export function DisplayNameForm({ current }: { current: string | null }) {
+export function DisplayNameForm({
+	current,
+	labelledBy,
+}: {
+	current: string | null;
+	labelledBy?: string;
+}) {
 	const { t } = useTranslation('auth');
+	const hintId = useId();
 	const update = useUpdateProfile();
 	const [saved, setSaved] = useState(false);
 	const {
@@ -38,7 +45,8 @@ export function DisplayNameForm({ current }: { current: string | null }) {
 	return (
 		<form
 			noValidate
-			className="flex flex-col gap-3"
+			aria-labelledby={labelledBy}
+			className="flex flex-col gap-4"
 			onSubmit={handleSubmit(({ displayName }) =>
 				update.mutate(displayName || null, {
 					onSuccess: ({ user }) => {
@@ -48,31 +56,37 @@ export function DisplayNameForm({ current }: { current: string | null }) {
 				}),
 			)}
 		>
-			<Input
-				label={t('profile.displayName')}
-				autoComplete="name"
-				error={
-					errors.displayName?.message &&
-					t(errors.displayName.message as ParseKeys<'auth'>)
-				}
-				onChange={(event) => {
-					setSaved(false);
-					return onChange(event);
-				}}
-				{...field}
-			/>
-			{!errors.displayName && (
-				<p className="-mt-1 text-xs text-[var(--color-slate)]">
-					{t('profile.displayNameHint')}
-				</p>
-			)}
+			<div>
+				<Input
+					label={t('profile.displayName')}
+					autoComplete="name"
+					aria-describedby={!errors.displayName ? hintId : undefined}
+					error={
+						errors.displayName?.message &&
+						t(errors.displayName.message as ParseKeys<'auth'>)
+					}
+					onChange={(event) => {
+						setSaved(false);
+						return onChange(event);
+					}}
+					{...field}
+				/>
+				{!errors.displayName && (
+					<p id={hintId} className="mt-1.5 text-xs text-[var(--color-slate)]">
+						{t('profile.displayNameHint')}
+					</p>
+				)}
+			</div>
 			{update.isError && (
 				<p role="alert" className="alert alert-error alert-soft text-sm">
 					{t('profile.saveFailed')}
 				</p>
 			)}
-			<div className="flex items-center gap-3">
+			<div className="flex flex-wrap items-center gap-3">
 				<Button type="submit" className="w-fit" disabled={!isDirty || update.isPending}>
+					{update.isPending && (
+						<span className="loading loading-spinner loading-sm" aria-hidden="true" />
+					)}
 					{update.isPending ? t('profile.saving') : t('profile.save')}
 				</Button>
 				<p role="status" className="text-sm text-success">

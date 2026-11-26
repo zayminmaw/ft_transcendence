@@ -12,8 +12,8 @@ export class UsersRepository {
     return (await this.users.findOneBy(login.includes('@') ? { email: login } : { username: login })) ?? undefined;
   }
 
-  async findById(id: string): Promise<User | undefined> {
-    return (await this.users.findOneBy({ id })) ?? undefined;
+  async findById(id: string, manager?: EntityManager): Promise<User | undefined> {
+    return (await (manager ? manager.getRepository(User) : this.users).findOneBy({ id })) ?? undefined;
   }
 
   // Nothing deactivates an account yet. When something does, call PresenceService.refresh(company, userId) for each of the

@@ -14,6 +14,29 @@
 	"toast": {
 		"dismiss": "Dismiss notification"
 	},
+	"liveNotifications": {
+		"record": "Record #{{id}}",
+		"actions": {
+			"create": "New item in {{module}}",
+			"update": "{{module}} updated",
+			"delete": "Item removed from {{module}}"
+		},
+		"modules": {
+			"auth": "Sign-in",
+			"members": "People & access",
+			"platform": "Platform",
+			"parcels": "Parcels",
+			"clients": "Clients",
+			"contacts": "Contacts",
+			"billing": "Billing",
+			"staff": "Staff",
+			"drivers": "Drivers",
+			"assets": "Assets",
+			"audit": "Audit trail",
+			"insights": "Activity page",
+			"unknown": "Workspace"
+		}
+	},
 	"imageViewer": {
 		"close": "Close",
 		"failed": "This picture can't be shown right now. Reload the page and try again."

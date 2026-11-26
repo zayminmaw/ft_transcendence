@@ -12,6 +12,7 @@ export function PlatformLayout() {
 				{ to: '/platform/tenants', label: tp('tenants.heading') },
 				{ to: '/platform/activity', label: tp('activity.title') },
 				{ to: '/platform/signins', label: tp('signins.title') },
+				{ to: '/platform/profile', label: t('account.profile'), hidden: true },
 			],
 		},
 	];
@@ -23,7 +24,7 @@ export function PlatformLayout() {
 			header={
 				<WorkspaceSwitcher current={tp('layout.scope')} role={t('switcher.platformRole')} />
 			}
-			footer={<AccountFooter />}
+			footer={<AccountFooter profileTo="/platform/profile" />}
 		/>
 	);
 }

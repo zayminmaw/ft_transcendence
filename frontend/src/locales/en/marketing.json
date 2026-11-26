@@ -223,7 +223,7 @@
 				},
 				"telemetry": {
 					"title": "2. Operational Data",
-					"content": "To run dispatch, the platform records each parcel status change with its time and the account that made it. Location coordinates and proof of delivery (a signature and a doorstep photo) are planned features. They are not collected yet, and this policy will be updated before they are."
+					"content": "To run dispatch, the platform records each parcel status change with its time and the account that made it. When a delivery is recorded, the platform collects proof of delivery: a recipient signature, a doorstep photo, and optionally a signed delivery note (image or PDF), along with the cash-on-delivery amount collected and any delivery notes. If the courier chooses to capture their device location at delivery, the platform also records the delivery latitude and longitude coordinates. Proof-of-delivery files are stored in the organization's isolated storage. Authorized organization members can obtain short-lived signed links; anyone holding an unexpired link can open the file. Public parcel tracking never exposes proof-of-delivery files or location coordinates."
 				},
 				"security": {
 					"title": "3. Data Security & Tenant Isolation",

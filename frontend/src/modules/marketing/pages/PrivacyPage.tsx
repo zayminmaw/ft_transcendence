@@ -12,7 +12,7 @@ const sections = [
 	'updates',
 ] as const;
 // Change this whenever the policy text changes.
-const LAST_UPDATED = '2026-11-23';
+const LAST_UPDATED = '2026-11-26';
 
 export function PrivacyPage() {
 	const { t, i18n } = useTranslation('marketing');

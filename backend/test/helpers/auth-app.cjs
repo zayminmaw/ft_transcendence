@@ -32,6 +32,7 @@ const { UsersRepository } = require('../../dist/modules/users/users.repository')
 const { createAccount } = require('../../dist/modules/users/accounts');
 const { MembersAuditRepository } = require('../../dist/modules/members/members-audit.repository');
 const { MembersRepository } = require('../../dist/modules/members/members.repository');
+const { InvitesRepository } = require('../../dist/modules/members/invites.repository');
 const { StorageRepository } = require('../../dist/modules/storage/storage.repository');
 const { ClientsRepository } = require('../../dist/modules/clients/clients.repository');
 const { NotificationsModule } = require('../../dist/modules/notifications');
@@ -60,6 +61,13 @@ function createFakeStore() {
     memberships: [], rolePermissions: new Map(), assignedRolePermissions: new Map(),
     // Roles for the people list and the roles you may give: { id, code, name, description }.
     roles: [],
+    // Organizations for invite inspection/signup: { id, name, slug, isActive }.
+    organizations: [
+      { id: '1', name: 'Meridian Courier', slug: 'meridian-courier', isActive: true },
+      { id: '2', name: 'Harbor Express', slug: 'harbor-express', isActive: true },
+    ],
+    // Invite rows: { id, organizationId, roleId, invitedByUserId, email, tokenHash, expiresAt, usedAt, usedByUserId, revokedAt, createdAt }.
+    invites: [],
     // Stored file rows: { id, organizationId, uploadedByUserId, storedName, originalName, mimeType, sizeBytes, createdAt }.
     storageFiles: [],
     // Merchant rows, as the `clients` columns: { id, organizationId, clientCode, businessName, ..., isActive, createdAt }.
@@ -74,6 +82,7 @@ function createFakeStore() {
   let nextSessionId = 1;
   let nextClientId = 1;
   let nextFileId = 1;
+  let nextInviteId = 1;
   let nextUserId = 100;
   const sameText = (a, b) => a.toLowerCase() === b.toLowerCase();
   const sessionRecord = (row) => row && {
@@ -237,6 +246,112 @@ function createFakeStore() {
         store.memberships.some((row) => row.userId === userId && row.organizationId !== organizationId) || store.platformAdmins.has(userId),
     },
     membersAudit: { record: async (action, entry) => { store.audit.push({ action, ...entry }); } },
+    invites: {
+      list: async (organizationId) => store.invites
+        .filter((row) => row.organizationId === organizationId)
+        .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime() || Number(b.id) - Number(a.id))
+        .map((row) => {
+          const role = store.roles.find((candidate) => candidate.id === row.roleId);
+          const inviter = store.users.find((candidate) => candidate.id === row.invitedByUserId);
+          const usedBy = row.usedByUserId ? store.users.find((candidate) => candidate.id === row.usedByUserId) : null;
+          return {
+            id: row.id,
+            organizationId: row.organizationId,
+            email: row.email,
+            role: { id: role.id, code: role.code, name: role.name },
+            invitedBy: { userId: inviter.id, username: inviter.username, displayName: inviter.displayName ?? null },
+            usedBy: usedBy ? { userId: usedBy.id, username: usedBy.username, displayName: usedBy.displayName ?? null } : null,
+            expiresAt: row.expiresAt,
+            usedAt: row.usedAt,
+            revokedAt: row.revokedAt,
+            createdAt: row.createdAt,
+          };
+        }),
+      find: async (organizationId, id) => (await store.repositories.invites.list(organizationId)).find((row) => row.id === id),
+      emailTaken: async (email) => store.users.some((user) => sameText(user.email, email.trim())),
+      create: async (input, auditStep) => {
+        const row = {
+          id: String(nextInviteId++),
+          ...input,
+          usedAt: null,
+          usedByUserId: null,
+          revokedAt: null,
+          createdAt: new Date(),
+        };
+        store.invites.push(row);
+        const record = await store.repositories.invites.find(input.organizationId, row.id);
+        await auditStep({}, record);
+        return record;
+      },
+      revoke: async (organizationId, id, at, auditStep) => {
+        const row = store.invites.find((invite) => invite.organizationId === organizationId && invite.id === id);
+        if (!row) return 'not_found';
+        if (row.usedAt) return 'already_used';
+        if (row.revokedAt) return 'already_revoked';
+        row.revokedAt = at;
+        await auditStep({});
+        return 'revoked';
+      },
+      findActiveByTokenHash: async (tokenHash, now) => {
+        const row = store.invites.find((invite) => invite.tokenHash === tokenHash);
+        if (!row || row.usedAt || row.revokedAt || row.expiresAt.getTime() <= now.getTime()) return undefined;
+        const org = store.organizations.find((candidate) => candidate.id === row.organizationId);
+        const role = store.roles.find((candidate) => candidate.id === row.roleId);
+        if (!org || !org.isActive || !role) return undefined;
+        return {
+          id: row.id,
+          organization: { id: org.id, name: org.name, slug: org.slug },
+          role: { id: role.id, code: role.code, name: role.name },
+          email: row.email,
+          expiresAt: row.expiresAt,
+        };
+      },
+      acceptInvite: async (input, auditStep) => {
+        const row = store.invites.find((invite) => invite.tokenHash === input.tokenHash);
+        const org = row && store.organizations.find((candidate) => candidate.id === row.organizationId);
+        const role = row && store.roles.find((candidate) => candidate.id === row.roleId);
+        if (!row || !org || !org.isActive || !role || row.usedAt || row.revokedAt || row.expiresAt.getTime() <= input.now.getTime()) {
+          return { status: 'invalid' };
+        }
+        const boundEmail = row.email ? row.email.trim() : null;
+        const providedEmail = input.email ? input.email.trim() : null;
+        if (boundEmail && providedEmail && !sameText(boundEmail, providedEmail)) {
+          return { status: 'email_mismatch' };
+        }
+        const email = boundEmail ?? providedEmail;
+        if (!email) return { status: 'email_required' };
+        const manager = {
+          existsBy: async (_entity, conditions) => conditions.some((condition) => store.users.some((user) =>
+            (condition.username && sameText(user.username, condition.username)) || (condition.email && sameText(user.email, condition.email)))),
+          create: (_entity, values) => ({ ...values }),
+          save: async (created) => {
+            const user = { id: String(nextUserId++), isActive: true, lastLoginAt: null, displayName: null, createdAt: new Date(), ...created };
+            store.users.push(user);
+            return user;
+          },
+        };
+        const userId = await createAccount(manager, {
+          username: input.username,
+          email,
+          password: input.password,
+          mustChangePassword: false,
+        });
+        const user = store.users.find((candidate) => candidate.id === userId);
+        if (input.displayName) user.displayName = input.displayName;
+        store.memberships.push({ organizationId: org.id, userId, roleId: String(role.id), isActive: true });
+        row.usedAt = input.now;
+        row.usedByUserId = userId;
+        await auditStep({}, { organizationId: org.id, userId, username: user.username, roleCode: role.code, inviteId: row.id });
+        return {
+          status: 'created',
+          user,
+          organizationId: org.id,
+          organizationSlug: org.slug,
+          roleCode: role.code,
+          inviteId: row.id,
+        };
+      },
+    },
     // The shared writer, for code that calls it directly (e.g. the audit read endpoints). test:db covers the SQL.
     auditService: {
       record: async (_manager, entry) => { store.auditEntries.push(entry); },
@@ -433,6 +548,7 @@ async function createAuthApp(t, store = createFakeStore(), { controllers = [], i
     .overrideProvider(PlatformRolesRepository).useValue(store.repositories.platformRoles)
     .overrideProvider(MembersRepository).useValue(store.repositories.companyMembers)
     .overrideProvider(MembersAuditRepository).useValue(store.repositories.membersAudit)
+    .overrideProvider(InvitesRepository).useValue(store.repositories.invites)
     .overrideProvider(StorageRepository).useValue(store.repositories.storageFiles)
     .overrideProvider(ClientsRepository).useValue(store.repositories.clients)
     .overrideProvider(ContactsRepository).useValue(store.repositories.contacts)
