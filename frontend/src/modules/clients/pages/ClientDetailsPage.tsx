@@ -4,7 +4,7 @@ import { Link, useParams } from 'react-router-dom';
 import { DetailItem, ModulePage, TipCard } from '@global-components';
 import { useCompanyPath } from '@hooks/useCompanyPath';
 import { useCan } from '@modules/auth';
-import { MerchantLedger, PayoutDialog } from '@modules/billing';
+import { MerchantInvoices, MerchantLedger, PayoutDialog } from '@modules/billing';
 import { formatDate } from '@utils/format';
 import { ArchiveClientDialog } from '../components/ArchiveClientDialog';
 import { ClientNotFound } from '../components/ClientNotFound';
@@ -154,6 +154,14 @@ export function ClientDetailsPage() {
 
 					{can('clients.view_financials') && (
 						<MerchantLedger key={client.id} clientId={client.id} />
+					)}
+
+					{can('billing.create_invoice') && (
+						<MerchantInvoices
+							key={client.id}
+							clientId={client.id}
+							businessName={client.businessName}
+						/>
 					)}
 				</div>
 
