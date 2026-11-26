@@ -59,7 +59,7 @@ export function AvatarForm({ hasPicture }: { hasPicture: boolean }) {
 			<div className="flex flex-wrap items-center gap-2">
 				<label
 					htmlFor={inputId}
-					className={`btn btn-sm border-0 bg-base-200 ${busy ? 'btn-disabled' : ''}`}
+					className={`btn btn-sm border-0 bg-base-200 focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-neutral ${busy ? 'btn-disabled' : ''}`}
 				>
 					{upload.isPending && (
 						<span className="loading loading-spinner loading-xs" aria-hidden="true" />
