@@ -1,102 +1,109 @@
-import { useEffect, useRef } from 'react';
+import { useId } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, NavLink, useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Avatar } from '@global-components';
-import { shownName, useMe } from '../hooks';
+import { setActiveOrganization } from '@hooks/useActiveOrganization';
+import { shownName, useCurrentWorkspace, useMe } from '../hooks';
 
-// The open company (NavLink's aria-current) is marked light grey like the sidebar's current page, instead of
-// daisyUI's dark default.
-const MENU_COLORS =
-	'[--menu-active-bg:var(--color-base-200)] [--menu-active-fg:var(--color-base-content)]';
-
-// The card at the top of the sidebar: the open workspace, who is logged in and as what ("Noor Haddad · Dispatcher"), and a
-// menu to move to another workspace. It sits at the top so a long menu never pushes the name out of sight (#19).
-export function WorkspaceSwitcher({ current, role }: { current: string; role?: string }) {
-	const { t } = useTranslation('auth');
-	const { pathname } = useLocation();
+// The card at the top of the sidebar: the open workspace and who is logged in ("Noor Haddad · Dispatcher").
+// It sits at the top so a long menu never pushes the active scope and identity out of sight (#19).
+export function WorkspaceScopeCard({ current, role }: { current: string; role?: string }) {
 	const me = useMe().data;
-	const workspaces = me?.workspaces ?? [];
 	const name = me ? shownName(me.user) : '';
-	const who = (
-		<span className="mt-2 flex min-w-0 items-center gap-2">
-			{me && <Avatar name={name} seed={me.user.username} src={me.user.avatarUrl} />}
-			<span className="truncate text-xs text-[var(--color-slate)]" title={me?.user.email}>
-				{role ? `${name} · ${role}` : name}
-			</span>
-		</span>
-	);
-	// One company and no platform access: the picker would only open it again, so there is no menu.
-	const nowhereElse = workspaces.length === 1 && !me?.platformAccess;
-	const menu = useRef<HTMLDetailsElement>(null);
-	const close = () => menu.current?.removeAttribute('open');
-
-	// Close like other menus: on a click outside it, on Escape (focus goes back to the card) and when the page changes.
-	useEffect(() => {
-		const onPointerDown = (event: PointerEvent) => {
-			if (!menu.current?.contains(event.target as Node))
-				menu.current?.removeAttribute('open');
-		};
-		const onKeyDown = (event: KeyboardEvent) => {
-			if (event.key !== 'Escape' || !menu.current?.open) return;
-			menu.current.removeAttribute('open');
-			menu.current.querySelector('summary')?.focus();
-		};
-		document.addEventListener('pointerdown', onPointerDown);
-		document.addEventListener('keydown', onKeyDown);
-		return () => {
-			document.removeEventListener('pointerdown', onPointerDown);
-			document.removeEventListener('keydown', onKeyDown);
-		};
-	}, []);
-
-	useEffect(() => {
-		menu.current?.removeAttribute('open');
-	}, [pathname]);
-
-	if (nowhereElse)
-		return (
-			<div className="flex flex-col rounded-xl bg-base-200 p-3">
-				<span className="text-sm font-medium">{current}</span>
-				{who}
-			</div>
-		);
 
 	return (
-		<details ref={menu} className="group dropdown w-full">
-			<summary className="flex cursor-pointer list-none flex-col rounded-xl bg-base-200 p-3 [&::-webkit-details-marker]:hidden">
-				<span className="flex items-center justify-between gap-2 text-sm font-medium">
-					{current}
-					<ChevronIcon />
+		<div className="flex flex-col rounded-xl bg-base-200 p-3">
+			<span className="truncate text-sm font-medium">{current}</span>
+			<span className="mt-2 flex min-w-0 items-center gap-2">
+				{me && <Avatar name={name} seed={me.user.username} src={me.user.avatarUrl} />}
+				<span className="truncate text-xs text-[var(--color-slate)]" title={me?.user.email}>
+					{role ? `${name} · ${role}` : name}
 				</span>
-				{who}
-				<span className="sr-only">{t('switcher.change')}</span>
-			</summary>
-			<ul
-				className={`menu dropdown-content z-10 mt-2 w-full rounded-box border border-base-300 bg-base-100 p-2 ${MENU_COLORS}`}
-			>
-				{workspaces.map(({ id, slug, name }) => (
-					<li key={id}>
-						<NavLink to={`/app/${slug}`} onClick={close}>
-							{name}
-						</NavLink>
-					</li>
-				))}
-				<li className="border-t border-base-300 pt-1">
-					<Link to="/app" onClick={close}>
-						{t('switcher.allWorkspaces')}
-					</Link>
-				</li>
-			</ul>
-		</details>
+			</span>
+		</div>
 	);
 }
 
-// Points down while the menu is closed, up while it is open.
-function ChevronIcon() {
+// Compact workspace selector at the bottom of the sidebar.
+// Navigation into /app/:companySlug or /platform/* delegates tenant cache isolation (IAM-22) to
+// CompanyBoundary / RequirePlatform, while returning to /app clears activeOrganizationId directly.
+export function WorkspaceSwitcher() {
+	const { t } = useTranslation('auth');
+	const id = useId();
+	const navigate = useNavigate();
+	const { pathname } = useLocation();
+	const currentWorkspace = useCurrentWorkspace();
+	const me = useMe().data;
+
+	if (!me) return null;
+
+	const workspaces = me.workspaces;
+	const destinationCount = workspaces.length + (me.platformAccess ? 1 : 0);
+	if (destinationCount === 0) return null;
+
+	const isPlatform = pathname === '/platform' || pathname.startsWith('/platform/');
+	const currentValue = currentWorkspace
+		? `company:${currentWorkspace.slug}`
+		: isPlatform
+			? 'platform'
+			: '';
+	const canSwitch = destinationCount > 1 || currentValue === '';
+	const showAllOption = destinationCount > 1;
+
+	function handleChange(next: string) {
+		if (!next || next === currentValue) return;
+		if (next === 'platform') {
+			navigate('/platform/tenants');
+			return;
+		}
+		if (next === 'all') {
+			navigate('/app');
+			void setActiveOrganization(null);
+			return;
+		}
+		if (next.startsWith('company:')) {
+			const slug = next.slice('company:'.length);
+			navigate(`/app/${encodeURIComponent(slug)}`);
+		}
+	}
+
+	return (
+		<div className="relative flex items-center">
+			<label htmlFor={id} className="sr-only">
+				{t('switcher.change')}
+			</label>
+			<WorkspaceIcon />
+			<select
+				id={id}
+				name="workspace"
+				value={currentValue}
+				disabled={!canSwitch}
+				onChange={(event) => handleChange(event.target.value)}
+				className="workspace-select select select-xs h-8 min-h-8 w-full min-w-0 rounded-field border-base-300 bg-base-200 ps-8 text-xs font-medium text-base-content transition-colors hover:border-base-content/30 disabled:cursor-default disabled:border-base-300 disabled:bg-base-200 disabled:bg-none disabled:text-base-content/75 disabled:opacity-100"
+			>
+				{currentValue === '' && (
+					<option value="" disabled>
+						{t('switcher.change')}
+					</option>
+				)}
+				{workspaces.map(({ id: workspaceId, slug, name }) => (
+					<option key={workspaceId} value={`company:${slug}`}>
+						{name}
+					</option>
+				))}
+				{me.platformAccess && <option value="platform">{t('switcher.platform')}</option>}
+				{showAllOption && <option value="all">{t('switcher.allWorkspaces')}</option>}
+			</select>
+		</div>
+	);
+}
+
+// Four-tile grid icon representing workspaces; symmetric across LTR and RTL layouts.
+function WorkspaceIcon() {
 	return (
 		<svg
 			aria-hidden="true"
-			className="h-[1em] shrink-0 transition-transform group-open:rotate-180"
+			className="pointer-events-none absolute inset-s-2.5 z-10 h-3.5 w-3.5 shrink-0 text-[var(--color-slate)]"
 			viewBox="0 0 24 24"
 			fill="none"
 			stroke="currentColor"
@@ -104,7 +111,10 @@ function ChevronIcon() {
 			strokeLinecap="round"
 			strokeLinejoin="round"
 		>
-			<path d="m6 9 6 6 6-6" />
+			<rect x="3" y="3" width="7" height="7" rx="1.5" />
+			<rect x="14" y="3" width="7" height="7" rx="1.5" />
+			<rect x="3" y="14" width="7" height="7" rx="1.5" />
+			<rect x="14" y="14" width="7" height="7" rx="1.5" />
 		</svg>
 	);
 }

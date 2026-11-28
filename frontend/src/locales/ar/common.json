@@ -52,8 +52,7 @@
 		"pageNotFound": "الصفحة غير موجودة"
 	},
 	"sidebar": {
-		"home": "الصفحة الرئيسية لـ {{scope}}",
-		"backToWebsite": "العودة إلى الموقع"
+		"home": "الصفحة الرئيسية لـ {{scope}}"
 	},
 	"breadcrumbs": {
 		"label": "مسار التنقل"

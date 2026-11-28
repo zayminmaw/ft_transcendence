@@ -4,7 +4,7 @@ import { useLogout } from '../hooks';
 import { LegalLinks } from './LegalLinks';
 
 // The bottom of the sidebar: your profile, the way out and the legal pages. Who is logged in shows in the card at the top
-// (WorkspaceSwitcher).
+// (WorkspaceScopeCard).
 export function AccountFooter({ profileTo = '/profile' }: { profileTo?: string }) {
 	const { t } = useTranslation('auth');
 	const logout = useLogout();

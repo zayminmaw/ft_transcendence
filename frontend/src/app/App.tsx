@@ -6,6 +6,7 @@ import {
 	useCan,
 	useCurrentWorkspace,
 	useRoleName,
+	WorkspaceScopeCard,
 	WorkspaceSwitcher,
 } from '@modules/auth';
 import { getTenantNavigation } from './navigation';
@@ -24,8 +25,9 @@ export function App() {
 			homeTo={companyPath()}
 			groups={getTenantNavigation(t, companyPath(), can)}
 			header={
-				<WorkspaceSwitcher current={name} role={workspace && roleName(workspace.role)} />
+				<WorkspaceScopeCard current={name} role={workspace && roleName(workspace.role)} />
 			}
+			workspaceSelector={<WorkspaceSwitcher />}
 			footer={<AccountFooter profileTo={companyPath('profile')} />}
 		/>
 	);

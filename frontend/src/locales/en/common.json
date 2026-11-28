@@ -52,8 +52,7 @@
 		"pageNotFound": "Page not found"
 	},
 	"sidebar": {
-		"home": "{{scope}} home",
-		"backToWebsite": "Back to website"
+		"home": "{{scope}} home"
 	},
 	"breadcrumbs": {
 		"label": "Breadcrumb"
