@@ -89,18 +89,29 @@ export type Handover = {
 
 // /api/billing/invoices: a merchant's delivery fees for a period, as a statement (billing.create_invoice). Only the
 // delivery fee is billed, so the COD column is always 0.00.
-export type InvoiceStatus =
-	'draft' | 'issued' | 'paid_via_balance_offset' | 'paid_via_bank_transfer' | 'overdue';
+export const INVOICE_STATUSES = [
+	'draft',
+	'issued',
+	'paid_via_balance_offset',
+	'paid_via_bank_transfer',
+	'overdue',
+] as const;
+
+export type InvoiceStatus = (typeof INVOICE_STATUSES)[number];
 
 // One row of the list, without the parcel lines.
 export type InvoiceSummary = {
 	id: string;
 	invoiceNumber: string;
 	clientId: string;
+	clientName: string;
+	clientCode: string;
 	// 'YYYY-MM-DD' days, the last one included.
 	periodStart: string;
 	periodEnd: string;
 	status: InvoiceStatus;
+	issueDate?: string;
+	dueDate?: string;
 	totalDeliveries: number;
 	totalDeliveryFees: string;
 	totalCodCollected: string;
@@ -108,11 +119,21 @@ export type InvoiceSummary = {
 	createdAt: string;
 };
 
+export type InvoiceSummaryStats = {
+	total: number;
+	draft: number;
+	issued: number;
+	paid: number;
+	overdue: number;
+	totalDeliveryFees: string;
+};
+
 export type InvoicePage = {
 	items: InvoiceSummary[];
 	total: number;
 	page: number;
 	pageSize: number;
+	summary?: InvoiceSummaryStats;
 };
 
 export type InvoiceLine = {

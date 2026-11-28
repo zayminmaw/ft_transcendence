@@ -91,6 +91,7 @@
 		"parcel": "parcel",
 		"client": "client",
 		"invoice": "invoice",
+		"invoice_export": "invoice export",
 		"payout": "payout",
 		"driver": "driver",
 		"employee": "employee",

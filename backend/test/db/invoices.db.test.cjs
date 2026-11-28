@@ -29,6 +29,32 @@ const actor = (organizationId) => ({ tenant: { organizationId, roleId: '1' }, us
 let counter = 0;
 const next = () => (counter += 1);
 
+test('a CSV export over its limit is refused rather than silently truncated', async () => {
+  const { INVOICE_EXPORT_LIMIT } = require('../../dist/modules/billing/invoice.constants');
+  const organization = (await database.getRepository(Organization).save({ name: 'Large export', slug: 'large-export', contactEmail: 'large@invoice.test' })).id;
+  const clientId = await merchant(organization);
+  const columns = '(organization_id, client_id, invoice_number, billing_period_start, billing_period_end, issue_date, due_date, total_deliveries, total_delivery_fees, total_cod_collected, net_amount_due, status, created_by_user_id)';
+  for (let offset = 0; offset <= INVOICE_EXPORT_LIMIT; offset += 500) {
+    const count = Math.min(500, INVOICE_EXPORT_LIMIT + 1 - offset);
+    const values = Array.from({ length: count }, (_, index) => [organization, clientId, `BULK-${offset + index}`, '2026-10-01', '2026-10-31', '2026-11-01', '2026-11-15', 0, '0.00', '0.00', '0.00', 'draft', finance]);
+    await database.query(`INSERT INTO invoices ${columns} VALUES ${values.map(() => '(?,?,?,?,?,?,?,?,?,?,?,?,?)').join(',')}`, values.flat());
+  }
+  assert.equal((await refused(service.exportCsv(actor(organization), {}))).code, 'INVOICE_EXPORT_TOO_LARGE');
+  const complete = await service.exportCsv(actor(organization), { search: 'BULK-10000' });
+  assert.equal(complete.split('\r\n').filter(Boolean).length, 2);
+  assert.ok(complete.includes('BULK-10000'));
+});
+
+test('invoice merchant choices include archived merchants, stay tenant scoped and expose only identifiers and names', async () => {
+  const archived = await merchant(meridian);
+  const foreign = await merchant(harbor);
+  await database.query('UPDATE clients SET is_active = FALSE WHERE id = ?', [archived]);
+  const choices = await service.clients({ organizationId: meridian }, { page: 1, pageSize: 50 });
+  assert.ok(choices.items.some((item) => item.id === archived));
+  assert.ok(choices.items.every((item) => item.id !== foreign));
+  assert.deepEqual(Object.keys(choices.items[0]).sort(), ['businessName', 'clientCode', 'id']);
+});
+
 async function merchant(organizationId) {
   const n = next();
   const result = await new ClientsRepository(database).create(organizationId, {
