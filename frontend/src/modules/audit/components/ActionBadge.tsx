@@ -14,13 +14,19 @@ const TONE: Partial<Record<AuditEntry['action'], string>> = {
 	password_reset: 'badge-warning',
 };
 
-export function ActionBadge({ entry }: { entry: AuditEntry }) {
+export function ActionBadge({
+	entry,
+	showSrOutcome = true,
+}: {
+	entry: AuditEntry;
+	showSrOutcome?: boolean;
+}) {
 	const { t } = useTranslation('audit');
 	const tone = entry.outcome === 'denied' ? 'badge-error' : (TONE[entry.action] ?? '');
 	return (
 		<span className={`badge badge-sm badge-soft whitespace-nowrap uppercase ${tone}`}>
 			{t(`actionNames.${entry.action}`)}
-			{entry.outcome !== 'success' && (
+			{showSrOutcome && entry.outcome !== 'success' && (
 				<span className="sr-only">, {t(`outcomes.${entry.outcome}`)}</span>
 			)}
 		</span>

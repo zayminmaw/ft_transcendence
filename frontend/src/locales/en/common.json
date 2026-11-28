@@ -52,8 +52,7 @@
 		"pageNotFound": "Page not found"
 	},
 	"sidebar": {
-		"home": "{{scope}} home",
-		"backToWebsite": "Back to website"
+		"home": "{{scope}} home"
 	},
 	"breadcrumbs": {
 		"label": "Breadcrumb"
@@ -81,6 +80,7 @@
 			"assets": "Fleet & assets",
 			"administration": "Administration",
 			"cashHandover": "Cash handover",
+			"invoices": "Invoices",
 			"rbac": "People & access",
 			"contacts": "Contacts"
 		},

@@ -3,8 +3,11 @@ import type { RequestMeta } from '../../common/context/request-meta';
 import type { TenantContext } from '../../common/types/authenticated-request';
 import { ID_PATTERN } from '../../common/ids';
 import { AuditService } from '../audit';
+import { buildCsv } from './csv';
 import type { CreateInvoiceDto } from './dto/create-invoice.dto';
-import type { InvoiceQueryDto } from './dto/invoice-query.dto';
+import type { InvoiceExportQueryDto, InvoiceQueryDto } from './dto/invoice-query.dto';
+import type { InvoiceClientsQueryDto } from './dto/invoice-clients-query.dto';
+import { INVOICE_EXPORT_LIMIT } from './invoice.constants';
 import type { Invoice } from './entities/invoice.entity';
 import { INVOICE_BAD_PERIOD, INVOICE_DUE_DAYS, INVOICE_MERCHANT_NOT_FOUND, INVOICE_NOT_DRAFT, INVOICE_NOT_FOUND, INVOICE_NOTHING_TO_BILL } from './invoice.constants';
 import { InvoicesRepository } from './invoices.repository';
@@ -22,6 +25,12 @@ const day = (date: Date): string => date.toISOString().slice(0, 10);
 const daysAfter = (date: Date, days: number): Date => new Date(date.getTime() + days * 86_400_000);
 const dueFrom = (issued: Date): string => day(daysAfter(issued, INVOICE_DUE_DAYS));
 
+const EXPORT_HEADERS = [
+  'Invoice Number', 'Merchant Code', 'Merchant Name', 'Period Start', 'Period End',
+  'Status', 'Issue Date', 'Due Date', 'Total Deliveries', 'Total Delivery Fees',
+  'Total COD Collected', 'Net Amount Due', 'Created At',
+] as const;
+
 const view = (invoice: Invoice, parcels: BillableParcel[]): InvoiceView => ({
   id: invoice.id, invoiceNumber: invoice.invoiceNumber, clientId: invoice.clientId,
   periodStart: invoice.billingPeriodStart, periodEnd: invoice.billingPeriodEnd, status: invoice.status,
@@ -38,18 +47,74 @@ const view = (invoice: Invoice, parcels: BillableParcel[]): InvoiceView => ({
 export class InvoicesService {
   constructor(private readonly invoices: InvoicesRepository, private readonly audit: AuditService) {}
 
+  clients(tenant: TenantContext, query: InvoiceClientsQueryDto) {
+    return this.invoices.clients(tenant.organizationId, query);
+  }
+
   async list(tenant: TenantContext, query: InvoiceQueryDto) {
     if (query.periodStart && query.periodEnd && query.periodStart > query.periodEnd) throw new BadRequestException(INVOICE_BAD_PERIOD);
     const { items, total } = await this.invoices.list(tenant.organizationId, query);
+    const summary = typeof this.invoices.summary === 'function'
+      ? await this.invoices.summary(tenant.organizationId, query.clientId)
+      : undefined;
     return {
       items: items.map((invoice) => ({
         id: invoice.id, invoiceNumber: invoice.invoiceNumber, clientId: invoice.clientId,
+        clientName: invoice.clientName ?? '', clientCode: invoice.clientCode ?? '',
         periodStart: invoice.billingPeriodStart, periodEnd: invoice.billingPeriodEnd, status: invoice.status,
+        issueDate: invoice.issueDate, dueDate: invoice.dueDate,
         totalDeliveries: invoice.totalDeliveries, totalDeliveryFees: invoice.totalDeliveryFees,
         totalCodCollected: invoice.totalCodCollected, netAmountDue: invoice.netAmountDue, createdAt: invoice.createdAt.toISOString(),
       })),
       total, page: query.page, pageSize: query.pageSize,
+      ...(summary ? { summary } : {}),
     };
+  }
+
+  // Exports filtered company invoices as RFC-4180 CSV with formula-injection neutralization and records an access audit row.
+  async exportCsv(actor: InvoiceActor, query: InvoiceExportQueryDto): Promise<string> {
+    if (query.periodStart && query.periodEnd && query.periodStart > query.periodEnd) throw new BadRequestException(INVOICE_BAD_PERIOD);
+    const organizationId = actor.tenant.organizationId;
+    const rows = await this.invoices.listForExport(organizationId, query);
+    if (rows.length > INVOICE_EXPORT_LIMIT) {
+      throw new BadRequestException({
+        code: 'INVOICE_EXPORT_TOO_LARGE',
+        message: `This export exceeds ${INVOICE_EXPORT_LIMIT} invoices. Narrow the filters and try again.`,
+      });
+    }
+    const csv = buildCsv(
+      EXPORT_HEADERS,
+      rows.map((invoice) => [
+        invoice.invoiceNumber,
+        invoice.clientCode,
+        invoice.clientName,
+        invoice.billingPeriodStart,
+        invoice.billingPeriodEnd,
+        invoice.status,
+        invoice.issueDate,
+        invoice.dueDate,
+        invoice.totalDeliveries,
+        invoice.totalDeliveryFees,
+        invoice.totalCodCollected,
+        invoice.netAmountDue,
+        invoice.createdAt.toISOString(),
+      ]),
+    );
+    await this.audit.recordStandalone({
+      module: 'billing',
+      action: 'read',
+      resourceType: 'invoice_export',
+      organizationId,
+      actorId: actor.userId,
+      params: {
+        count: rows.length,
+        ...(query.clientId ? { clientId: query.clientId } : {}),
+        ...(query.status ? { status: query.status } : {}),
+        ...(query.search ? { search: query.search } : {}),
+      },
+      meta: actor.meta,
+    });
+    return csv;
   }
 
   async detail(tenant: TenantContext, invoiceId: string): Promise<InvoiceView> {

@@ -47,7 +47,7 @@ export function DashboardLayout(props: Omit<SidebarContentProps, 'onNavigate'>) 
 			>
 				{t('layout.skipToContent')}
 			</a>
-			<aside className="sticky top-0 hidden h-dvh overflow-y-auto p-6 md:block">
+			<aside className="sticky top-0 hidden h-dvh flex-col overflow-hidden p-6 md:flex">
 				<SidebarContent {...props} />
 			</aside>
 			<div className="min-w-0">
@@ -80,8 +80,8 @@ export function DashboardLayout(props: Omit<SidebarContentProps, 'onNavigate'>) 
 				className="modal justify-start md:hidden"
 				aria-label={t('layout.navigation', { scope: props.scope })}
 			>
-				<div className="modal-box flex h-dvh max-h-none w-72 max-w-[calc(100vw-2rem)] flex-col gap-4 rounded-none bg-base-100 p-6">
-					<form method="dialog" className="flex justify-end">
+				<div className="modal-box flex h-dvh max-h-none w-72 max-w-[calc(100vw-2rem)] flex-col gap-4 overflow-hidden rounded-none bg-base-100 p-6">
+					<form method="dialog" className="flex shrink-0 justify-end">
 						<button className="btn btn-ghost btn-sm">
 							{t('layout.closeNavigation')}
 						</button>

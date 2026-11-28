@@ -1,3 +1,4 @@
+import { auditSearch, type AuditFilters, type AuditPage } from '@modules/audit';
 import { apiRequest } from '@services/api-client';
 
 export type AccountUser = {
@@ -99,4 +100,9 @@ export function uploadAvatar(file: File) {
 // Back to your initials.
 export function removeAvatar() {
 	return apiRequest<{ user: AccountUser }>('auth/me/avatar', { method: 'DELETE' });
+}
+
+// Your own audit activity across sign-ins, security changes and workspaces; does not require X-Organization-Id.
+export function fetchMyActivity(filters: AuditFilters) {
+	return apiRequest<AuditPage>(`audit-logs/mine?${auditSearch(filters)}`);
 }

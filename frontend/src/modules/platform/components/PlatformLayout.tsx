@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { DashboardLayout } from '@global-components';
 import type { NavigationGroup } from '@global-components';
-import { AccountFooter, WorkspaceSwitcher } from '@modules/auth';
+import { AccountFooter, WorkspaceScopeCard, WorkspaceSwitcher } from '@modules/auth';
 
 export function PlatformLayout() {
 	const { t } = useTranslation('auth');
@@ -12,6 +12,7 @@ export function PlatformLayout() {
 				{ to: '/platform/tenants', label: tp('tenants.heading') },
 				{ to: '/platform/activity', label: tp('activity.title') },
 				{ to: '/platform/signins', label: tp('signins.title') },
+				{ to: '/platform/audit', label: tp('audit.nav') },
 				{ to: '/platform/profile', label: t('account.profile'), hidden: true },
 			],
 		},
@@ -22,8 +23,12 @@ export function PlatformLayout() {
 			homeTo="/platform/tenants"
 			groups={navigation}
 			header={
-				<WorkspaceSwitcher current={tp('layout.scope')} role={t('switcher.platformRole')} />
+				<WorkspaceScopeCard
+					current={tp('layout.scope')}
+					role={t('switcher.platformRole')}
+				/>
 			}
+			workspaceSelector={<WorkspaceSwitcher />}
 			footer={<AccountFooter profileTo="/platform/profile" />}
 		/>
 	);

@@ -1,26 +1,11 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ModulePage, SelectFilter } from '@global-components';
-import { AUDIT_ACTIONS, type AuditAction, type AuditEntry } from '../api';
+import { AUDIT_ACTIONS, AUDIT_MODULES, type AuditAction, type AuditEntry } from '../api';
 import { AuditDetailDialog } from '../components/AuditDetailDialog';
 import { AuditLogTable } from '../components/AuditLogTable';
 import { isForbidden, useAuditLogs } from '../hooks/useAuditLogs';
 import { lookup } from '../utils/describe';
-
-const MODULES = [
-	'auth',
-	'members',
-	'platform',
-	'parcels',
-	'clients',
-	'billing',
-	'staff',
-	'drivers',
-	'assets',
-	'audit',
-	'insights',
-	'export',
-];
 
 // A day picked in the date inputs is a day in the viewer's time zone: send its start or end as UTC.
 function dayBound(day: string, end: boolean): string | undefined {
@@ -76,7 +61,7 @@ export function AuditLogPage() {
 					onChange={filter(setModule)}
 					options={[
 						{ value: '', label: t('all') },
-						...MODULES.map((value) => ({
+						...AUDIT_MODULES.map((value) => ({
 							value,
 							label: lookup(t, 'modules', value),
 						})),

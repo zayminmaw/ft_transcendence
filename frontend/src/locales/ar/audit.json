@@ -96,6 +96,7 @@
 		"parcel": "الطرد",
 		"client": "العميل",
 		"invoice": "الفاتورة",
+		"invoice_export": "تصدير الفواتير",
 		"payout": "الدفعة للتاجر",
 		"driver": "السائق",
 		"employee": "الموظف",

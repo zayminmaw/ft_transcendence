@@ -18,6 +18,7 @@ test('invite links keep bearer tokens in the fragment and preview requests keep 
 	const { inspectInvite } = loadTypeScript(
 		new URL('../src/modules/auth/api.ts', import.meta.url),
 		{
+			'@modules/audit': {},
 			'@services/api-client': {
 				apiRequest: async (path, options) => {
 					sent = { path, options };

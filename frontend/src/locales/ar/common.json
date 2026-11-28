@@ -52,8 +52,7 @@
 		"pageNotFound": "الصفحة غير موجودة"
 	},
 	"sidebar": {
-		"home": "الصفحة الرئيسية لـ {{scope}}",
-		"backToWebsite": "العودة إلى الموقع"
+		"home": "الصفحة الرئيسية لـ {{scope}}"
 	},
 	"breadcrumbs": {
 		"label": "مسار التنقل"
@@ -81,6 +80,7 @@
 			"assets": "الأسطول والأصول",
 			"administration": "الإدارة",
 			"cashHandover": "تسليم النقد",
+			"invoices": "الفواتير",
 			"rbac": "الأشخاص والصلاحيات",
 			"contacts": "جهات الاتصال"
 		},

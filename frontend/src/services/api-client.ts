@@ -35,7 +35,10 @@ export function errorKey<K extends string>(map: Record<string, K>, error: unknow
 // with onUploadProgress goes through XMLHttpRequest instead; everything else about it is the same.
 export type ApiRequestOptions = RequestInit & { onUploadProgress?: (fraction: number) => void };
 
-export async function apiRequest<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {
+async function fetchAuthenticated(
+	path: string,
+	options: ApiRequestOptions = {},
+): Promise<Response> {
 	// The retry reuses this company, so a request never moves to a company opened while it waited.
 	const { accessToken, activeOrganizationId } = sessionStore.getSnapshot();
 	let response = await send(path, options, accessToken, activeOrganizationId);
@@ -50,6 +53,11 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
 			endSession('expired');
 	}
 	if (!response.ok) throw await toApiError(response);
+	return response;
+}
+
+export async function apiRequest<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {
+	const response = await fetchAuthenticated(path, options);
 	if (response.status === 204) return undefined as T;
 	return response.json() as Promise<T>;
 }
@@ -93,6 +101,11 @@ function parseFilename(disposition: string | null): string | null {
 	if (!disposition) return null;
 	const match = /filename="?([^";\r\n]+)"?/i.exec(disposition);
 	return match?.[1]?.trim() || null;
+}
+
+export async function apiBlob(path: string, options: ApiRequestOptions = {}): Promise<Blob> {
+	const response = await fetchAuthenticated(path, options);
+	return response.blob();
 }
 
 type Renewal = { token: string } | { failure: 'ended' | 'unavailable' };

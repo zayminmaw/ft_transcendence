@@ -20,6 +20,12 @@ export class StorageController {
     const { file, secondsLeft } = await this.storage.downloadSigned(id, exp, sig);
     // Replaces the API-wide no-store: this browser may keep the image while the link is valid, but no shared cache.
     response.setHeader('Cache-Control', `private, max-age=${secondsLeft}`);
+    // StreamableFile uses stream.pipe(response), which can leave the readable stream open on HEAD requests or early
+    // client disconnects. Destroying it on response close guarantees the underlying FileHandle is closed immediately.
+    response.once('close', () => {
+      const stream = file.getStream();
+      if (!stream.destroyed) stream.destroy();
+    });
     return file;
   }
 }

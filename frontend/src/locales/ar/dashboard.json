@@ -1,0 +1,185 @@
+{
+	"header": {
+		"title": "{{company}}",
+		"fallbackTitle": "نظرة عامة على العمليات",
+		"subtitle": "تم تسجيل الدخول باسم {{name}} · {{role}}. تعكس اللوحات صلاحياتك في مساحة العمل.",
+		"fallbackSubtitle": "التوصيل، وتسوية النقد، ومسؤوليات الفريق."
+	},
+	"quickActions": {
+		"newParcel": "طرد جديد",
+		"assignDriver": "تعيين سائق",
+		"cashHandover": "تسليم النقد",
+		"newMember": "إضافة عضو",
+		"inviteLink": "روابط الدعوة",
+		"newDriver": "تسجيل سائق",
+		"newAsset": "إضافة أصل",
+		"newClient": "تاجر جديد",
+		"openMyRun": "فتح كشف التوصيل"
+	},
+	"actions": {
+		"viewAll": "عرض الكل",
+		"manage": "إدارة",
+		"open": "فتح"
+	},
+	"states": {
+		"loadFailed": "تعذّر تحميل هذا القسم.",
+		"retry": "حاول مرة أخرى"
+	},
+	"emptyWorkspace": {
+		"title": "لا توجد وحدات مخصّصة لهذا الدور",
+		"description": "لا يتيح دورك الحالي لوحات تشغيلية في هذه المساحة. تواصل مع مسؤول الشركة إذا كنت بحاجة إلى صلاحيات إضافية."
+	},
+	"kpi": {
+		"readyToDispatch": "جاهز للإرسال",
+		"readyToDispatchHint": "مفروز في المركز بانتظار سائق",
+		"outForDelivery": "خارج للتوصيل",
+		"driversOutHint": "{{formatted}} سائق في مسار التوصيل حاليًا",
+		"exceptions": "استثناءات التوصيل",
+		"exceptionsHint": "محاولات فاشلة ومرتجعات",
+		"myOutForDelivery": "شحناتي النشطة",
+		"myOutForDeliveryHint": "معيّنة للتوصيل الآن",
+		"myDelivered": "تم التسليم",
+		"myDeliveredHint": "مكتملة في كشفك",
+		"myExceptions": "استثناءات",
+		"codHandoverDrivers": "قائمة تسليم النقد",
+		"codHandoverHint": "سائقون متاحون للتسوية",
+		"activeMembers": "الأعضاء النشطون",
+		"ratio": "‎{{active}} / {{total}}‎",
+		"activeMembersHint": "حسابات مفعّلة في الشركة",
+		"pendingInvites": "دعوات معلّقة",
+		"pendingInvitesHint": "روابط تسجيل غير مستخدمة",
+		"workspaceVisits": "زيارات مساحة العمل",
+		"last30Days": "آخر 30 يومًا",
+		"assetsInService": "أصول في الخدمة",
+		"assetsCheckedOutHint": "{{formatted}} مسلّمة للسائقين حاليًا",
+		"needsMaintenance": "تحتاج صيانة",
+		"roadTaxDueHint": "{{formatted}} تجديدات ترخيص مستحقة",
+		"totalDrivers": "السائقون العاملون",
+		"totalDriversHint": "قائمة المناديب النشطين",
+		"driversAvailable": "سائقون متاحون",
+		"driversOnRunHint": "{{formatted}} في جولة حاليًا",
+		"licensesExpiring": "رخص قريبة الانتهاء",
+		"licensesExpiringHint": "منتهية أو خلال 30 يومًا",
+		"activeMerchants": "التجار النشطون",
+		"activeMerchantsHint": "حسابات عملاء مفعّلة",
+		"onlineContacts": "جهات اتصال متصلة",
+		"savedContactsHint": "من أصل {{formatted}} زميل محفوظ"
+	},
+	"parcels": {
+		"title": "مسار الطرود وقائمة الانتظار",
+		"subtitle": "توزيع حالات الشحنات وأحدث بوالص الشحن في الشركة.",
+		"myRunTitle": "كشف التوصيل الخاص بي",
+		"myRunSubtitle": "الطرود المعيّنة حاليًا لحساب المندوب الخاص بك.",
+		"pipelineSummary": "توزيع حالات الشحنات عبر {{total}} طرد",
+		"recentCaption": "أحدث الطرود",
+		"empty": "لا توجد طرود مسجّلة بعد",
+		"emptyHint": "ستظهر بوالص الشحن التي تُنشأ لهذه الشركة هنا.",
+		"myRunEmpty": "لا توجد طرود معيّنة لك",
+		"myRunEmptyHint": "ستظهر الشحنات المعيّنة لك فور إرسالها من قسم الإرسال.",
+		"columns": {
+			"waybill": "البوليصة",
+			"merchant": "التاجر",
+			"cod": "الدفع عند الاستلام",
+			"zone": "المنطقة",
+			"status": "الحالة",
+			"action": "إجراء"
+		},
+		"assign": "تعيين",
+		"recordDelivery": "تسجيل التسليم"
+	},
+	"finance": {
+		"title": "تسليم النقد وأرصدة التجار",
+		"subtitle": "تسوية التحصيل النقدي للسائقين وأرصدة دفاتر التجار المباشرة.",
+		"openHandover": "تسليم النقد",
+		"codHandoverLabel": "تسوية النقد من السائقين",
+		"codDriversCount": "{{count}} سائق في دليل التسوية",
+		"codHint": "تحقّق من المبالغ النقدية قبل قيدها في دفاتر التجار.",
+		"reconcileAction": "تسوية النقد",
+		"merchantBalances": "أرصدة التجار",
+		"activeMerchants": "{{formatted}} نشط",
+		"noMerchants": "لا يوجد تجار نشطون بعد.",
+		"columns": {
+			"merchant": "التاجر",
+			"balance": "الرصيد",
+			"pendingCod": "نقد قيد التسوية"
+		}
+	},
+	"drivers": {
+		"title": "السائقون وحالة المناوبة",
+		"subtitle": "جاهزية المناديب والجولات النشطة وصلاحية الرخص.",
+		"expiringBadge": "{{formatted}} تنبيهات رخص",
+		"stats": {
+			"available": "متاح",
+			"onRun": "في جولة",
+			"offDuty": "خارج الخدمة",
+			"suspended": "موقوف",
+			"expiring": "تنتهي قريبًا"
+		},
+		"noVehicle": "بدون مركبة معيّنة",
+		"todayParcels": "{{formatted}} اليوم",
+		"unlinkedAccount": "دون حساب مرتبط",
+		"empty": "لم يتم تسجيل سائقين بعد."
+	},
+	"fleet": {
+		"title": "الأسطول والمعدات",
+		"subtitle": "عهدة المركبات وتنبيهات الصيانة وتجديدات الترخيص.",
+		"roadTaxBadge": "{{formatted}} تراخيص مستحقة",
+		"stats": {
+			"inService": "في الخدمة",
+			"checkedOut": "مسلّمة",
+			"maintenance": "صيانة",
+			"roadTaxDue": "ترخيص مستحق"
+		},
+		"heldBy": "بحوزة {{name}}",
+		"inDepot": "في المستودع",
+		"empty": "لا توجد أصول مسجّلة بعد."
+	},
+	"merchants": {
+		"title": "التجار",
+		"subtitle": "دليل العملاء النشطين وجاهزية مواقع الاستلام.",
+		"stats": {
+			"active": "نشط",
+			"pinned": "محدّد بالإحداثيات",
+			"archived": "مؤرشف"
+		},
+		"empty": "لا يوجد تجار نشطون بعد."
+	},
+	"team": {
+		"title": "الفريق والصلاحيات",
+		"subtitle": "عضويات الشركة، الدعوات المعلّقة، وحالة كلمات المرور.",
+		"pendingInvitesBadge": "{{formatted}} دعوات معلّقة",
+		"stats": {
+			"active": "نشط",
+			"inactive": "غير نشط",
+			"pendingInvites": "دعوات",
+			"passwordPending": "تغيير كلمة المرور"
+		},
+		"inactiveLabel": "غير نشط",
+		"empty": "لا يوجد أعضاء في الفريق.",
+		"invitesLink": "إدارة الدعوات",
+		"rolesLink": "مصفوفة الأدوار"
+	},
+	"activity": {
+		"title": "نشاط مساحة العمل والأمان",
+		"subtitle": "الأعضاء النشطون وإشارات الإدارة خلال آخر 30 يومًا.",
+		"fullInsights": "التحليلات الكاملة",
+		"chartCaption": "الأعضاء النشطون يوميًا (آخر 14 يومًا)",
+		"activeMembersSummary": "‎{{active}} / {{total}}‎ نشط",
+		"security": {
+			"changes": "إجمالي التغييرات",
+			"roleChanges": "تغييرات الأدوار",
+			"passwordResets": "إعادة تعيين كلمات المرور",
+			"denied": "محاولات مرفوضة"
+		},
+		"visitsSummary": "{{formatted}} زيارة مسجّلة لمساحة العمل",
+		"openAudit": "فتح سجل التدقيق"
+	},
+	"contacts": {
+		"title": "جهات الاتصال والحالة المباشرة",
+		"subtitle": "حالة التواجد الفوري لزملائك المحفوظين.",
+		"onlineBadge": "‎{{online}} / {{total}}‎ متصل",
+		"empty": "لا توجد جهات اتصال محفوظة بعد",
+		"emptyHint": "أضف الزملاء الذين يعمل معهم دورك لمتابعة تواجدهم المباشر.",
+		"addAction": "إضافة جهات اتصال"
+	}
+}

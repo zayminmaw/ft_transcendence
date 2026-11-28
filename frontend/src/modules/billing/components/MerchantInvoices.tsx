@@ -6,6 +6,7 @@ import type { InvoiceSummary } from '../api';
 import { useMerchantInvoices } from '../hooks/useMerchantInvoices';
 import { GenerateInvoiceDialog } from './GenerateInvoiceDialog';
 import { InvoiceDialog } from './InvoiceDialog';
+import { InvoiceStatusBadge } from './InvoiceStatusBadge';
 
 // A merchant's invoices on its details page (billing.create_invoice): newest first, each opening its parcel lines, and
 // a button to bill a new period. An invoice lists delivery fees only, and fees are already taken from the balance at
@@ -59,7 +60,7 @@ export function MerchantInvoices({
 		{
 			key: 'status',
 			header: t('invoices.statusColumn'),
-			cell: (invoice) => t(`invoices.status.${invoice.status}`),
+			cell: (invoice) => <InvoiceStatusBadge status={invoice.status} />,
 		},
 		{
 			key: 'deliveries',

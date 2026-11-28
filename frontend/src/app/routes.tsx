@@ -3,7 +3,7 @@ import { clientsRoutes } from '@modules/clients';
 import { driversRoutes } from '@modules/drivers';
 import { assetsRoutes } from '@modules/assets';
 import { parcelsRoutes, parcelTrackingRoutes } from '@modules/parcels';
-import { cashHandoverRoutes } from '@modules/billing';
+import { cashHandoverRoutes, invoicesRoutes } from '@modules/billing';
 import { rbacRoutes } from '@modules/rbac';
 import { contactsRoutes } from '@modules/contacts';
 import { auditRoutes } from '@modules/audit';
@@ -39,6 +39,7 @@ const workspaceRoutes = [
 	...allowed('assets', assetsRoutes),
 	...allowed('parcels', parcelsRoutes),
 	...allowed('cash-handover', cashHandoverRoutes),
+	...allowed('invoices', invoicesRoutes),
 	...allowed('rbac', rbacRoutes),
 	...allowed('contacts', contactsRoutes),
 	// The audit page checks admin.audit_logs itself (see AuditLogPage).
