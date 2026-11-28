@@ -45,6 +45,10 @@ function RefreshIcon() {
 export function PlatformAuditLogPage() {
 	const { t: tp } = useTranslation('platform');
 	const { t } = useTranslation('audit');
+	const organizationLabels = {
+		company: tp('audit.companyId'),
+		platform: tp('audit.platformScope'),
+	};
 	const fromId = useId();
 	const toId = useId();
 
@@ -218,6 +222,7 @@ export function PlatformAuditLogPage() {
 					className={`flex flex-col gap-4 transition-opacity ${isPlaceholderData ? 'opacity-60' : ''}`}
 				>
 					<AuditLogTable
+						organizationLabels={organizationLabels}
 						caption={tp('audit.caption')}
 						entries={data.items}
 						onSelect={setSelected}
@@ -237,6 +242,7 @@ export function PlatformAuditLogPage() {
 			)}
 
 			<AuditDetailDialog
+				organizationLabels={organizationLabels}
 				entry={selected}
 				detail={detailQuery.data ?? null}
 				onClose={() => setSelected(null)}

@@ -21,6 +21,7 @@ export function AuditLogTable({
 	pagination,
 	showResource = true,
 	caption,
+	organizationLabels,
 }: {
 	entries: AuditEntry[];
 	onSelect: (entry: AuditEntry) => void;
@@ -28,11 +29,23 @@ export function AuditLogTable({
 	// One record's history already says which record it is.
 	showResource?: boolean;
 	caption?: string;
+	organizationLabels?: { company: string; platform: string };
 }) {
 	const { t, i18n } = useTranslation('audit');
 	const language = i18n.resolvedLanguage ?? 'en';
 
 	const columns: TableColumn<AuditEntry>[] = [
+		...(organizationLabels
+			? [
+					{
+						key: 'organization',
+						header: organizationLabels.company,
+						cell: (entry: AuditEntry) => (
+							<bdi>{entry.organizationId ?? organizationLabels.platform}</bdi>
+						),
+					},
+				]
+			: []),
 		{
 			key: 'time',
 			header: t('columns.time'),

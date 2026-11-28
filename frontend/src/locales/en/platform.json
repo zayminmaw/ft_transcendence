@@ -329,6 +329,8 @@
 		}
 	},
 	"audit": {
+		"companyId": "Company ID",
+		"platformScope": "Platform / account",
 		"nav": "Audit log",
 		"title": "Platform audit log",
 		"description": "Platform-wide security, access, and administrative trail across all organizations.",

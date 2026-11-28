@@ -23,12 +23,14 @@ export function AuditDetailDialog({
 	entry,
 	detail,
 	onClose,
+	organizationLabels,
 }: {
 	entry: AuditEntry | null;
 	// When the caller loads the full entry itself (e.g. from /platform/audit-logs/:id), pass it here so the dialog
 	// does not request the tenant endpoint. Undefined keeps the default tenant lookup.
 	detail?: AuditEntry | null;
 	onClose: () => void;
+	organizationLabels?: { company: string; platform: string };
 }) {
 	const { t, i18n } = useTranslation('audit');
 	const language = i18n.resolvedLanguage ?? 'en';
@@ -51,6 +53,11 @@ export function AuditDetailDialog({
 			{shown && (
 				<div className="flex flex-col gap-4 text-sm">
 					<dl className="grid grid-cols-2 gap-4 rounded-box border border-base-300 bg-base-200 p-4 sm:grid-cols-3">
+						{organizationLabels && (
+							<Fact label={organizationLabels.company}>
+								<bdi>{shown.organizationId ?? organizationLabels.platform}</bdi>
+							</Fact>
+						)}
 						<Fact label={t('columns.operator')}>
 							{actorText(t, shown)}
 							{shown.actor.role && ` (${lookup(t, 'roles', shown.actor.role)})`}

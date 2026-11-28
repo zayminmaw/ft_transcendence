@@ -28,7 +28,7 @@ export class AuditRepository {
 
 	async list(scope: AuditScope, query: ListAuditLogsDto): Promise<AuditPage> {
 		const builder = this.scoped(scope);
-		const asksForAccess = ACCESS_MODULES.includes(query.module ?? '') || ACCESS_RESOURCES.includes(query.resourceType ?? '');
+		const asksForAccess = query.action === 'read' || ACCESS_MODULES.includes(query.module ?? '') || ACCESS_RESOURCES.includes(query.resourceType ?? '');
 		if (!asksForAccess) builder.andWhere("log.category <> 'access'");
 		if (query.module) builder.andWhere('log.module = :module', { module: query.module });
 		if (query.resourceType) builder.andWhere('log.resourceType = :resourceType', { resourceType: query.resourceType });
