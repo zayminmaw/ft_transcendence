@@ -1,0 +1,185 @@
+{
+	"header": {
+		"title": "{{company}}",
+		"fallbackTitle": "ภาพรวมการดำเนินงาน",
+		"subtitle": "เข้าสู่ระบบในชื่อ {{name}} · {{role}} วิดเจ็ตแสดงตามสิทธิ์ของคุณในพื้นที่ทำงาน",
+		"fallbackSubtitle": "การจัดส่ง การกระทบยอดเงินสด และความรับผิดชอบของทีม"
+	},
+	"quickActions": {
+		"newParcel": "สร้างพัสดุใหม่",
+		"assignDriver": "มอบหมายคนขับ",
+		"cashHandover": "การนำส่งเงินสด",
+		"newMember": "เพิ่มสมาชิก",
+		"inviteLink": "ลิงก์คำเชิญ",
+		"newDriver": "เพิ่มคนขับ",
+		"newAsset": "เพิ่มทรัพย์สิน",
+		"newClient": "เพิ่มร้านค้า",
+		"openMyRun": "เปิดใบงานของฉัน"
+	},
+	"actions": {
+		"viewAll": "ดูทั้งหมด",
+		"manage": "จัดการ",
+		"open": "เปิด"
+	},
+	"states": {
+		"loadFailed": "ไม่สามารถโหลดส่วนนี้ได้",
+		"retry": "ลองอีกครั้ง"
+	},
+	"emptyWorkspace": {
+		"title": "ยังไม่มีโมดูลที่เปิดใช้งานสำหรับบทบาทนี้",
+		"description": "บทบาทปัจจุบันของคุณยังไม่มีวิดเจ็ตการดำเนินงาน ติดต่อผู้ดูแลบริษัทหากคุณต้องการสิทธิ์เพิ่มเติม"
+	},
+	"kpi": {
+		"readyToDispatch": "พร้อมจัดส่ง",
+		"readyToDispatchHint": "คัดแยกที่ศูนย์รอคนขับ",
+		"outForDelivery": "กำลังจัดส่ง",
+		"driversOutHint": "คนขับกำลังออกวิ่ง {{formatted}} คน",
+		"exceptions": "รายการผิดปกติ",
+		"exceptionsHint": "จัดส่งไม่สำเร็จและตีกลับ",
+		"myOutForDelivery": "งานส่งของฉัน",
+		"myOutForDeliveryHint": "กำลังนำจ่ายในรอบนี้",
+		"myDelivered": "ส่งสำเร็จแล้ว",
+		"myDeliveredHint": "เสร็จสิ้นในใบงานของคุณ",
+		"myExceptions": "รายการผิดปกติ",
+		"codHandoverDrivers": "คิวนำส่งเงิน COD",
+		"codHandoverHint": "คนขับที่พร้อมกระทบยอด",
+		"activeMembers": "สมาชิกที่ใช้งานอยู่",
+		"ratio": "{{active}} / {{total}}",
+		"activeMembersHint": "บัญชีที่เปิดใช้งานในบริษัท",
+		"pendingInvites": "คำเชิญที่รอดำเนินการ",
+		"pendingInvitesHint": "ลิงก์สมัครที่ยังไม่ถูกใช้",
+		"workspaceVisits": "การเข้าใช้งานพื้นที่ทำงาน",
+		"last30Days": "30 วันที่ผ่านมา",
+		"assetsInService": "ทรัพย์สินพร้อมใช้งาน",
+		"assetsCheckedOutHint": "เบิกออกไปใช้งานแล้ว {{formatted}} รายการ",
+		"needsMaintenance": "ต้องซ่อมบำรุง",
+		"roadTaxDueHint": "ภาษีรถครบกำหนดต่ออายุ {{formatted}} รายการ",
+		"totalDrivers": "คนขับที่ปฏิบัติงาน",
+		"totalDriversHint": "รายชื่อพนักงานขับรถที่ยังใช้งาน",
+		"driversAvailable": "คนขับที่พร้อมรับงาน",
+		"driversOnRunHint": "กำลังออกวิ่ง {{formatted}} คน",
+		"licensesExpiring": "ใบขับขี่ใกล้หมดอายุ",
+		"licensesExpiringHint": "หมดอายุแล้วหรือภายใน 30 วัน",
+		"activeMerchants": "ร้านค้าที่ใช้งานอยู่",
+		"activeMerchantsHint": "บัญชีลูกค้าที่เปิดใช้งาน",
+		"onlineContacts": "ผู้ติดต่อที่ออนไลน์",
+		"savedContactsHint": "จากเพื่อนร่วมงานที่บันทึกไว้ {{formatted}} คน"
+	},
+	"parcels": {
+		"title": "สถานะพัสดุและคิวจัดส่ง",
+		"subtitle": "สรุปสถานะการจัดส่งแบบเรียลไทม์และใบนำส่งล่าสุดของบริษัท",
+		"myRunTitle": "รอบจัดส่งของฉัน",
+		"myRunSubtitle": "พัสดุที่ได้รับมอบหมายให้บัญชีคนขับของคุณ",
+		"pipelineSummary": "สัดส่วนสถานะพัสดุทั้งหมด {{total}} ชิ้น",
+		"recentCaption": "พัสดุล่าสุด",
+		"empty": "ยังไม่มีรายการพัสดุ",
+		"emptyHint": "ใบนำส่งที่สร้างในบริษัทนี้จะแสดงที่นี่",
+		"myRunEmpty": "ยังไม่มีพัสดุที่มอบหมายให้คุณ",
+		"myRunEmptyHint": "งานจัดส่งที่ได้รับมอบหมายจะปรากฏที่นี่ทันทีเมื่อฝ่ายจัดส่งจ่ายงาน",
+		"columns": {
+			"waybill": "เลขพัสดุ",
+			"merchant": "ร้านค้า",
+			"cod": "ยอด COD",
+			"zone": "พื้นที่",
+			"status": "สถานะ",
+			"action": "การดำเนินการ"
+		},
+		"assign": "มอบหมาย",
+		"recordDelivery": "บันทึกการส่ง"
+	},
+	"finance": {
+		"title": "การนำส่งเงินสดและยอดคงเหลือร้านค้า",
+		"subtitle": "คิวกระทบยอดเงินสด COD ของคนขับและยอดบัญชีร้านค้าล่าสุด",
+		"openHandover": "การนำส่งเงินสด",
+		"codHandoverLabel": "การกระทบยอดเงินสด COD",
+		"codDriversCount": "คนขับ {{count}} คนในรายการกระทบยอด",
+		"codHint": "ตรวจสอบซองเงินสดก่อนบันทึกเครดิตเข้าบัญชีร้านค้า",
+		"reconcileAction": "กระทบยอด COD",
+		"merchantBalances": "ยอดคงเหลือร้านค้า",
+		"activeMerchants": "ใช้งานอยู่ {{formatted}} ราย",
+		"noMerchants": "ยังไม่มีร้านค้าที่ใช้งานอยู่",
+		"columns": {
+			"merchant": "ร้านค้า",
+			"balance": "ยอดคงเหลือ",
+			"pendingCod": "COD รอกระทบยอด"
+		}
+	},
+	"drivers": {
+		"title": "คนขับและสถานะการปฏิบัติงาน",
+		"subtitle": "ความพร้อมของคนขับ รอบจัดส่งปัจจุบัน และสถานะใบขับขี่",
+		"expiringBadge": "แจ้งเตือนใบขับขี่ {{formatted}}",
+		"stats": {
+			"available": "พร้อมรับงาน",
+			"onRun": "กำลังวิ่งงาน",
+			"offDuty": "ออกเวร",
+			"suspended": "ถูกระงับ",
+			"expiring": "ใกล้หมดอายุ"
+		},
+		"noVehicle": "ยังไม่มีรถที่ผูกไว้",
+		"todayParcels": "วันนี้ {{formatted}}",
+		"unlinkedAccount": "ยังไม่เชื่อมบัญชีผู้ใช้",
+		"empty": "ยังไม่มีคนขับในระบบ"
+	},
+	"fleet": {
+		"title": "ยานพาหนะและอุปกรณ์",
+		"subtitle": "การถือครองรถ สถานะซ่อมบำรุง และการต่ออายุภาษีรถ",
+		"roadTaxBadge": "ภาษีรถใกล้ครบกำหนด {{formatted}}",
+		"stats": {
+			"inService": "พร้อมใช้งาน",
+			"checkedOut": "เบิกใช้งานอยู่",
+			"maintenance": "ซ่อมบำรุง",
+			"roadTaxDue": "ครบกำหนดภาษี"
+		},
+		"heldBy": "อยู่กับ {{name}}",
+		"inDepot": "อยู่ที่ศูนย์",
+		"empty": "ยังไม่มีทรัพย์สินที่ลงทะเบียน"
+	},
+	"merchants": {
+		"title": "ร้านค้า",
+		"subtitle": "รายชื่อลูกค้าที่ใช้งานอยู่และความพร้อมของพิกัดจุดรับพัสดุ",
+		"stats": {
+			"active": "ใช้งานอยู่",
+			"pinned": "ปักหมุด GPS แล้ว",
+			"archived": "เก็บถาวร"
+		},
+		"empty": "ยังไม่มีร้านค้าที่ใช้งานอยู่"
+	},
+	"team": {
+		"title": "ทีมและสิทธิ์การเข้าถึง",
+		"subtitle": "สมาชิกในบริษัท คำเชิญที่รอดำเนินการ และสถานะรหัสผ่าน",
+		"pendingInvitesBadge": "คำเชิญรอรับ {{formatted}}",
+		"stats": {
+			"active": "ใช้งานอยู่",
+			"inactive": "ปิดใช้งาน",
+			"pendingInvites": "คำเชิญ",
+			"passwordPending": "รอเปลี่ยนรหัสผ่าน"
+		},
+		"inactiveLabel": "ปิดใช้งาน",
+		"empty": "ไม่พบสมาชิกในทีม",
+		"invitesLink": "จัดการคำเชิญ",
+		"rolesLink": "ตารางสิทธิ์บทบาท"
+	},
+	"activity": {
+		"title": "กิจกรรมพื้นที่ทำงานและความปลอดภัย",
+		"subtitle": "สมาชิกที่ใช้งานและสัญญาณด้านการดูแลระบบในรอบ 30 วัน",
+		"fullInsights": "ดูข้อมูลเชิงลึกทั้งหมด",
+		"chartCaption": "สมาชิกที่ใช้งานรายวัน (14 วันที่ผ่านมา)",
+		"activeMembersSummary": "ใช้งาน {{active}} / {{total}}",
+		"security": {
+			"changes": "การเปลี่ยนแปลงทั้งหมด",
+			"roleChanges": "การเปลี่ยนบทบาท",
+			"passwordResets": "การรีเซ็ตรหัสผ่าน",
+			"denied": "การเข้าถึงที่ถูกปฏิเสธ"
+		},
+		"visitsSummary": "บันทึกการเข้าใช้งานพื้นที่ทำงาน {{formatted}} ครั้ง",
+		"openAudit": "เปิดบันทึกการตรวจสอบ"
+	},
+	"contacts": {
+		"title": "รายชื่อติดต่อและสถานะออนไลน์",
+		"subtitle": "สถานะความพร้อมแบบเรียลไทม์ของเพื่อนร่วมงานที่คุณบันทึกไว้",
+		"onlineBadge": "ออนไลน์ {{online}} / {{total}}",
+		"empty": "ยังไม่มีรายชื่อติดต่อที่บันทึกไว้",
+		"emptyHint": "เพิ่มเพื่อนร่วมงานที่บทบาทของคุณทำงานร่วมกันเพื่อดูสถานะออนไลน์",
+		"addAction": "เพิ่มผู้ติดต่อ"
+	}
+}

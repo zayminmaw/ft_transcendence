@@ -1,16 +1,11 @@
 import { useTranslation } from 'react-i18next';
 import { Navigate } from 'react-router-dom';
 import { ModulePage } from '@global-components';
+import { TenantDashboardPage } from '@modules/dashboard';
 
 // The router is built when routes.tsx loads, so translated pages need their own components.
 export function OverviewPage() {
-	const { t } = useTranslation();
-	return (
-		<ModulePage
-			title={t('workspace.overview.title')}
-			description={t('workspace.overview.description')}
-		/>
-	);
+	return <TenantDashboardPage />;
 }
 
 export function NotFoundPage() {
