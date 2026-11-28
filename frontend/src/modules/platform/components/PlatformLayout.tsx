@@ -12,6 +12,7 @@ export function PlatformLayout() {
 				{ to: '/platform/tenants', label: tp('tenants.heading') },
 				{ to: '/platform/activity', label: tp('activity.title') },
 				{ to: '/platform/signins', label: tp('signins.title') },
+				{ to: '/platform/audit', label: tp('audit.nav') },
 				{ to: '/platform/profile', label: t('account.profile'), hidden: true },
 			],
 		},
