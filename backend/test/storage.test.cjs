@@ -292,3 +292,31 @@ test('an account file belongs to no company: stored apart, opened by signed link
   assert.deepEqual(store.storageFiles.map((file) => file.id), [photo.id]);
   assert.deepEqual(await readdir(join(storage, 'accounts')), []);
 });
+
+test('signed file downloads close the file handle cleanly on GET and HEAD without GC leaks', async (t) => {
+  const { server } = await storageApp(t);
+  const dana = await tokenFor(server, 'dana');
+  const { id } = (await upload(server, dana).expect(201)).body;
+  const { url } = (await as(request(server).get(`/api/fixture/photos/${id}/link`), dana).expect(200)).body;
+
+  const warnings = [];
+  const onWarning = (warning) => warnings.push(warning);
+  process.on('warning', onWarning);
+  t.after(() => process.off('warning', onWarning));
+
+  const head = await request(server).head(url).expect(200);
+  assert.equal(head.headers['content-type'], 'image/png');
+  assert.match(head.headers['cache-control'], /^private, max-age=\d+$/);
+
+  const get = await request(server).get(url).buffer(true).parse(binary).expect(200);
+  assert.deepEqual(get.body, PNG);
+
+  // Also verify direct stream destruction closes the handle cleanly.
+  await new Promise((resolve) => setTimeout(resolve, 25));
+  if (typeof global.gc === 'function') global.gc();
+  await new Promise((resolve) => setTimeout(resolve, 25));
+  assert.deepEqual(
+    warnings.filter((w) => w.code === 'DEP0137'),
+    [],
+  );
+});

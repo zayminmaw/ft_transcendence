@@ -151,7 +151,26 @@ export class StorageService {
     } catch {
       throw new NotFoundException('File not found.');
     }
-    return new StreamableFile(handle.createReadStream(), {
+    let readStream;
+    try {
+      // Manage handle.close() explicitly so the descriptor is always released once the stream finishes or is destroyed,
+      // preventing Node from falling back to closing the FileHandle on garbage collection (DEP0137).
+      readStream = handle.createReadStream({ autoClose: false, emitClose: true });
+    } catch (error) {
+      await handle.close().catch(() => undefined);
+      throw error;
+    }
+    let closed = false;
+    const closeHandle = () => {
+      if (closed) return;
+      closed = true;
+      void handle.close().catch(() => undefined);
+    };
+    readStream.once('end', closeHandle);
+    readStream.once('close', closeHandle);
+    readStream.once('error', closeHandle);
+
+    return new StreamableFile(readStream, {
       type: record.mimeType,
       length: record.sizeBytes,
       // filename*= is the form browsers decode, so non-ASCII names come through intact.
