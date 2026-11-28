@@ -67,7 +67,12 @@ export function Table<Row>({
 	return (
 		<div className={`flex flex-col gap-4 ${className}`}>
 			{(search || filter) && <TableToolbar search={search} filter={filter} />}
-			<div className="overflow-x-auto">
+			<div
+				tabIndex={0}
+				role="region"
+				aria-label={caption}
+				className="overflow-x-auto rounded-field focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral"
+			>
 				<table className="table">
 					<caption className="sr-only">{caption}</caption>
 					<thead>

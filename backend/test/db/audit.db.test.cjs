@@ -161,4 +161,5 @@ test('reads of the trail and of the activity page are listed only when asked for
 	assert.deepEqual(await list({ module: 'insights' }), ['insights']);
 	assert.deepEqual(await list({ resourceType: 'activity_insight' }), ['insights']);
 	assert.deepEqual(await list({ resourceType: 'audit_log' }), ['audit']);
+	assert.deepEqual((await list({ action: 'read' })).sort(), ['audit', 'insights']);
 });

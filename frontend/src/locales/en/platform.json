@@ -327,5 +327,23 @@
 			"sessionReuse": "Session reuse",
 			"showTable": "Show the numbers for each day"
 		}
+	},
+	"audit": {
+		"companyId": "Company ID",
+		"platformScope": "Platform / account",
+		"nav": "Audit log",
+		"title": "Platform audit log",
+		"description": "Platform-wide security, access, and administrative trail across all organizations.",
+		"caption": "Platform audit log entries",
+		"refresh": "Refresh",
+		"clearFilters": "Clear filters",
+		"noAccess": "You don't have access to the platform audit log.",
+		"noAccessHint": "This page is restricted to platform administrators.",
+		"loadFailed": "The platform audit log could not be loaded",
+		"detailLoadFailed": "Couldn't load the full audit entry",
+		"retry": "Try again",
+		"privacyNote": "Company business data values are withheld on the platform. Viewing audit records is itself recorded in the audit trail.",
+		"totalEntries_one": "{{count}} entry",
+		"totalEntries_other": "{{count}} entries"
 	}
 }

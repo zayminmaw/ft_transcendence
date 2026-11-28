@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import { Avatar, Button, DetailItem, ImageViewer, ModulePage } from '@global-components';
 import { formatDate } from '@utils/format';
+import { AccountActivitySection } from '../components/AccountActivitySection';
 import { AvatarForm } from '../components/AvatarForm';
 import { ChangePasswordForm } from '../components/ChangePasswordForm';
 import { DisplayNameForm } from '../components/DisplayNameForm';
@@ -43,6 +44,14 @@ function ProfileSkeleton() {
 						<div className="skeleton h-10 w-full" />
 						<div className="skeleton h-10 w-40" />
 					</div>
+				</div>
+			</div>
+			<div className="rounded-box border border-base-300 p-6 md:p-8 lg:col-span-2">
+				<div className="skeleton h-6 w-44" />
+				<div className="mt-4 flex flex-col gap-3">
+					<div className="skeleton h-10 w-full" />
+					<div className="skeleton h-12 w-full" />
+					<div className="skeleton h-12 w-full" />
 				</div>
 			</div>
 		</div>
@@ -257,6 +266,7 @@ export function ProfilePage() {
 					</section>
 				</div>
 			</div>
+			<AccountActivitySection />
 		</div>
 	);
 }

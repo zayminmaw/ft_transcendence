@@ -52,8 +52,7 @@
 		"pageNotFound": "ไม่พบหน้านี้"
 	},
 	"sidebar": {
-		"home": "หน้าหลัก {{scope}}",
-		"backToWebsite": "กลับไปที่เว็บไซต์"
+		"home": "หน้าหลัก {{scope}}"
 	},
 	"breadcrumbs": {
 		"label": "เส้นทางการนำทาง"
