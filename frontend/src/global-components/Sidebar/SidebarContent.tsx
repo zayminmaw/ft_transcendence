@@ -34,7 +34,7 @@ export function SidebarContent({
 	const { t } = useTranslation();
 
 	return (
-		<div className="flex min-h-0 flex-1 flex-col gap-5">
+		<div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto overscroll-contain">
 			<Link
 				to={homeTo}
 				onClick={onNavigate}
@@ -55,7 +55,7 @@ export function SidebarContent({
 			</div>
 			<nav
 				aria-label={t('layout.navigation', { scope })}
-				className="-mx-2 flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto overscroll-contain px-2"
+				className="-mx-2 flex min-h-20 flex-1 flex-col gap-5 overflow-y-auto overscroll-contain px-2"
 			>
 				{groups.map(({ label, items }, index) => {
 					const shown = items.filter((item) => !item.hidden);
