@@ -21,6 +21,12 @@ const toIsoOrNull = (value: unknown): string | null =>
 const toStringOrNull = (value: unknown): string | null =>
   value === null || value === undefined ? null : String(value);
 
+// mysql2 returns DATE columns as UTC-midnight Date objects under the configured timezone Z.
+const toDay = (value: unknown): string =>
+  value instanceof Date ? value.toISOString().slice(0, 10) : String(value).slice(0, 10);
+const toDayOrNull = (value: unknown): string | null =>
+  value === null || value === undefined ? null : toDay(value);
+
 const toBool = (value: unknown): boolean => Boolean(Number(value));
 
 // Strictly tenant-scoped read queries for company-wide data export. Every single query filters by organizationId and
@@ -134,7 +140,7 @@ export class CompanyExportRepository {
       firstName: String(row.firstName),
       lastName: String(row.lastName),
       employmentStatus: String(row.employmentStatus),
-      hireDate: String(row.hireDate),
+      hireDate: toDay(row.hireDate),
       driverCategory: String(row.driverCategory),
       fleetArrangement: String(row.fleetArrangement),
       assignedZone: toStringOrNull(row.assignedZone),
@@ -143,11 +149,11 @@ export class CompanyExportRepository {
       maxVolumeCapacityM3: String(row.maxVolumeCapacityM3),
       licenseNumber: String(row.licenseNumber),
       licenseClass: String(row.licenseClass),
-      licenseExpiryDate: String(row.licenseExpiryDate),
+      licenseExpiryDate: toDay(row.licenseExpiryDate),
       backgroundCheckPassed: toBool(row.backgroundCheckPassed),
-      backgroundCheckDate: toStringOrNull(row.backgroundCheckDate),
+      backgroundCheckDate: toDayOrNull(row.backgroundCheckDate),
       transitInsurancePolicy: toStringOrNull(row.transitInsurancePolicy),
-      transitInsuranceExpiry: toStringOrNull(row.transitInsuranceExpiry),
+      transitInsuranceExpiry: toDayOrNull(row.transitInsuranceExpiry),
     }));
   }
 
@@ -171,7 +177,7 @@ export class CompanyExportRepository {
       licensePlate: toStringOrNull(row.licensePlate),
       vin: toStringOrNull(row.vin),
       insurancePolicyNumber: toStringOrNull(row.insurancePolicyNumber),
-      roadTaxExpiry: toStringOrNull(row.roadTaxExpiry),
+      roadTaxExpiry: toDayOrNull(row.roadTaxExpiry),
       currentCondition: String(row.currentCondition),
       acquisitionCost: String(row.acquisitionCost),
       currentBookValue: String(row.currentBookValue),
@@ -237,10 +243,10 @@ export class CompanyExportRepository {
       clientCode: String(row.clientCode),
       clientName: String(row.clientName),
       status: String(row.status),
-      billingPeriodStart: String(row.billingPeriodStart),
-      billingPeriodEnd: String(row.billingPeriodEnd),
-      issueDate: String(row.issueDate),
-      dueDate: String(row.dueDate),
+      billingPeriodStart: toDay(row.billingPeriodStart),
+      billingPeriodEnd: toDay(row.billingPeriodEnd),
+      issueDate: toDay(row.issueDate),
+      dueDate: toDay(row.dueDate),
       totalDeliveries: Number(row.totalDeliveries),
       totalDeliveryFees: String(row.totalDeliveryFees),
       totalCodCollected: String(row.totalCodCollected),

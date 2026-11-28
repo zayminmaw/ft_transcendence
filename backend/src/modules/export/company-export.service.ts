@@ -1,4 +1,4 @@
-import { Inject, Injectable, NotFoundException, Optional } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { CompanyExportRepository } from './company-export.repository';
 import type {
   CompanyExportFile,
@@ -203,6 +203,9 @@ export class CompanyExportService {
     format: ExportFormat,
     section: ExportSection,
   ): Promise<CompanyExportFile> {
+    if (format === 'json' && section !== 'all') {
+      throw new BadRequestException({ code: 'COMPANY_EXPORT_JSON_SECTION', message: 'JSON exports require section=all.' });
+    }
     const rawOrganization = await this.repository.findOrganization(organizationId);
     if (!rawOrganization) throw new NotFoundException('Organization not found.');
 

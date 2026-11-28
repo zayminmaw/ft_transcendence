@@ -561,7 +561,7 @@ test('non-admin tenant roles and platform_admin without org_admin membership get
 });
 
 test('invalid format or section returns 400 and unauthenticated request returns 401', async (t) => {
-  const { server, store } = await exportApp(t);
+  const { server, store, exportRepo } = await exportApp(t);
   const adminToken = await tokenFor(server, 'meridian_admin');
 
   await request(server).get('/api/company-export').set('X-Organization-Id', '1').expect(401);
@@ -570,4 +570,25 @@ test('invalid format or section returns 400 and unauthenticated request returns 
   await as(request(server).get('/api/company-export?format=xml'), adminToken, '1').expect(400);
   await as(request(server).get('/api/company-export?format=csv&section=passwords'), adminToken, '1').expect(400);
   await as(request(server).get('/api/company-export?extra=1'), adminToken, '1').expect(400);
+  const invalidScope = await as(request(server).get('/api/company-export?format=json&section=members'), adminToken, '1').expect(400);
+  assert.equal(invalidScope.body.code, 'COMPANY_EXPORT_JSON_SECTION');
+  assert.equal(exportRepo.calls.length, 0);
+  assert.equal(store.auditEntries.filter((entry) => entry.resourceType === 'company_export' && entry.outcome !== 'denied').length, 0);
+});
+
+test('export DATE columns stay ISO calendar days for mysql2 Date objects and date strings', async () => {
+  for (const value of [new Date('2026-01-10T00:00:00Z'), '2026-01-10']) {
+    const repository = new CompanyExportRepository({ query: async () => [{
+      hireDate: value, licenseExpiryDate: value, backgroundCheckDate: value,
+      transitInsuranceExpiry: null, roadTaxExpiry: value, billingPeriodStart: value,
+      billingPeriodEnd: value, issueDate: value, dueDate: value, createdAt: new Date('2026-01-10T12:30:00Z'),
+    }] });
+    const [driver] = await repository.listDrivers('1');
+    const [asset] = await repository.listAssets('1');
+    const [invoice] = await repository.listInvoices('1');
+    for (const day of [driver.hireDate, driver.licenseExpiryDate, driver.backgroundCheckDate, asset.roadTaxExpiry,
+      invoice.billingPeriodStart, invoice.billingPeriodEnd, invoice.issueDate, invoice.dueDate]) assert.equal(day, '2026-01-10');
+    assert.equal(driver.transitInsuranceExpiry, null);
+    assert.equal(invoice.createdAt, '2026-01-10T12:30:00.000Z');
+  }
 });
