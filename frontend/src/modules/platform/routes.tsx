@@ -2,6 +2,7 @@ import { Navigate } from 'react-router-dom';
 import type { RouteObject } from 'react-router-dom';
 import { ProfilePage } from '@modules/auth';
 import { PlatformLayout } from './components/PlatformLayout';
+import { PlatformAuditLogPage } from './pages/PlatformAuditLogPage';
 import { SigninsPage } from './pages/SigninsPage';
 import { TenantsPage } from './pages/TenantsPage';
 import { TenantActivityPage } from './pages/TenantActivityPage';
@@ -20,6 +21,7 @@ export const platformRoutes: RouteObject[] = [
 			{ path: 'tenants', element: <TenantsPage /> },
 			{ path: 'activity', element: <TenantActivityPage /> },
 			{ path: 'signins', element: <SigninsPage /> },
+			{ path: 'audit', element: <PlatformAuditLogPage /> },
 			{ path: 'profile', element: <ProfilePage /> },
 			{ path: 'tenants/new', element: <CreateTenantPage /> },
 			{ path: 'tenants/:tenantId', element: <TenantDetailsPage /> },

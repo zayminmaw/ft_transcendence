@@ -1,4 +1,4 @@
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ParseKeys } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -39,7 +39,8 @@ export function useMyActivity(filters: AuditFilters) {
 		queryKey: ['auth', 'activity', userId, filters],
 		queryFn: () => fetchMyActivity(filters),
 		enabled: userId !== null,
-		placeholderData: keepPreviousData,
+		placeholderData: (previous, previousQuery) =>
+			previousQuery?.queryKey[2] === userId ? previous : undefined,
 		// Every load is audited as a read, so don't reload just because the window got focus back.
 		refetchOnWindowFocus: false,
 	});
