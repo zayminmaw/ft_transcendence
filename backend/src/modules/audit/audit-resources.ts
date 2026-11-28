@@ -207,6 +207,8 @@ export const AUDIT_RESOURCES: Record<string, AuditResource> = {
 	audit_log: { category: 'access', fields: {} },
 	// Someone opened the activity insights page, or was refused. Only counts are shown there, so no fields are stored.
 	activity_insight: { category: 'access', fields: {} },
+	// A tenant admin downloaded a company-wide data export, or a non-admin was refused.
+	company_export: { category: 'access', fields: {} },
 	// A driver's cash handover, checked by a cashier. The amounts are the company's own money figures.
 	settlement: {
 		category: 'data',

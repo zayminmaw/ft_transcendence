@@ -1,4 +1,4 @@
-import { apiRequest } from '@services/api-client';
+import { apiDownload, apiRequest } from '@services/api-client';
 
 // /api/members: the people of the company that is open (the API client sends its X-Organization-Id).
 export type Member = {
@@ -92,4 +92,37 @@ export function revokeInvite(inviteId: string) {
 	return apiRequest<void>(`members/invites/${encodeURIComponent(inviteId)}`, {
 		method: 'DELETE',
 	});
+}
+
+export const EXPORT_SECTIONS = [
+	'all',
+	'members',
+	'clients',
+	'drivers',
+	'assets',
+	'parcels',
+	'invoices',
+] as const;
+
+export type ExportSection = (typeof EXPORT_SECTIONS)[number];
+export type ExportFormat = 'json' | 'csv';
+
+export function downloadCompanyExport({
+	format,
+	section = 'all',
+	slug,
+}: {
+	format: ExportFormat;
+	section?: ExportSection;
+	slug?: string;
+}) {
+	const params = new URLSearchParams({ format });
+	if (format === 'csv') params.set('section', section);
+	const dateStamp = new Date().toISOString().slice(0, 10);
+	const safeSlug = (slug || 'company').toLowerCase().replace(/[^a-z0-9_-]+/g, '-');
+	const fallback =
+		format === 'json'
+			? `${safeSlug}-export-${dateStamp}.json`
+			: `${safeSlug}-${section}-${dateStamp}.csv`;
+	return apiDownload(`company-export?${params.toString()}`, fallback);
 }

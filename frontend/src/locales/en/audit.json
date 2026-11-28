@@ -88,6 +88,7 @@
 		"tenant_administrator": "company administrator",
 		"audit_log": "audit trail",
 		"activity_insight": "activity page",
+		"company_export": "company data export",
 		"parcel": "parcel",
 		"client": "client",
 		"invoice": "invoice",
@@ -242,6 +243,7 @@
 		"drivers": "Drivers",
 		"assets": "Assets",
 		"audit": "Audit trail",
-		"insights": "Activity page"
+		"insights": "Activity page",
+		"export": "Data export"
 	}
 }

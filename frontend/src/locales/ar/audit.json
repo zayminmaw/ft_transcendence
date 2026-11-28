@@ -92,6 +92,7 @@
 		"tenant_administrator": "مسؤول الشركة",
 		"audit_log": "سجل التدقيق",
 		"activity_insight": "صفحة النشاط",
+		"company_export": "تصدير بيانات الشركة",
 		"parcel": "الطرد",
 		"client": "العميل",
 		"invoice": "الفاتورة",
@@ -246,6 +247,7 @@
 		"drivers": "السائقون",
 		"assets": "الأصول",
 		"audit": "سجل التدقيق",
-		"insights": "صفحة النشاط"
+		"insights": "صفحة النشاط",
+		"export": "تصدير البيانات"
 	}
 }

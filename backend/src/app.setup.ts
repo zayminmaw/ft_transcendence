@@ -21,7 +21,7 @@ export function configureApp(app: NestExpressApplication, corsOrigin: string) {
   app.enableCors({
     origin: corsOrigin,
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Organization-Id', REQUEST_ID_HEADER],
-    exposedHeaders: [REQUEST_ID_HEADER],
+    exposedHeaders: [REQUEST_ID_HEADER, 'Content-Disposition'],
   });
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
 }

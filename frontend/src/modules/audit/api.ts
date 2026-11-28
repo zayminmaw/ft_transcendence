@@ -29,6 +29,7 @@ export const AUDIT_MODULES = [
 	'assets',
 	'audit',
 	'insights',
+	'export',
 ] as const;
 export type AuditModule = (typeof AUDIT_MODULES)[number];
 

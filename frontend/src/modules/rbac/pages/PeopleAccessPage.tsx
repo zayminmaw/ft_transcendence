@@ -9,6 +9,7 @@ import { shownName, useCurrentWorkspace, useRoleName } from '@modules/auth';
 import { ApiError } from '@services/api-client';
 import { formatDate, formatNumber } from '@utils/format';
 import type { CreateInviteResponse, Member } from '../api';
+import { CompanyDataExport } from '../components/CompanyDataExport';
 import { CreateInviteDialog } from '../components/CreateInviteDialog';
 import { InviteCreatedDialog } from '../components/InviteCreatedDialog';
 import { InvitesOverview } from '../components/InvitesOverview';
@@ -19,10 +20,15 @@ import { useInvites, useMembers } from '../hooks';
 
 // People & access: the company's members for anyone with admin.manage_users (the API refuses everyone else). The
 // "invites" tab manages single-use sign-up links; "roles" (admin.manage_roles) shows what each role allows.
-export function PeopleAccessPage({ tab = 'members' }: { tab?: 'members' | 'invites' | 'roles' }) {
+export function PeopleAccessPage({
+	tab = 'members',
+}: {
+	tab?: 'members' | 'invites' | 'roles' | 'export';
+}) {
 	const { t, i18n } = useTranslation('rbac');
 	const companyPath = useCompanyPath();
-	const company = useCurrentWorkspace()?.name ?? '';
+	const workspace = useCurrentWorkspace();
+	const company = workspace?.name ?? '';
 	const roleName = useRoleName();
 	const { userId } = useAuth();
 	const members = useMembers();
@@ -182,14 +188,18 @@ export function PeopleAccessPage({ tab = 'members' }: { tab?: 'members' | 'invit
 							? t('roles.title')
 							: tab === 'invites'
 								? t('invites.title')
-								: t('table.title')}
+								: tab === 'export'
+									? t('export.title')
+									: t('table.title')}
 					</h2>
 					<p className="mt-1 text-xs text-[var(--color-slate)]">
 						{tab === 'roles'
 							? t('roles.description', { company })
 							: tab === 'invites'
 								? t('invites.description', { company })
-								: t('table.description')}
+								: tab === 'export'
+									? t('export.description', { company })
+									: t('table.description')}
 					</p>
 				</div>
 				<PeopleAccessTabs
@@ -202,6 +212,8 @@ export function PeopleAccessPage({ tab = 'members' }: { tab?: 'members' | 'invit
 					<RolesOverview />
 				) : tab === 'invites' ? (
 					<InvitesOverview />
+				) : tab === 'export' ? (
+					<CompanyDataExport slug={workspace?.slug} />
 				) : (
 					<Table
 						caption={t('table.title')}
