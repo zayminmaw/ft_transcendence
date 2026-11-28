@@ -4,6 +4,7 @@ import { Brackets, DataSource, type EntityManager, type SelectQueryBuilder } fro
 import { containsPattern } from '../../common/like-pattern';
 import { Client } from '../clients/entities/client.entity';
 import type { InvoiceExportQueryDto, InvoiceQueryDto } from './dto/invoice-query.dto';
+import type { InvoiceClientsQueryDto } from './dto/invoice-clients-query.dto';
 import { InvoiceItem } from './entities/invoice-item.entity';
 import { Invoice, type InvoiceStatus } from './entities/invoice.entity';
 import { INVOICE_EXPORT_LIMIT } from './invoice.constants';
@@ -116,9 +117,22 @@ export class InvoicesRepository {
 
   async listForExport(organizationId: string, query: InvoiceExportQueryDto): Promise<InvoiceListRecord[]> {
     const rows = await this.selectColumns(this.filtered(organizationId, query))
-      .limit(INVOICE_EXPORT_LIMIT)
+      .limit(INVOICE_EXPORT_LIMIT + 1)
       .getRawMany<RawInvoiceRow>();
     return rows.map(toListRecord);
+  }
+
+  async clients(organizationId: string, query: InvoiceClientsQueryDto) {
+    const builder = this.database.getRepository(Client).createQueryBuilder('client')
+      .where('client.organizationId = :organizationId', { organizationId });
+    const total = await builder.clone().getCount();
+    const items = await builder.select('client.id', 'id')
+      .addSelect('client.clientCode', 'clientCode')
+      .addSelect('client.businessName', 'businessName')
+      .orderBy('client.businessName', 'ASC').addOrderBy('client.id', 'ASC')
+      .offset((query.page - 1) * query.pageSize).limit(query.pageSize)
+      .getRawMany<{ id: string; clientCode: string; businessName: string }>();
+    return { items: items.map((item) => ({ ...item, id: String(item.id) })), total, page: query.page, pageSize: query.pageSize };
   }
 
   // Exact SQL decimal/count aggregates for the company (or one merchant when clientId is passed).

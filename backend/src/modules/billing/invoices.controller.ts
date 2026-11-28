@@ -3,6 +3,7 @@ import { requestMeta } from '../../common/context/request-meta';
 import { RequirePermission } from '../../common/decorators/require-permission.decorator';
 import type { AuthenticatedRequest } from '../../common/types/authenticated-request';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
+import { InvoiceClientsQueryDto } from './dto/invoice-clients-query.dto';
 import { InvoiceExportQueryDto, InvoiceQueryDto } from './dto/invoice-query.dto';
 import { INVOICE_EXPORT_PERMISSION, INVOICE_PERMISSION } from './invoice.constants';
 import { InvoicesService } from './invoices.service';
@@ -25,6 +26,12 @@ export class InvoicesController {
   @Header('Content-Disposition', 'attachment; filename="invoices-export.csv"')
   exportCsv(@Query() query: InvoiceExportQueryDto, @Req() request: AuthenticatedRequest) {
     return this.invoices.exportCsv({ tenant: request.tenant!, userId: request.user!.id, meta: requestMeta(request) }, query);
+  }
+
+  // Minimal merchant choices for invoicing, including archived merchants with unbilled deliveries.
+  @Get('clients')
+  clients(@Query() query: InvoiceClientsQueryDto, @Req() request: AuthenticatedRequest) {
+    return this.invoices.clients(request.tenant!, query);
   }
 
   @Get(':invoiceId')

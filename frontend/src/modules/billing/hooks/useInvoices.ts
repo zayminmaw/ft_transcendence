@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useToast } from '@global-components';
 import { useDebounced } from '@hooks/useDebounced';
 import { tenantQueryKey } from '@utils/query-keys';
-import { apiBlob, apiRequest } from '@services/api-client';
+import { apiBlob, apiRequest, errorCode } from '@services/api-client';
 import type { InvoicePage, InvoiceStatus } from '../api';
 
 export type InvoiceStatusFilter = '' | InvoiceStatus;
@@ -114,7 +114,12 @@ export function useExportInvoices() {
 			toast({
 				variant: 'error',
 				title: t('invoices.export.failed'),
-				description: error instanceof Error ? error.message : undefined,
+				description:
+					errorCode(error) === 'INVOICE_EXPORT_TOO_LARGE'
+						? t('invoices.export.tooLarge')
+						: error instanceof Error
+							? error.message
+							: undefined,
 			});
 		},
 	});
@@ -125,7 +130,7 @@ export function useExportInvoices() {
 	};
 }
 
-// Active merchants of the open company for the company-wide "Generate invoice" picker.
+// Minimal merchant choices under billing.create_invoice, including archived merchants.
 export function useInvoiceClients(enabled: boolean) {
 	const query = useQuery({
 		queryKey: tenantQueryKey('clients', 'invoice-picker'),
@@ -133,13 +138,13 @@ export function useInvoiceClients(enabled: boolean) {
 		queryFn: async () => {
 			const pageSize = 50;
 			const first = await apiRequest<ClientsPage>(
-				`clients?status=active&sort=businessName&direction=asc&page=1&pageSize=${pageSize}`,
+				`billing/invoices/clients?page=1&pageSize=${pageSize}`,
 			);
 			const items = [...first.items];
 			const totalPages = Math.ceil(first.total / pageSize);
 			for (let page = 2; page <= totalPages; page++) {
 				const next = await apiRequest<ClientsPage>(
-					`clients?status=active&sort=businessName&direction=asc&page=${page}&pageSize=${pageSize}`,
+					`billing/invoices/clients?page=${page}&pageSize=${pageSize}`,
 				);
 				items.push(...next.items);
 			}

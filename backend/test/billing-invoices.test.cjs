@@ -102,6 +102,7 @@ test('recovery reads require creator permission, validate queries and pass the a
   }
   const calls = [];
   const repository = {
+    clients: async (org, query) => { calls.push(['clients', org, query]); return { items: [{ id: '12', clientCode: 'ARCHIVED', businessName: 'Archived merchant' }], total: 1, page: query.page, pageSize: query.pageSize }; },
     list: async (org, query) => { calls.push(['list', org, query]); return { items: [], total: 0 }; },
     find: async (org, id) => { calls.push(['find', org, id]); return null; },
     items: async () => { throw new Error('must not read items for a missing invoice'); },
@@ -131,6 +132,22 @@ test('recovery reads require creator permission, validate queries and pass the a
     assert.equal((await as(request(server).get(`/api/billing/invoices/${id}`), creator).expect(404)).body.code, 'INVOICE_NOT_FOUND');
   }
   assert.deepEqual(calls.filter((c) => c[0] === 'find'), [['find', '1', '3']]);
+  await as(request(server).get('/api/billing/invoices/clients'), viewer).expect(403);
+  const choices = (await as(request(server).get('/api/billing/invoices/clients?page=1&pageSize=50'), creator).expect(200)).body;
+  assert.deepEqual(choices.items, [{ id: '12', clientCode: 'ARCHIVED', businessName: 'Archived merchant' }]);
+  assert.equal(calls.at(-1)[1], '1');
+  await as(request(server).get('/api/billing/invoices/clients?organizationId=2'), creator).expect(400);
+});
+
+test('an oversized export refuses a partial CSV before recording success', async () => {
+  const { INVOICE_EXPORT_LIMIT } = require('../dist/modules/billing/invoice.constants');
+  let audited = false;
+  const service = new InvoicesService({ listForExport: async () => Array(INVOICE_EXPORT_LIMIT + 1).fill({}) }, {
+    recordStandalone: async () => { audited = true; },
+  });
+  await assert.rejects(service.exportCsv({ tenant: { organizationId: '1' }, userId: '10', meta: {} }, {}),
+    (error) => error.getResponse().code === 'INVOICE_EXPORT_TOO_LARGE');
+  assert.equal(audited, false);
 });
 
 test('company-wide listing filters by tenant, status and search, and export enforces billing.export, neutralizes formulas and audits', async (t) => {

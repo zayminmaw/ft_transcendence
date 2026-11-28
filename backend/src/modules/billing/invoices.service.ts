@@ -6,6 +6,8 @@ import { AuditService } from '../audit';
 import { buildCsv } from './csv';
 import type { CreateInvoiceDto } from './dto/create-invoice.dto';
 import type { InvoiceExportQueryDto, InvoiceQueryDto } from './dto/invoice-query.dto';
+import type { InvoiceClientsQueryDto } from './dto/invoice-clients-query.dto';
+import { INVOICE_EXPORT_LIMIT } from './invoice.constants';
 import type { Invoice } from './entities/invoice.entity';
 import { INVOICE_BAD_PERIOD, INVOICE_DUE_DAYS, INVOICE_MERCHANT_NOT_FOUND, INVOICE_NOT_DRAFT, INVOICE_NOT_FOUND, INVOICE_NOTHING_TO_BILL } from './invoice.constants';
 import { InvoicesRepository } from './invoices.repository';
@@ -45,6 +47,10 @@ const view = (invoice: Invoice, parcels: BillableParcel[]): InvoiceView => ({
 export class InvoicesService {
   constructor(private readonly invoices: InvoicesRepository, private readonly audit: AuditService) {}
 
+  clients(tenant: TenantContext, query: InvoiceClientsQueryDto) {
+    return this.invoices.clients(tenant.organizationId, query);
+  }
+
   async list(tenant: TenantContext, query: InvoiceQueryDto) {
     if (query.periodStart && query.periodEnd && query.periodStart > query.periodEnd) throw new BadRequestException(INVOICE_BAD_PERIOD);
     const { items, total } = await this.invoices.list(tenant.organizationId, query);
@@ -70,6 +76,12 @@ export class InvoicesService {
     if (query.periodStart && query.periodEnd && query.periodStart > query.periodEnd) throw new BadRequestException(INVOICE_BAD_PERIOD);
     const organizationId = actor.tenant.organizationId;
     const rows = await this.invoices.listForExport(organizationId, query);
+    if (rows.length > INVOICE_EXPORT_LIMIT) {
+      throw new BadRequestException({
+        code: 'INVOICE_EXPORT_TOO_LARGE',
+        message: `This export exceeds ${INVOICE_EXPORT_LIMIT} invoices. Narrow the filters and try again.`,
+      });
+    }
     const csv = buildCsv(
       EXPORT_HEADERS,
       rows.map((invoice) => [

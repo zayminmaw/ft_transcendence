@@ -114,7 +114,8 @@
 		"export": {
 			"action": "Export CSV",
 			"exporting": "Exporting…",
-			"failed": "Could not export invoices"
+			"failed": "Could not export invoices",
+			"tooLarge": "More than 10,000 invoices match. Narrow the filters and try again."
 		},
 		"status": {
 			"draft": "Draft",
