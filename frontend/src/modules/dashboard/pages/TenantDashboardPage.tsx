@@ -39,12 +39,13 @@ export function TenantDashboardPage() {
 
 	const number = (value: number | null | undefined) => formatNumber(value, i18n.language);
 	const assignedOnlyParcels = perms.canViewParcels && !perms.canViewAllParcels;
-	const hasFinanceWidget = perms.canReconcileCod || perms.canViewClientFinancials;
+	const canReadClientFinancials = perms.canViewClients && perms.canViewClientFinancials;
+	const hasFinanceWidget = perms.canReconcileCod || canReadClientFinancials;
 
 	// Build permission-gated quick actions matching neighboring pages (PeopleAccessPage, DispatchPage):
 	// secondary actions (bg-base-200) come first; the primary action (btn-primary) sits at the end.
 	const quickActions: QuickAction[] = [];
-	if (perms.canCreateParcels) {
+	if (perms.canViewParcels && perms.canCreateParcels) {
 		quickActions.push({
 			key: 'new-parcel',
 			to: companyPath('parcels/new'),
@@ -52,7 +53,7 @@ export function TenantDashboardPage() {
 			primary: !perms.canDispatchParcels,
 		});
 	}
-	if (perms.canDispatchParcels) {
+	if (perms.canViewParcels && perms.canDispatchParcels) {
 		quickActions.push({
 			key: 'assign-driver',
 			to: companyPath('parcels/assign'),
@@ -81,7 +82,7 @@ export function TenantDashboardPage() {
 			primary: true,
 		});
 	}
-	if (perms.canManageDrivers) {
+	if (perms.canViewDrivers && perms.canManageDrivers) {
 		quickActions.push({
 			key: 'new-driver',
 			to: companyPath('drivers/new'),
@@ -89,7 +90,7 @@ export function TenantDashboardPage() {
 			primary: true,
 		});
 	}
-	if (perms.canCreateAssets) {
+	if (perms.canViewAssets && perms.canCreateAssets) {
 		quickActions.push({
 			key: 'new-asset',
 			to: companyPath('assets/new'),
@@ -97,7 +98,7 @@ export function TenantDashboardPage() {
 			primary: true,
 		});
 	}
-	if (perms.canCreateClients && quickActions.length < 3) {
+	if (perms.canViewClients && perms.canCreateClients && quickActions.length < 3) {
 		quickActions.push({
 			key: 'new-client',
 			to: companyPath('clients/new'),
@@ -314,7 +315,7 @@ export function TenantDashboardPage() {
 					isClientsError={data.clients.isError}
 					onRetryClients={() => void data.clients.refetch()}
 					canReconcileCod={perms.canReconcileCod}
-					canViewFinancials={perms.canViewClientFinancials}
+					canViewFinancials={canReadClientFinancials}
 					className={spanClass}
 				/>
 			),
@@ -375,7 +376,10 @@ export function TenantDashboardPage() {
 						data.drivers.isPending ||
 						(perms.canDispatchParcels && data.dispatchDrivers.isPending)
 					}
-					isError={data.drivers.isError}
+					isError={
+						data.drivers.isError ||
+						(perms.canDispatchParcels && data.dispatchDrivers.isError)
+					}
 					onRetry={() => {
 						void data.drivers.refetch();
 						if (perms.canDispatchParcels) void data.dispatchDrivers.refetch();
