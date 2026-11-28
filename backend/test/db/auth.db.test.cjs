@@ -214,7 +214,15 @@ const { RolePermission } = require('../../dist/modules/rbac/entities/role-permis
 // match it, and the guard must allow exactly these and refuse everything else. The driver's four permissions are
 // "only their own" (assigned_only), which the guard refuses until ownership rules exist; platform_admin has none.
 const DOCS_MATRIX = {
-  org_admin: ['admin.manage_users', 'admin.manage_roles', 'admin.audit_logs', 'contacts.manage_own'],
+  org_admin: [
+    'clients.view', 'clients.create', 'clients.edit', 'clients.delete', 'clients.view_financials',
+    'parcels.view', 'parcels.create', 'parcels.dispatch', 'parcels.update_status', 'parcels.mark_delivered', 'parcels.override_fee',
+    'staff.view', 'staff.manage', 'staff.view_payroll',
+    'drivers.view', 'drivers.manage', 'drivers.view_compliance', 'drivers.view_earnings',
+    'assets.view', 'assets.create', 'assets.assign', 'assets.log_maintenance',
+    'billing.view', 'billing.reconcile_cod', 'billing.create_invoice', 'billing.adjust_balance', 'billing.export',
+    'admin.manage_users', 'admin.manage_roles', 'admin.audit_logs', 'contacts.manage_own',
+  ],
   dispatcher: ['clients.view', 'clients.create', 'clients.edit', 'clients.delete', 'parcels.view', 'parcels.create', 'parcels.dispatch',
     'parcels.update_status', 'parcels.mark_delivered', 'drivers.view', 'assets.view', 'assets.assign', 'contacts.manage_own'],
   hub_sorter: ['parcels.view', 'parcels.update_status', 'contacts.manage_own'],
